@@ -1,0 +1,15 @@
+{
+  "name": "dashboard01",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css",
+    "watch:css": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

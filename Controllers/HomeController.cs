@@ -1,0 +1,26 @@
+using DashboardOrders.Models;
+using DashboardOrders.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DashboardOrders.Controllers;
+
+public class HomeController : Controller
+{
+    public IActionResult Index()
+    {
+        var model = MockDataService.GetDashboardData();
+        return View(model);
+    }
+
+    public IActionResult Orders(int? customerId = null)
+    {
+        var model = MockDataService.GetOrdersPageData(customerId);
+        return View(model);
+    }
+
+    public IActionResult Customers(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc")
+    {
+        var model = MockDataService.GetCustomersPageData(page, pageSize, sortBy, sortDirection);
+        return View(model);
+    }
+}
