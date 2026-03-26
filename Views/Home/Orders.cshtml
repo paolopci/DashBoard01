@@ -133,14 +133,15 @@
                     <tr id="@detailRowId" class="order-detail-row hidden bg-slate-50/80">
                         <td colspan="5" class="px-6 pb-6 pt-2">
                             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
-                                <div class="flex flex-wrap items-center gap-y-2 text-sm">
-                                    <p class="font-semibold text-slate-800">Dettaglio ordine @order.OrderNumber</p>
-                                    <p class="ml-8 text-slate-500">Numero articoli: <span class="font-semibold text-slate-700">@order.ItemsCount</span></p>
-                                    <p class="ml-8 text-slate-500">Pezzi Totali: <span class="font-semibold text-slate-700">@order.Quantity</span></p>
-                                    <p class="ml-8 text-slate-500">Cliente: <span class="font-semibold text-slate-700">@order.Customer.Name</span></p>
+                                <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
+                                    <div class="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm"
+                                         style="display: flex; flex-wrap: wrap; align-items: center; column-gap: 2rem; row-gap: 0.5rem;">
+                                        <p class="font-semibold text-slate-800">Dettaglio ordine @order.OrderNumber</p>
+                                        <p class="text-slate-500">Numero articoli: <span class="font-semibold text-slate-700">@order.ItemsCount</span></p>
+                                        <p class="text-slate-500">Pezzi Totali: <span class="font-semibold text-slate-700">@order.Quantity</span></p>
+                                        <p class="text-slate-500">Cliente: <span class="font-semibold text-slate-700">@order.Customer.Name</span></p>
+                                    </div>
                                 </div>
-                            </div>
                                 <div class="overflow-x-auto">
                                     <table class="w-full min-w-[640px]">
                                         <thead>
