@@ -12,9 +12,9 @@ public class HomeController : Controller
         return View(model);
     }
 
-    public IActionResult Orders(int? customerId = null)
+    public IActionResult Orders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
     {
-        var model = MockDataService.GetOrdersPageData(customerId);
+        var model = MockDataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection);
         return View(model);
     }
 
