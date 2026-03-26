@@ -55,7 +55,16 @@
 
 <div class="mb-8">
     <h2 class="text-2xl font-bold text-slate-800">Clienti</h2>
-    <p class="text-slate-500 mt-1">Panoramica clienti con numero ordini effettuati e importo totale generato.</p>
+    <p class="text-slate-500 mt-1">
+        @if (Model.HasActiveSearch)
+        {
+            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
+        }
+        else
+        {
+            <span>Panoramica clienti con numero ordini effettuati e importo totale generato.</span>
+        }
+    </p>
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
@@ -91,276 +100,295 @@
 </div>
 
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-100">
-        <h3 class="text-lg font-semibold text-slate-800">Elenco Clienti</h3>
-    </div>
-    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <form method="get" asp-action="Customers" asp-controller="Home" class="flex items-center gap-3">
-            <label for="pageSize" class="text-sm font-medium text-slate-600">Elementi per pagina</label>
-            <select id="pageSize"
-                    name="pageSize"
-                    onchange="this.form.submit()"
-                    class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
-                @if (Model.PageSize == 10)
-                {
-                    <option value="10" selected>10</option>
-                }
-                else
-                {
-                    <option value="10">10</option>
-                }
+    @if (Model.Customers.Any())
+    {
+        <div class="px-6 py-5 border-b border-slate-100">
+            <h3 class="text-lg font-semibold text-slate-800">Elenco Clienti</h3>
+        </div>
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <form method="get" asp-action="Customers" asp-controller="Home" class="flex items-center gap-3">
+                <label for="pageSize" class="text-sm font-medium text-slate-600">Elementi per pagina</label>
+                <select id="pageSize"
+                        name="pageSize"
+                        onchange="this.form.submit()"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    @if (Model.PageSize == 10)
+                    {
+                        <option value="10" selected>10</option>
+                    }
+                    else
+                    {
+                        <option value="10">10</option>
+                    }
 
-                @if (Model.PageSize == 20)
-                {
-                    <option value="20" selected>20</option>
-                }
-                else
-                {
-                    <option value="20">20</option>
-                }
+                    @if (Model.PageSize == 20)
+                    {
+                        <option value="20" selected>20</option>
+                    }
+                    else
+                    {
+                        <option value="20">20</option>
+                    }
 
-                @if (Model.PageSize == 50)
-                {
-                    <option value="50" selected>50</option>
-                }
-                else
-                {
-                    <option value="50">50</option>
-                }
+                    @if (Model.PageSize == 50)
+                    {
+                        <option value="50" selected>50</option>
+                    }
+                    else
+                    {
+                        <option value="50">50</option>
+                    }
 
+                    @if (Model.ShowAll)
+                    {
+                        <option value="0" selected>All</option>
+                    }
+                    else
+                    {
+                        <option value="0">All</option>
+                    }
+                </select>
+                <input type="hidden" name="page" value="1" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+                <input type="hidden" name="search" value="@Model.SearchTerm" />
+            </form>
+
+            <div class="text-sm text-slate-500">
                 @if (Model.ShowAll)
                 {
-                    <option value="0" selected>All</option>
+                    <span>Tutti i clienti in una sola pagina</span>
                 }
                 else
                 {
-                    <option value="0">All</option>
+                    <span>Pagina @Model.CurrentPage di @Model.TotalPages</span>
                 }
-            </select>
-            <input type="hidden" name="page" value="1" />
-            <input type="hidden" name="sortBy" value="@Model.SortBy" />
-            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-        </form>
-
-        <div class="text-sm text-slate-500">
-            @if (Model.ShowAll)
-            {
-                <span>Tutti i clienti in una sola pagina</span>
-            }
-            else
-            {
-                <span>Pagina @Model.CurrentPage di @Model.TotalPages</span>
-            }
+            </div>
         </div>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="w-full">
-            <thead>
-                <tr class="bg-slate-50 border-b border-slate-100">
-                    <th class="px-6 py-3 text-center">
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="1"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="customer"
-                           asp-route-sortDirection="@GetNextSortDirection("customer")"
-                           class="inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("customer")">
-                            <span>Clienti</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("customer")</span>
-                        </a>
-                    </th>
-                    <th class="px-6 py-3 text-center">
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="1"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="ordersCount"
-                           asp-route-sortDirection="@GetNextSortDirection("ordersCount")"
-                           class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("ordersCount")">
-                            <span>Numero Ordini</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("ordersCount")</span>
-                        </a>
-                    </th>
-                    <th class="px-6 py-3 text-right">
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="1"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="totalAmount"
-                           asp-route-sortDirection="@GetNextSortDirection("totalAmount")"
-                           class="inline-flex items-center justify-end gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("totalAmount")">
-                            <span>Importo Totale Ordini</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("totalAmount")</span>
-                        </a>
-                    </th>
-                    <th class="px-6 py-3 text-center">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ordini</span>
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-                @foreach (var customerSummary in Model.Customers)
-                {
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center space-x-3">
-                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                                    @customerSummary.Customer.AvatarInitials
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-slate-800">@customerSummary.Customer.Name</p>
-                                    <p class="text-xs text-slate-400">@customerSummary.Customer.Email</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
-                                @customerSummary.OrdersCount
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-semibold text-slate-800 text-right">
-                            €@customerSummary.TotalOrdersAmount.ToString("N2")
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            @if (customerSummary.OrdersCount > 0)
-                            {
-                                <a asp-action="Orders"
-                                   asp-controller="Home"
-                                   asp-route-customerId="@customerSummary.Customer.Id"
-                                   class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700">
-                                    Ordini
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400">
-                                    Ordini
-                                </span>
-                            }
-                        </td>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100">
+                        <th class="px-6 py-3 text-center">
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="customer"
+                               asp-route-sortDirection="@GetNextSortDirection("customer")"
+                               class="inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("customer")">
+                                <span>Clienti</span>
+                                <span class="text-sm text-indigo-600">@GetSortArrow("customer")</span>
+                            </a>
+                        </th>
+                        <th class="px-6 py-3 text-center">
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="ordersCount"
+                               asp-route-sortDirection="@GetNextSortDirection("ordersCount")"
+                               class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("ordersCount")">
+                                <span>Numero Ordini</span>
+                                <span class="text-sm text-indigo-600">@GetSortArrow("ordersCount")</span>
+                            </a>
+                        </th>
+                        <th class="px-6 py-3 text-right">
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="totalAmount"
+                               asp-route-sortDirection="@GetNextSortDirection("totalAmount")"
+                               class="inline-flex items-center justify-end gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("totalAmount")">
+                                <span>Importo Totale Ordini</span>
+                                <span class="text-sm text-indigo-600">@GetSortArrow("totalAmount")</span>
+                            </a>
+                        </th>
+                        <th class="px-6 py-3 text-center">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ordini</span>
+                        </th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-    <div class="px-6 py-4 border-t border-slate-100 bg-white flex flex-col gap-4">
-        <div class="text-sm text-slate-500">
-            @if (Model.ShowAll)
-            {
-                <span>Visualizzati @Model.TotalCustomers di @Model.TotalCustomers clienti</span>
-            }
-            else
-            {
-                <span>Visualizzati @Model.Customers.Count clienti su @Model.TotalCustomers</span>
-            }
-        </div>
-
-        @if (!Model.ShowAll)
-        {
-            <div class="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 shadow-sm">
-                <div class="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-                    <div class="hidden lg:block"></div>
-
-                    <nav class="flex flex-wrap items-center justify-center gap-3" aria-label="Paginazione clienti">
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="1"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &lt;&lt;
-                        </a>
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="@Model.PreviousPage"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &lt;
-                        </a>
-
-                        @{
-                            int? previousRenderedPage = null;
-                        }
-
-                        @foreach (var pageNumber in visiblePages)
-                        {
-                            if (previousRenderedPage.HasValue && pageNumber - previousRenderedPage.Value > 1)
-                            {
-                                <span class="inline-flex h-11 min-w-11 items-center justify-center px-2 text-base font-semibold text-slate-400">...</span>
-                            }
-
-                            if (pageNumber == Model.CurrentPage)
-                            {
-                                <span class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-indigo-500 px-4 text-base font-semibold text-white shadow-md shadow-indigo-500/30">
-                                    @pageNumber
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    @foreach (var customerSummary in Model.Customers)
+                    {
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                                        @customerSummary.Customer.AvatarInitials
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-slate-800">@customerSummary.Customer.Name</p>
+                                        <p class="text-xs text-slate-400">@customerSummary.Customer.Email</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                                    @customerSummary.OrdersCount
                                 </span>
-                            }
-                            else
-                            {
-                                <a asp-action="Customers"
-                                   asp-controller="Home"
-                                   asp-route-page="@pageNumber"
-                                   asp-route-pageSize="@Model.PageSize"
-                                   asp-route-sortBy="@Model.SortBy"
-                                   asp-route-sortDirection="@Model.SortDirection"
-                                   class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600">
-                                    @pageNumber
-                                </a>
-                            }
-
-                            previousRenderedPage = pageNumber;
-                        }
-
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="@Model.NextPage"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &gt;
-                        </a>
-                        <a asp-action="Customers"
-                           asp-controller="Home"
-                           asp-route-page="@Model.TotalPages"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &gt;&gt;
-                        </a>
-                    </nav>
-
-                    <div class="flex items-center justify-center gap-3 text-sm text-slate-500 lg:justify-end">
-                        <span class="text-lg font-medium text-slate-600">Page</span>
-                        <form method="get" asp-action="Customers" asp-controller="Home" class="flex items-center gap-2">
-                            <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                            <input type="hidden" name="sortBy" value="@Model.SortBy" />
-                            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <select id="page"
-                                    name="page"
-                                    onchange="this.form.submit()"
-                                    class="h-11 min-w-20 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
-                                @for (var pageNumberOption = 1; pageNumberOption <= Model.TotalPages; pageNumberOption++)
+                            </td>
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-800 text-right">
+                                €@customerSummary.TotalOrdersAmount.ToString("N2")
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                @if (customerSummary.OrdersCount > 0)
                                 {
-                                    if (pageNumberOption == Model.CurrentPage)
-                                    {
-                                        <option value="@pageNumberOption" selected>@pageNumberOption</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@pageNumberOption">@pageNumberOption</option>
-                                    }
+                                    <a asp-action="Orders"
+                                       asp-controller="Home"
+                                       asp-route-customerId="@customerSummary.Customer.Id"
+                                       class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700">
+                                        Ordini
+                                    </a>
                                 }
-                            </select>
-                        </form>
-                        <span class="text-lg">of @Model.TotalPages</span>
+                                else
+                                {
+                                    <span class="inline-flex items-center rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400">
+                                        Ordini
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-100 bg-white flex flex-col gap-4">
+            <div class="text-sm text-slate-500">
+                @if (Model.ShowAll)
+                {
+                    <span>Visualizzati @Model.TotalCustomers di @Model.TotalCustomers clienti</span>
+                }
+                else
+                {
+                    <span>Visualizzati @Model.Customers.Count clienti su @Model.TotalCustomers</span>
+                }
+            </div>
+
+            @if (!Model.ShowAll)
+            {
+                <div class="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 shadow-sm">
+                    <div class="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+                        <div class="hidden lg:block"></div>
+
+                        <nav class="flex flex-wrap items-center justify-center gap-3" aria-label="Paginazione clienti">
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="1"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="@Model.SortBy"
+                               asp-route-sortDirection="@Model.SortDirection"
+                               class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                                &lt;&lt;
+                            </a>
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="@Model.PreviousPage"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="@Model.SortBy"
+                               asp-route-sortDirection="@Model.SortDirection"
+                               class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                                &lt;
+                            </a>
+
+                            @{
+                                int? previousRenderedPage = null;
+                            }
+
+                            @foreach (var pageNumber in visiblePages)
+                            {
+                                if (previousRenderedPage.HasValue && pageNumber - previousRenderedPage.Value > 1)
+                                {
+                                    <span class="inline-flex h-11 min-w-11 items-center justify-center px-2 text-base font-semibold text-slate-400">...</span>
+                                }
+
+                                if (pageNumber == Model.CurrentPage)
+                                {
+                                    <span class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-indigo-500 px-4 text-base font-semibold text-white shadow-md shadow-indigo-500/30">
+                                        @pageNumber
+                                    </span>
+                                }
+                                else
+                                {
+                                    <a asp-action="Customers"
+                                       asp-controller="Home"
+                                       asp-route-page="@pageNumber"
+                                       asp-route-pageSize="@Model.PageSize"
+                                       asp-route-search="@Model.SearchTerm"
+                                       asp-route-sortBy="@Model.SortBy"
+                                       asp-route-sortDirection="@Model.SortDirection"
+                                       class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600">
+                                        @pageNumber
+                                    </a>
+                                }
+
+                                previousRenderedPage = pageNumber;
+                            }
+
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="@Model.NextPage"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="@Model.SortBy"
+                               asp-route-sortDirection="@Model.SortDirection"
+                               class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                                &gt;
+                            </a>
+                            <a asp-action="Customers"
+                               asp-controller="Home"
+                               asp-route-page="@Model.TotalPages"
+                               asp-route-pageSize="@Model.PageSize"
+                               asp-route-search="@Model.SearchTerm"
+                               asp-route-sortBy="@Model.SortBy"
+                               asp-route-sortDirection="@Model.SortDirection"
+                               class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                                &gt;&gt;
+                            </a>
+                        </nav>
+
+                        <div class="flex items-center justify-center gap-3 text-sm text-slate-500 lg:justify-end">
+                            <span class="text-lg font-medium text-slate-600">Page</span>
+                            <form method="get" asp-action="Customers" asp-controller="Home" class="flex items-center gap-2">
+                                <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                <input type="hidden" name="search" value="@Model.SearchTerm" />
+                                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+                                <select id="page"
+                                        name="page"
+                                        onchange="this.form.submit()"
+                                        class="h-11 min-w-20 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                                    @for (var pageNumberOption = 1; pageNumberOption <= Model.TotalPages; pageNumberOption++)
+                                    {
+                                        if (pageNumberOption == Model.CurrentPage)
+                                        {
+                                            <option value="@pageNumberOption" selected>@pageNumberOption</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@pageNumberOption">@pageNumberOption</option>
+                                        }
+                                    }
+                                </select>
+                            </form>
+                            <span class="text-lg">of @Model.TotalPages</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        }
-    </div>
+            }
+        </div>
+    }
+    else if (Model.HasActiveSearch)
+    {
+        <div class="flex min-h-[280px] items-center justify-center px-6 py-16">
+            <p class="text-center text-2xl font-bold text-slate-700">Nessun Cliente Trovato</p>
+        </div>
+    }
 </div>
