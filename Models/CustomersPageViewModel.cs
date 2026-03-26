@@ -6,6 +6,7 @@ public class CustomersPageViewModel
     public int TotalCustomers { get; set; }
     public int CustomersWithOrders { get; set; }
     public decimal TotalRevenue { get; set; }
+    public string SearchTerm { get; set; } = string.Empty;
     public string SortBy { get; set; } = "totalAmount";
     public string SortDirection { get; set; } = "desc";
     public int CurrentPage { get; set; }
@@ -16,4 +17,5 @@ public class CustomersPageViewModel
     public bool HasNextPage => !ShowAll && CurrentPage < TotalPages;
     public int PreviousPage => HasPreviousPage ? CurrentPage - 1 : 1;
     public int NextPage => HasNextPage ? CurrentPage + 1 : TotalPages;
+    public bool HasActiveSearch => !string.IsNullOrWhiteSpace(SearchTerm);
 }

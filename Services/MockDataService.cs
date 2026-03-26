@@ -184,7 +184,7 @@ public static class MockDataService
         };
     }
 
-    public static CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc")
+    public static CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = sortBy?.ToLowerInvariant() switch
         {
@@ -197,6 +197,7 @@ public static class MockDataService
         var normalizedSortDirection = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase)
             ? "asc"
             : "desc";
+        var normalizedSearch = (search ?? string.Empty).Trim();
 
         var customerSummaries = Customers
             .Select(customer =>
@@ -215,6 +216,15 @@ public static class MockDataService
                 };
             })
             .ToList();
+
+        if (normalizedSearch.Length >= 3)
+        {
+            customerSummaries = customerSummaries
+                .Where(summary =>
+                    summary.Customer.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                    summary.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
 
         customerSummaries = (normalizedSortBy, normalizedSortDirection) switch
         {
@@ -247,7 +257,7 @@ public static class MockDataService
         var normalizedPageSize = pageSize is 10 or 20 or 50 ? pageSize : 0;
         var totalPages = normalizedPageSize == 0
             ? 1
-            : (int)Math.Ceiling(customerSummaries.Count / (double)normalizedPageSize);
+            : Math.Max(1, (int)Math.Ceiling(customerSummaries.Count / (double)normalizedPageSize));
         var normalizedPage = Math.Clamp(page, 1, Math.Max(totalPages, 1));
         var pagedCustomers = normalizedPageSize == 0
             ? customerSummaries
@@ -262,6 +272,7 @@ public static class MockDataService
             TotalCustomers = customerSummaries.Count,
             CustomersWithOrders = customerSummaries.Count(summary => summary.OrdersCount > 0),
             TotalRevenue = customerSummaries.Sum(summary => summary.TotalOrdersAmount),
+            SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
             CurrentPage = normalizedPage,
