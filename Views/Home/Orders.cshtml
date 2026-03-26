@@ -63,7 +63,8 @@
             <p class="text-sm font-medium text-slate-500">Stato Ordini</p>
             <div class="flex flex-wrap items-center gap-2 text-sm font-semibold">
                 <span class="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-amber-700">@Model.PendingOrders in lavorazione</span>
-                <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-blue-700">@Model.ShippedOrders evasi</span>
+                <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-blue-700"
+                      style="margin-left: 0.5rem;">@Model.ShippedOrders evasi</span>
             </div>
         </div>
     </div>
@@ -133,7 +134,8 @@
                     <tr id="@detailRowId" class="order-detail-row hidden bg-slate-50/80">
                         <td colspan="5" class="px-6 pb-6 pt-2">
                             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
+                                <div class="border-b border-amber-200 bg-amber-100 px-5 py-4"
+                                     style="padding-left: 2rem; padding-right: 2rem;">
                                     <div class="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm"
                                          style="display: flex; flex-wrap: wrap; align-items: center; column-gap: 2rem; row-gap: 0.5rem;">
                                         <p class="font-semibold text-slate-800">Dettaglio ordine @order.OrderNumber</p>
@@ -146,27 +148,32 @@
                                     <table class="w-full min-w-[640px]">
                                         <thead>
                                             <tr class="border-b border-slate-100 bg-white">
-                                                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Articolo</th>
+                                                <th class="pl-8 pr-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
+                                                    style="padding-left: 2rem;">Articolo</th>
                                                 <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Qtà</th>
                                                 <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Prezzo Unitario</th>
-                                                <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Totale Riga</th>
+                                                <th class="pl-5 pr-8 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500"
+                                                    style="padding-right: 2rem;">Totale Riga</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-100">
                                             @foreach (var item in order.Items)
                                             {
                                                 <tr class="transition-colors hover:bg-slate-50">
-                                                    <td class="px-5 py-3 text-sm font-medium text-slate-700">@item.ProductName</td>
+                                                    <td class="pl-8 pr-5 py-3 text-sm font-medium text-slate-700"
+                                                        style="padding-left: 2rem;">@item.ProductName</td>
                                                     <td class="px-5 py-3 text-center text-sm text-slate-600">@item.Quantity</td>
                                                     <td class="px-5 py-3 text-right text-sm text-slate-600">€ @item.UnitPrice.ToString("N2", italianCulture)</td>
-                                                    <td class="px-5 py-3 text-right text-sm font-semibold text-slate-800">€ @item.TotalPrice.ToString("N2", italianCulture)</td>
+                                                    <td class="pl-5 pr-8 py-3 text-right text-sm font-semibold text-slate-800"
+                                                        style="padding-right: 2rem;">€ @item.TotalPrice.ToString("N2", italianCulture)</td>
                                                 </tr>
                                             }
                                         </tbody>
                                         <tfoot>
                                             <tr class="border-t border-slate-200 bg-slate-50">
                                                 <td colspan="3" class="px-5 py-4 text-right text-sm font-semibold uppercase tracking-wide text-slate-500">Totale Ordine</td>
-                                                <td class="px-5 py-4 text-right text-base font-bold text-slate-800">€ @order.TotalAmount.ToString("N2", italianCulture)</td>
+                                                <td class="pl-5 pr-8 py-4 text-right text-base font-bold text-slate-800"
+                                                    style="padding-right: 2rem;">€ @order.TotalAmount.ToString("N2", italianCulture)</td>
                                             </tr>
                                         </tfoot>
                                     </table>
