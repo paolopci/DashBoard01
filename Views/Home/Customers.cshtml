@@ -1,10 +1,17 @@
+@using System.Globalization
 @model DashboardOrders.Models.CustomersPageViewModel
 @{
     ViewData["Title"] = "Clienti";
+    var italianCulture = CultureInfo.GetCultureInfo("it-IT");
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
 
     var visiblePages = new List<int>();
+
+    string FormatEuro(decimal value, string numericFormat = "N2")
+    {
+        return $"{value.ToString(numericFormat, italianCulture)} €";
+    }
 
     string GetNextSortDirection(string column)
     {
@@ -94,7 +101,7 @@
         </div>
         <div class="ml-auto text-right">
             <p class="text-sm font-medium text-slate-500">Importo Totale Ordini</p>
-            <p class="text-3xl font-bold text-slate-800">€ @Model.TotalRevenue.ToString("N2")</p>
+            <p class="text-3xl font-bold text-slate-800">@FormatEuro(Model.TotalRevenue)</p>
         </div>
     </div>
 </div>
@@ -234,7 +241,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm font-semibold text-slate-800 text-right">
-                                €@customerSummary.TotalOrdersAmount.ToString("N2")
+                                @FormatEuro(customerSummary.TotalOrdersAmount)
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if (customerSummary.OrdersCount > 0)

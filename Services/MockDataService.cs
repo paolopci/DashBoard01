@@ -4,8 +4,38 @@ namespace DashboardOrders.Services;
 
 public static class MockDataService
 {
+    private static readonly (string Name, decimal Price)[] OrderProductSeeds =
+    {
+        ("Laptop Pro 15", 1200m),
+        ("Tastiera Meccanica", 85m),
+        ("Monitor 4K 27 pollici", 450m),
+        ("Mouse Wireless", 45m),
+        ("Workstation Ultra", 2500m),
+        ("Webcam HD Pro", 95m),
+        ("SSD 1TB", 120m),
+        ("Stampante Laser", 180m),
+        ("Hub USB-C 7 porte", 50m),
+        ("Cuffie Noise Cancel.", 250m)
+    };
+
+    private static readonly List<Category> Categories = GenerateCategories();
+    private static readonly List<Product> Products = GenerateProducts(Categories);
     private static readonly List<Customer> Customers = GenerateCustomers(100);
     private static readonly List<Order> Orders = GenerateOrders(Customers);
+
+    private static List<Category> GenerateCategories()
+    {
+        return new List<Category>
+        {
+            new() { Code = "CAT-001", Name = "Informatica", Description = "Dispositivi e strumenti per postazioni di lavoro professionali." },
+            new() { Code = "CAT-002", Name = "Periferiche", Description = "Accessori e periferiche per input, stampa e produttivita quotidiana." },
+            new() { Code = "CAT-003", Name = "Archiviazione", Description = "Soluzioni per memorizzazione, backup e gestione dei dati." },
+            new() { Code = "CAT-004", Name = "Audio Video", Description = "Prodotti per videoconferenza, ascolto e contenuti multimediali." },
+            new() { Code = "CAT-005", Name = "Networking", Description = "Apparati e accessori per connettivita e infrastruttura di rete." },
+            new() { Code = "CAT-006", Name = "Ufficio", Description = "Strumenti tecnologici destinati all'operativita di ufficio." },
+            new() { Code = "CAT-007", Name = "Gaming", Description = "Prodotti ad alte prestazioni per esperienze interattive avanzate." }
+        };
+    }
 
     private static List<Customer> GenerateCustomers(int count)
     {
@@ -31,17 +61,86 @@ public static class MockDataService
         return list;
     }
 
+    private static List<Product> GenerateProducts(List<Category> categories)
+    {
+        var random = new Random(42);
+        var products = new List<Product>();
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var seededProducts = OrderProductSeeds
+            .Select((seed, index) => new Product
+            {
+                Code = $"PRD-2026-{index + 1:D3}",
+                Name = seed.Name,
+                Category = categories[index % categories.Count],
+                Description = $"Soluzione {categories[index % categories.Count].Name.ToLowerInvariant()} pensata per {seed.Name.ToLowerInvariant()}.",
+                UnitCost = seed.Price,
+                Stock = random.Next(12, 180)
+            })
+            .ToList();
+
+        products.AddRange(seededProducts);
+
+        foreach (var product in seededProducts)
+        {
+            usedNames.Add(product.Name);
+        }
+
+        var categoryTemplates = new Dictionary<string, string[]>
+        {
+            ["Informatica"] = new[] { "Notebook", "Desktop", "Mini PC", "Server", "Terminale", "Docking Station" },
+            ["Periferiche"] = new[] { "Mouse", "Tastiera", "Scanner", "Lettore Barcode", "Stampante", "Trackpad" },
+            ["Archiviazione"] = new[] { "SSD", "NAS", "Hard Disk", "Chiavetta USB", "Storage Array", "Backup Station" },
+            ["Audio Video"] = new[] { "Webcam", "Cuffie", "Microfono", "Speaker", "Videobar", "Monitor" },
+            ["Networking"] = new[] { "Router", "Switch", "Access Point", "Firewall", "Modulo SFP", "Bridge" },
+            ["Ufficio"] = new[] { "Etichettatrice", "Distruggidocumenti", "Calcolatrice", "Proiettore", "Plotter", "Multifunzione" },
+            ["Gaming"] = new[] { "Headset", "Controller", "Monitor", "Mouse Pad", "Console Desk", "Game Hub" }
+        };
+        var qualifiers = new[]
+        {
+            "Core", "Plus", "Edge", "Prime", "Flex", "Vision", "Elite", "Neo", "Smart", "Ultra",
+            "Air", "Pro", "Max", "Compact", "Studio", "Office", "Link", "Pulse", "Sync", "Advance"
+        };
+
+        while (products.Count < 200)
+        {
+            var nextIndex = products.Count;
+            var category = categories[nextIndex % categories.Count];
+            var templatePool = categoryTemplates[category.Name];
+            var template = templatePool[(nextIndex / categories.Count) % templatePool.Length];
+            var qualifier = qualifiers[(nextIndex / (categories.Count * templatePool.Length)) % qualifiers.Length];
+            var series = (nextIndex + 1).ToString("D3");
+            var generatedName = $"{template} {qualifier} {series}";
+
+            if (!usedNames.Add(generatedName))
+            {
+                continue;
+            }
+
+            var basePrice = 40m + ((nextIndex * 17) % 180) * 5m + (category.Name.Length * 3m);
+            products.Add(new Product
+            {
+                Code = $"PRD-2026-{products.Count + 1:D3}",
+                Name = generatedName,
+                Category = category,
+                Description = $"Articolo della categoria {category.Name.ToLowerInvariant()} progettato per ambienti operativi moderni.",
+                UnitCost = decimal.Round(basePrice, 2),
+                Stock = 10 + ((nextIndex * 13) % 240)
+            });
+        }
+
+        return products;
+    }
+
     private static List<Order> GenerateOrders(List<Customer> customers)
     {
-        var products = new[] {
-            "Laptop Pro 15", "Tastiera Meccanica", "Monitor 4K 27 pollici", "Mouse Wireless",
-            "Workstation Ultra", "Webcam HD Pro", "SSD 1TB", "Stampante Laser", "Hub USB-C 7 porte", "Cuffie Noise Cancel." 
-        };
-        var prices = new[] { 1200m, 85m, 450m, 45m, 2500m, 95m, 120m, 180m, 50m, 250m };
         var states = Enum.GetValues<OrderStatus>();
         var random = new Random(42);
         var orders = new List<Order>();
         int orderIdCounter = 1;
+        var orderCatalog = Products
+            .Where(product => OrderProductSeeds.Any(seed => seed.Name == product.Name && seed.Price == product.UnitCost))
+            .ToList();
 
         foreach (var customer in customers)
         {
@@ -55,7 +154,7 @@ public static class MockDataService
             for (int j = 0; j < ordersCount; j++)
             {
                 var orderNumber = $"ORD-2026-{orderIdCounter:D3}";
-                var items = GenerateOrderItems(products, prices, random);
+                var items = GenerateOrderItems(orderCatalog, random);
 
                 orders.Add(new Order
                 {
@@ -75,25 +174,32 @@ public static class MockDataService
         return orders.OrderByDescending(o => o.OrderDate).ToList();
     }
 
-    private static List<OrderItem> GenerateOrderItems(string[] products, decimal[] prices, Random random)
+    private static List<OrderItem> GenerateOrderItems(List<Product> products, Random random)
     {
-        var itemsCount = random.Next(1, 8);
+        var itemsCount = random.Next(1, Math.Min(8, products.Count + 1));
         var selectedIndexes = Enumerable
-            .Range(0, products.Length)
+            .Range(0, products.Count)
             .OrderBy(_ => random.Next())
             .Take(itemsCount);
 
         return selectedIndexes
-            .Select(index => new OrderItem
+            .Select(index =>
             {
-                ProductName = products[index],
-                Quantity = random.Next(1, 4),
-                UnitPrice = prices[index]
+                var product = products[index];
+
+                return new OrderItem
+                {
+                    ProductName = product.Name,
+                    Quantity = random.Next(1, 4),
+                    UnitPrice = product.UnitCost
+                };
             })
             .ToList();
     }
 
     public static List<Order> GetOrders() => Orders;
+    public static List<Product> GetProducts() => Products;
+    public static List<Category> GetCategories() => Categories;
 
     public static OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
     {
@@ -273,6 +379,67 @@ public static class MockDataService
             CustomersWithOrders = customerSummaries.Count(summary => summary.OrdersCount > 0),
             TotalRevenue = customerSummaries.Sum(summary => summary.TotalOrdersAmount),
             SearchTerm = normalizedSearch,
+            SortBy = normalizedSortBy,
+            SortDirection = normalizedSortDirection,
+            CurrentPage = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalPages = totalPages
+        };
+    }
+
+    public static ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "name", string sortDirection = "asc")
+    {
+        var normalizedSortBy = sortBy?.ToLowerInvariant() switch
+        {
+            "code" => "code",
+            "name" => "name",
+            "category" => "category",
+            "description" => "description",
+            "unitcost" => "unitCost",
+            "stock" => "stock",
+            _ => "name"
+        };
+
+        var normalizedSortDirection = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+            ? "desc"
+            : "asc";
+
+        var sortedProducts = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("code", "asc") => Products.OrderBy(product => product.Code).ToList(),
+            ("code", "desc") => Products.OrderByDescending(product => product.Code).ToList(),
+            ("name", "asc") => Products.OrderBy(product => product.Name).ThenBy(product => product.Code).ToList(),
+            ("name", "desc") => Products.OrderByDescending(product => product.Name).ThenBy(product => product.Code).ToList(),
+            ("category", "asc") => Products.OrderBy(product => product.Category.Name).ThenBy(product => product.Name).ToList(),
+            ("category", "desc") => Products.OrderByDescending(product => product.Category.Name).ThenBy(product => product.Name).ToList(),
+            ("description", "asc") => Products.OrderBy(product => product.Description).ThenBy(product => product.Name).ToList(),
+            ("description", "desc") => Products.OrderByDescending(product => product.Description).ThenBy(product => product.Name).ToList(),
+            ("unitCost", "asc") => Products.OrderBy(product => product.UnitCost).ThenBy(product => product.Name).ToList(),
+            ("unitCost", "desc") => Products.OrderByDescending(product => product.UnitCost).ThenBy(product => product.Name).ToList(),
+            ("stock", "asc") => Products.OrderBy(product => product.Stock).ThenBy(product => product.Name).ToList(),
+            ("stock", "desc") => Products.OrderByDescending(product => product.Stock).ThenBy(product => product.Name).ToList(),
+            _ => Products.OrderBy(product => product.Name).ThenBy(product => product.Code).ToList()
+        };
+
+        var normalizedPageSize = pageSize is 10 or 20 or 50 ? pageSize : 0;
+        var totalPages = normalizedPageSize == 0
+            ? 1
+            : Math.Max(1, (int)Math.Ceiling(sortedProducts.Count / (double)normalizedPageSize));
+        var normalizedPage = Math.Clamp(page, 1, Math.Max(totalPages, 1));
+        var pagedProducts = normalizedPageSize == 0
+            ? sortedProducts
+            : sortedProducts
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToList();
+
+        return new ProductsPageViewModel
+        {
+            Products = pagedProducts,
+            TotalProducts = Products.Count,
+            TotalCategories = Categories.Count,
+            TotalStock = Products.Sum(product => product.Stock),
+            InventoryValue = Products.Sum(product => product.UnitCost * product.Stock),
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
             CurrentPage = normalizedPage,

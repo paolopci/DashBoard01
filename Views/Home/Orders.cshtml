@@ -7,6 +7,11 @@
     var currentSortDirection = Model.SortDirection;
     var visiblePages = new List<int>();
 
+    string FormatEuro(decimal value, string numericFormat = "N2")
+    {
+        return $"{value.ToString(numericFormat, italianCulture)} €";
+    }
+
     string GetNextSortDirection(string column)
     {
         return currentSortBy == column && currentSortDirection == "asc" ? "desc" : "asc";
@@ -100,7 +105,7 @@
         </div>
         <div>
             <p class="text-sm font-medium text-slate-500">Importo Totale</p>
-            <p class="text-3xl font-bold text-slate-800">@Model.TotalRevenue.ToString("C0", italianCulture)</p>
+            <p class="text-3xl font-bold text-slate-800">@FormatEuro(Model.TotalRevenue, "N0")</p>
         </div>
     </div>
 
@@ -273,7 +278,7 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 text-sm text-slate-600">@order.OrderDate.ToString("dd/MM/yyyy")</td>
-                        <td class="px-6 py-4 text-right text-sm font-semibold text-slate-800">@order.TotalAmount.ToString("N2", italianCulture)</td>
+                        <td class="px-6 py-4 text-right text-sm font-semibold text-slate-800">@FormatEuro(order.TotalAmount)</td>
                         <td class="px-6 py-4 text-center">
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
                                   style="background-color: @bgColor; color: @color;">
@@ -323,9 +328,9 @@
                                                     <td class="pl-8 pr-5 py-3 text-sm font-medium text-slate-700"
                                                         style="padding-left: 2rem;">@item.ProductName</td>
                                                     <td class="px-5 py-3 text-center text-sm text-slate-600">@item.Quantity</td>
-                                                    <td class="px-5 py-3 text-right text-sm text-slate-600">€ @item.UnitPrice.ToString("N2", italianCulture)</td>
+                                                    <td class="px-5 py-3 text-right text-sm text-slate-600">@FormatEuro(item.UnitPrice)</td>
                                                     <td class="pl-5 pr-8 py-3 text-right text-sm font-semibold text-slate-800"
-                                                        style="padding-right: 2rem;">€ @item.TotalPrice.ToString("N2", italianCulture)</td>
+                                                        style="padding-right: 2rem;">@FormatEuro(item.TotalPrice)</td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -333,7 +338,7 @@
                                             <tr class="border-t border-slate-200 bg-slate-50">
                                                 <td colspan="3" class="px-5 py-4 text-right text-sm font-semibold uppercase tracking-wide text-slate-500">Totale Ordine</td>
                                                 <td class="pl-5 pr-8 py-4 text-right text-base font-bold text-slate-800"
-                                                    style="padding-right: 2rem;">€ @order.TotalAmount.ToString("N2", italianCulture)</td>
+                                                    style="padding-right: 2rem;">@FormatEuro(order.TotalAmount)</td>
                                             </tr>
                                         </tfoot>
                                     </table>
