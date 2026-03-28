@@ -3,12 +3,14 @@ namespace DashboardOrders.Models;
 public class ProductsPageViewModel
 {
     public List<Product> Products { get; set; } = new();
+    public List<Category> Categories { get; set; } = new();
     public int TotalProducts { get; set; }
     public int TotalCategories { get; set; }
     public int TotalStock { get; set; }
     public decimal InventoryValue { get; set; }
-    public string SortBy { get; set; } = "name";
+    public string SortBy { get; set; } = "code";
     public string SortDirection { get; set; } = "asc";
+    public string SelectedCategoryCode { get; set; } = string.Empty;
     public int CurrentPage { get; set; }
     public int PageSize { get; set; }
     public int TotalPages { get; set; }

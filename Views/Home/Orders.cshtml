@@ -34,6 +34,19 @@
             : "font-semibold text-slate-500";
     }
 
+    (string RowAccent, string BackgroundColor, string ForegroundColor, string Label) GetStatusPresentation(DashboardOrders.Models.OrderStatus status)
+    {
+        return status switch
+        {
+            DashboardOrders.Models.OrderStatus.Delivered => ("bg-emerald-500", "#d1fae5", "#065f46", "Consegnato"),
+            DashboardOrders.Models.OrderStatus.Shipped => ("bg-blue-500", "#dbeafe", "#1e40af", "Spedito"),
+            DashboardOrders.Models.OrderStatus.Processing => ("bg-indigo-500", "#e0e7ff", "#3730a3", "Elaborazione"),
+            DashboardOrders.Models.OrderStatus.Pending => ("bg-amber-500", "#fef3c7", "#92400e", "In Attesa"),
+            DashboardOrders.Models.OrderStatus.Cancelled => ("bg-rose-500", "#fee2e2", "#991b1b", "Annullato"),
+            _ => ("bg-slate-400", "#f1f5f9", "#475569", "Sconosciuto")
+        };
+    }
+
     if (!Model.ShowAll)
     {
         visiblePages.Add(1);
@@ -193,7 +206,82 @@
         </div>
     </div>
 
-    <div class="overflow-x-auto">
+    <div class="space-y-4 p-4 md:hidden">
+        @foreach (var order in Model.Orders)
+        {
+            var statusPresentation = GetStatusPresentation(order.Status);
+            var detailCardId = $"order-mobile-detail-{order.Id}";
+            var detailButtonId = $"order-mobile-detail-button-{order.Id}";
+
+            <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="flex items-start gap-4 px-4 py-4">
+                    <span class="mt-1 h-14 w-1.5 rounded-full @statusPresentation.RowAccent"></span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold tracking-wide text-indigo-600">@order.OrderNumber</p>
+                                <p class="mt-1 text-base font-semibold text-slate-800">@order.Customer.Name</p>
+                            </div>
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                  style="background-color: @statusPresentation.BackgroundColor; color: @statusPresentation.ForegroundColor;">
+                                @statusPresentation.Label
+                            </span>
+                        </div>
+
+                        <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Data</dt>
+                                <dd class="mt-1 font-medium text-slate-700">@order.OrderDate.ToString("dd/MM/yyyy")</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Importo</dt>
+                                <dd class="mt-1 font-semibold text-slate-800">@FormatEuro(order.TotalAmount)</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Articoli</dt>
+                                <dd class="mt-1 font-medium text-slate-700">@order.ItemsCount righe</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Quantita</dt>
+                                <dd class="mt-1 font-medium text-slate-700">@order.Quantity pezzi</dd>
+                            </div>
+                        </dl>
+
+                        <div class="mt-4 flex items-center justify-between gap-3">
+                            <p class="truncate text-sm text-slate-500">@order.Customer.Email</p>
+                            <button type="button"
+                                    id="@detailButtonId"
+                                    class="order-detail-toggle inline-flex shrink-0 items-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 transition-colors hover:border-indigo-300 hover:bg-indigo-100 hover:text-indigo-700"
+                                    data-target="@detailCardId"
+                                    aria-expanded="false"
+                                    aria-controls="@detailCardId">
+                                Dettaglio
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="@detailCardId" class="order-detail-row hidden border-t border-slate-100 bg-slate-50/80 px-4 py-4">
+                    <div class="space-y-3">
+                        @foreach (var item in order.Items)
+                        {
+                            <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-slate-800">@item.ProductName</p>
+                                        <p class="mt-1 text-xs text-slate-500">Qtà @item.Quantity x @FormatEuro(item.UnitPrice)</p>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-800">@FormatEuro(item.TotalPrice)</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+
+    <div class="hidden overflow-x-auto md:block">
         <table class="w-full">
             <thead>
                 <tr class="bg-slate-50 border-b border-slate-100">
@@ -255,22 +343,14 @@
             <tbody class="divide-y divide-slate-50">
                 @foreach (var order in Model.Orders)
                 {
-                    var (rowAccent, bgColor, color, label) = order.Status switch
-                    {
-                        DashboardOrders.Models.OrderStatus.Delivered => ("bg-emerald-500", "#d1fae5", "#065f46", "Consegnato"),
-                        DashboardOrders.Models.OrderStatus.Shipped => ("bg-blue-500", "#dbeafe", "#1e40af", "Spedito"),
-                        DashboardOrders.Models.OrderStatus.Processing => ("bg-indigo-500", "#e0e7ff", "#3730a3", "Elaborazione"),
-                        DashboardOrders.Models.OrderStatus.Pending => ("bg-amber-500", "#fef3c7", "#92400e", "In Attesa"),
-                        DashboardOrders.Models.OrderStatus.Cancelled => ("bg-rose-500", "#fee2e2", "#991b1b", "Annullato"),
-                        _ => ("bg-slate-400", "#f1f5f9", "#475569", "Sconosciuto")
-                    };
+                    var statusPresentation = GetStatusPresentation(order.Status);
                     var detailRowId = $"order-detail-{order.Id}";
                     var detailButtonId = $"order-detail-button-{order.Id}";
 
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-4">
-                                <span class="h-10 w-1.5 rounded-full @rowAccent"></span>
+                                <span class="h-10 w-1.5 rounded-full @statusPresentation.RowAccent"></span>
                                 <div>
                                     <p class="text-sm font-semibold text-indigo-600">@order.OrderNumber</p>
                                     <p class="text-xs text-slate-400">@order.Customer.Name</p>
@@ -281,8 +361,8 @@
                         <td class="px-6 py-4 text-right text-sm font-semibold text-slate-800">@FormatEuro(order.TotalAmount)</td>
                         <td class="px-6 py-4 text-center">
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
-                                  style="background-color: @bgColor; color: @color;">
-                                @label
+                                  style="background-color: @statusPresentation.BackgroundColor; color: @statusPresentation.ForegroundColor;">
+                                @statusPresentation.Label
                             </span>
                         </td>
                         <td class="px-6 py-4 text-center">

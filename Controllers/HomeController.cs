@@ -28,9 +28,9 @@ public class HomeController : Controller
         return View(model);
     }
 
-    public IActionResult Products(int page = 1, int pageSize = 10, string sortBy = "name", string sortDirection = "asc")
+    public IActionResult Products(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "")
     {
-        var model = MockDataService.GetProductsPageData(page, pageSize, sortBy, sortDirection);
+        var model = MockDataService.GetProductsPageData(page, pageSize, sortBy, sortDirection, categoryCode);
         return View(model);
     }
 }

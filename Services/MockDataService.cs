@@ -387,7 +387,7 @@ public static class MockDataService
         };
     }
 
-    public static ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "name", string sortDirection = "asc")
+    public static ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "")
     {
         var normalizedSortBy = sortBy?.ToLowerInvariant() switch
         {
@@ -404,21 +404,28 @@ public static class MockDataService
             ? "desc"
             : "asc";
 
+        var normalizedCategoryCode = (categoryCode ?? string.Empty).Trim();
+        var filteredProducts = string.IsNullOrWhiteSpace(normalizedCategoryCode)
+            ? Products
+            : Products
+                .Where(product => string.Equals(product.Category.Code, normalizedCategoryCode, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
         var sortedProducts = (normalizedSortBy, normalizedSortDirection) switch
         {
-            ("code", "asc") => Products.OrderBy(product => product.Code).ToList(),
-            ("code", "desc") => Products.OrderByDescending(product => product.Code).ToList(),
-            ("name", "asc") => Products.OrderBy(product => product.Name).ThenBy(product => product.Code).ToList(),
-            ("name", "desc") => Products.OrderByDescending(product => product.Name).ThenBy(product => product.Code).ToList(),
-            ("category", "asc") => Products.OrderBy(product => product.Category.Name).ThenBy(product => product.Name).ToList(),
-            ("category", "desc") => Products.OrderByDescending(product => product.Category.Name).ThenBy(product => product.Name).ToList(),
-            ("description", "asc") => Products.OrderBy(product => product.Description).ThenBy(product => product.Name).ToList(),
-            ("description", "desc") => Products.OrderByDescending(product => product.Description).ThenBy(product => product.Name).ToList(),
-            ("unitCost", "asc") => Products.OrderBy(product => product.UnitCost).ThenBy(product => product.Name).ToList(),
-            ("unitCost", "desc") => Products.OrderByDescending(product => product.UnitCost).ThenBy(product => product.Name).ToList(),
-            ("stock", "asc") => Products.OrderBy(product => product.Stock).ThenBy(product => product.Name).ToList(),
-            ("stock", "desc") => Products.OrderByDescending(product => product.Stock).ThenBy(product => product.Name).ToList(),
-            _ => Products.OrderBy(product => product.Name).ThenBy(product => product.Code).ToList()
+            ("code", "asc") => filteredProducts.OrderBy(product => product.Code).ToList(),
+            ("code", "desc") => filteredProducts.OrderByDescending(product => product.Code).ToList(),
+            ("name", "asc") => filteredProducts.OrderBy(product => product.Name).ThenBy(product => product.Code).ToList(),
+            ("name", "desc") => filteredProducts.OrderByDescending(product => product.Name).ThenBy(product => product.Code).ToList(),
+            ("category", "asc") => filteredProducts.OrderBy(product => product.Category.Name).ThenBy(product => product.Name).ToList(),
+            ("category", "desc") => filteredProducts.OrderByDescending(product => product.Category.Name).ThenBy(product => product.Name).ToList(),
+            ("description", "asc") => filteredProducts.OrderBy(product => product.Description).ThenBy(product => product.Name).ToList(),
+            ("description", "desc") => filteredProducts.OrderByDescending(product => product.Description).ThenBy(product => product.Name).ToList(),
+            ("unitCost", "asc") => filteredProducts.OrderBy(product => product.UnitCost).ThenBy(product => product.Name).ToList(),
+            ("unitCost", "desc") => filteredProducts.OrderByDescending(product => product.UnitCost).ThenBy(product => product.Name).ToList(),
+            ("stock", "asc") => filteredProducts.OrderBy(product => product.Stock).ThenBy(product => product.Name).ToList(),
+            ("stock", "desc") => filteredProducts.OrderByDescending(product => product.Stock).ThenBy(product => product.Name).ToList(),
+            _ => filteredProducts.OrderBy(product => product.Code).ToList()
         };
 
         var normalizedPageSize = pageSize is 10 or 20 or 50 ? pageSize : 0;
@@ -436,12 +443,14 @@ public static class MockDataService
         return new ProductsPageViewModel
         {
             Products = pagedProducts,
-            TotalProducts = Products.Count,
+            Categories = Categories.OrderBy(category => category.Name).ToList(),
+            TotalProducts = sortedProducts.Count,
             TotalCategories = Categories.Count,
-            TotalStock = Products.Sum(product => product.Stock),
-            InventoryValue = Products.Sum(product => product.UnitCost * product.Stock),
+            TotalStock = sortedProducts.Sum(product => product.Stock),
+            InventoryValue = sortedProducts.Sum(product => product.UnitCost * product.Stock),
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
+            SelectedCategoryCode = normalizedCategoryCode,
             CurrentPage = normalizedPage,
             PageSize = normalizedPageSize,
             TotalPages = totalPages
