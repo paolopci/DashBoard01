@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Repository-local agent instructions
+AGENTS.md
+_shared/*.md
