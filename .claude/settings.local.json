@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd -- 'd:/test/AI_Agents/DashBoard01')",
+      "Bash(rm -rf 'DashboardOrders.Tests/obj' 'DashboardOrders.Tests/bin')",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(cd -- 'd:/test/AI_Agents/DashBoard01/DashboardOrders.Tests')",
+      "Bash(rm -rf obj bin)"
+    ]
+  }
+}
