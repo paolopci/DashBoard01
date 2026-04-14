@@ -9,5 +9,10 @@
       "Bash(cd -- 'd:/test/AI_Agents/DashBoard01/DashboardOrders.Tests')",
       "Bash(rm -rf obj bin)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File D:/test/AI_Agents/DashBoard01/.claude/statusline.ps1",
+    "padding": 0
   }
 }
