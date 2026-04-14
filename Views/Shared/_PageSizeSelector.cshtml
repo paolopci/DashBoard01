@@ -1,0 +1,28 @@
+@model PageSizeSelectorViewModel
+
+<form method="get" asp-action="@Model.ActionName" asp-controller="@Model.ControllerName" class="flex items-center gap-3">
+    <label for="pageSize-@Model.ActionName" class="text-sm font-medium text-slate-600">Elementi per pagina</label>
+    <select id="pageSize-@Model.ActionName"
+            name="pageSize"
+            onchange="this.form.submit()"
+            class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+        @foreach (var option in Model.PageSizeOptions)
+        {
+            if (Model.PageSize == option)
+            {
+                <option value="@option" selected>@(option == 0 ? "Tutti" : option)</option>
+            }
+            else
+            {
+                <option value="@option">@(option == 0 ? "Tutti" : option)</option>
+            }
+        }
+    </select>
+    <input type="hidden" name="page" value="1" />
+    <input type="hidden" name="sortBy" value="@Model.SortBy" />
+    <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+    @foreach (var routeValue in Model.ExtraRouteValues.Where(routeValue => !string.IsNullOrWhiteSpace(routeValue.Value)))
+    {
+        <input type="hidden" name="@routeValue.Key" value="@routeValue.Value" />
+    }
+</form>

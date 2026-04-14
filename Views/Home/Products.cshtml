@@ -5,7 +5,6 @@
     var italianCulture = CultureInfo.GetCultureInfo("it-IT");
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
-    var visiblePages = new List<int>();
 
     string FormatEuro(decimal value, string numericFormat = "N2")
     {
@@ -17,50 +16,28 @@
         return value.ToString("N0", italianCulture);
     }
 
-    string GetNextSortDirection(string column)
+    Dictionary<string, string> ProductRouteValues()
     {
-        return currentSortBy == column && currentSortDirection == "asc" ? "desc" : "asc";
+        return new Dictionary<string, string>
+        {
+            ["categoryCode"] = Model.SelectedCategoryCode
+        };
     }
 
-    string GetSortArrow(string column)
+    SortableHeaderViewModel ProductHeader(string column, string label, string alignment = "left")
     {
-        if (currentSortBy != column)
+        return new SortableHeaderViewModel
         {
-            return "↑↓";
-        }
-
-        return currentSortDirection == "asc" ? "↑" : "↓";
-    }
-
-    string GetSortLabelClass(string column)
-    {
-        return currentSortBy == column
-            ? "font-bold text-slate-800"
-            : "font-semibold text-slate-500";
-    }
-
-    if (!Model.ShowAll)
-    {
-        visiblePages.Add(1);
-
-        for (var pageNumber = Math.Max(2, Model.CurrentPage - 1); pageNumber <= Math.Min(Model.TotalPages - 1, Model.CurrentPage + 1); pageNumber++)
-        {
-            if (!visiblePages.Contains(pageNumber))
-            {
-                visiblePages.Add(pageNumber);
-            }
-        }
-
-        if (Model.TotalPages > 1 && !visiblePages.Contains(Model.TotalPages))
-        {
-            visiblePages.Add(Model.TotalPages);
-        }
-
-        visiblePages = visiblePages
-            .Where(pageNumber => pageNumber >= 1 && pageNumber <= Model.TotalPages)
-            .Distinct()
-            .OrderBy(pageNumber => pageNumber)
-            .ToList();
+            ActionName = "Products",
+            ControllerName = "Home",
+            Column = column,
+            Label = label,
+            CurrentSortBy = currentSortBy,
+            CurrentSortDirection = currentSortDirection,
+            PageSize = Model.PageSize,
+            Alignment = alignment,
+            ExtraRouteValues = ProductRouteValues()
+        };
     }
 }
 
@@ -147,53 +124,21 @@
                 </select>
             </div>
 
-            <div class="flex items-center gap-3">
-                <label for="pageSize" class="text-sm font-medium text-slate-600">Elementi per pagina</label>
-            <select id="pageSize"
-                    name="pageSize"
-                    onchange="this.form.submit()"
-                    class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
-                @if (Model.PageSize == 10)
-                {
-                    <option value="10" selected>10</option>
-                }
-                else
-                {
-                    <option value="10">10</option>
-                }
-
-                @if (Model.PageSize == 20)
-                {
-                    <option value="20" selected>20</option>
-                }
-                else
-                {
-                    <option value="20">20</option>
-                }
-
-                @if (Model.PageSize == 50)
-                {
-                    <option value="50" selected>50</option>
-                }
-                else
-                {
-                    <option value="50">50</option>
-                }
-
-                @if (Model.ShowAll)
-                {
-                    <option value="0" selected>All</option>
-                }
-                else
-                {
-                    <option value="0">All</option>
-                }
-            </select>
-            </div>
             <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="pageSize" value="@Model.PageSize" />
             <input type="hidden" name="sortBy" value="@Model.SortBy" />
             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
         </form>
+
+        <partial name="_PageSizeSelector" model="@(new PageSizeSelectorViewModel
+        {
+            ActionName = "Products",
+            ControllerName = "Home",
+            PageSize = Model.PageSize,
+            SortBy = Model.SortBy,
+            SortDirection = Model.SortDirection,
+            ExtraRouteValues = ProductRouteValues()
+        })" />
 
         <div class="text-sm text-slate-500">
             @if (Model.ShowAll)
@@ -212,40 +157,22 @@
             <thead>
                 <tr class="border-b border-slate-100 bg-slate-50">
                     <th class="px-6 py-4 text-left">
-                        <a asp-action="Products" asp-controller="Home" asp-route-page="1" asp-route-pageSize="@Model.PageSize" asp-route-sortBy="code" asp-route-sortDirection="@GetNextSortDirection("code")" asp-route-categoryCode="@Model.SelectedCategoryCode" class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("code")">
-                            <span>Codice Prodotto</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("code")</span>
-                        </a>
+                        <partial name="_SortableHeader" model='@ProductHeader("code", "Codice Prodotto")' />
                     </th>
                     <th class="px-6 py-4 text-left">
-                        <a asp-action="Products" asp-controller="Home" asp-route-page="1" asp-route-pageSize="@Model.PageSize" asp-route-sortBy="name" asp-route-sortDirection="@GetNextSortDirection("name")" asp-route-categoryCode="@Model.SelectedCategoryCode" class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("name")">
-                            <span>Nome Prodotto</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("name")</span>
-                        </a>
+                        <partial name="_SortableHeader" model='@ProductHeader("name", "Nome Prodotto")' />
                     </th>
                     <th class="px-6 py-4 text-left">
-                        <a asp-action="Products" asp-controller="Home" asp-route-page="1" asp-route-pageSize="@Model.PageSize" asp-route-sortBy="category" asp-route-sortDirection="@GetNextSortDirection("category")" asp-route-categoryCode="@Model.SelectedCategoryCode" class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("category")">
-                            <span>Categoria</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("category")</span>
-                        </a>
+                        <partial name="_SortableHeader" model='@ProductHeader("category", "Categoria")' />
                     </th>
                     <th class="px-6 py-4 text-left">
-                        <a asp-action="Products" asp-controller="Home" asp-route-page="1" asp-route-pageSize="@Model.PageSize" asp-route-sortBy="description" asp-route-sortDirection="@GetNextSortDirection("description")" asp-route-categoryCode="@Model.SelectedCategoryCode" class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("description")">
-                            <span>Descrizione</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("description")</span>
-                        </a>
+                        <partial name="_SortableHeader" model='@ProductHeader("description", "Descrizione")' />
                     </th>
                     <th class="px-6 py-4 text-right">
-                        <a asp-action="Products" asp-controller="Home" asp-route-page="1" asp-route-pageSize="@Model.PageSize" asp-route-sortBy="unitCost" asp-route-sortDirection="@GetNextSortDirection("unitCost")" asp-route-categoryCode="@Model.SelectedCategoryCode" class="inline-flex items-center justify-end gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("unitCost")">
-                            <span>Costo Unitario</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("unitCost")</span>
-                        </a>
+                        <partial name="_SortableHeader" model='@ProductHeader("unitCost", "Costo Unitario", "right")' />
                     </th>
                     <th class="px-6 py-4 text-right">
-                        <a asp-action="Products" asp-controller="Home" asp-route-page="1" asp-route-pageSize="@Model.PageSize" asp-route-sortBy="stock" asp-route-sortDirection="@GetNextSortDirection("stock")" asp-route-categoryCode="@Model.SelectedCategoryCode" class="inline-flex items-center justify-end gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("stock")">
-                            <span>Stock</span>
-                            <span class="text-sm text-indigo-600">@GetSortArrow("stock")</span>
-                        </a>
+                        <partial name="_SortableHeader" model='@ProductHeader("stock", "Stock", "right")' />
                     </th>
                 </tr>
             </thead>
@@ -278,130 +205,18 @@
             </tbody>
         </table>
     </div>
-    <div class="flex flex-col gap-4 border-t border-slate-100 bg-white px-6 py-4">
-        <div class="text-sm text-slate-500">
-            @if (Model.ShowAll)
-            {
-                <span>Visualizzati @Model.TotalProducts di @Model.TotalProducts prodotti</span>
-            }
-            else
-            {
-                <span>Visualizzati @Model.Products.Count prodotti su @Model.TotalProducts</span>
-            }
-        </div>
-
-        @if (!Model.ShowAll)
-        {
-            <div class="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 shadow-sm">
-                <div class="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-                    <div class="hidden lg:block"></div>
-
-                    <nav class="flex flex-wrap items-center justify-center gap-3" aria-label="Paginazione prodotti">
-                        <a asp-action="Products"
-                           asp-controller="Home"
-                           asp-route-page="1"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           asp-route-categoryCode="@Model.SelectedCategoryCode"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &lt;&lt;
-                        </a>
-                        <a asp-action="Products"
-                           asp-controller="Home"
-                           asp-route-page="@Model.PreviousPage"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           asp-route-categoryCode="@Model.SelectedCategoryCode"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &lt;
-                        </a>
-
-                        @{
-                            int? previousRenderedPage = null;
-                        }
-
-                        @foreach (var pageNumber in visiblePages)
-                        {
-                            if (previousRenderedPage.HasValue && pageNumber - previousRenderedPage.Value > 1)
-                            {
-                                <span class="inline-flex h-11 min-w-11 items-center justify-center px-2 text-base font-semibold text-slate-400">...</span>
-                            }
-
-                            if (pageNumber == Model.CurrentPage)
-                            {
-                                <span class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-indigo-500 px-4 text-base font-semibold text-white shadow-md shadow-indigo-500/30">
-                                    @pageNumber
-                                </span>
-                            }
-                            else
-                            {
-                                <a asp-action="Products"
-                                   asp-controller="Home"
-                                   asp-route-page="@pageNumber"
-                                   asp-route-pageSize="@Model.PageSize"
-                                   asp-route-sortBy="@Model.SortBy"
-                                   asp-route-sortDirection="@Model.SortDirection"
-                                   asp-route-categoryCode="@Model.SelectedCategoryCode"
-                                   class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600">
-                                    @pageNumber
-                                </a>
-                            }
-
-                            previousRenderedPage = pageNumber;
-                        }
-
-                        <a asp-action="Products"
-                           asp-controller="Home"
-                           asp-route-page="@Model.NextPage"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           asp-route-categoryCode="@Model.SelectedCategoryCode"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &gt;
-                        </a>
-                        <a asp-action="Products"
-                           asp-controller="Home"
-                           asp-route-page="@Model.TotalPages"
-                           asp-route-pageSize="@Model.PageSize"
-                           asp-route-sortBy="@Model.SortBy"
-                           asp-route-sortDirection="@Model.SortDirection"
-                           asp-route-categoryCode="@Model.SelectedCategoryCode"
-                           class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
-                            &gt;&gt;
-                        </a>
-                    </nav>
-
-                    <div class="flex items-center justify-center gap-3 text-sm text-slate-500 lg:justify-end">
-                        <span class="text-lg font-medium text-slate-600">Page</span>
-                        <form method="get" asp-action="Products" asp-controller="Home" class="flex items-center gap-2">
-                            <input type="hidden" name="categoryCode" value="@Model.SelectedCategoryCode" />
-                            <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                            <input type="hidden" name="sortBy" value="@Model.SortBy" />
-                            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <select id="page"
-                                    name="page"
-                                    onchange="this.form.submit()"
-                                    class="h-11 min-w-20 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
-                                @for (var pageNumberOption = 1; pageNumberOption <= Model.TotalPages; pageNumberOption++)
-                                {
-                                    if (pageNumberOption == Model.CurrentPage)
-                                    {
-                                        <option value="@pageNumberOption" selected>@pageNumberOption</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@pageNumberOption">@pageNumberOption</option>
-                                    }
-                                }
-                            </select>
-                        </form>
-                        <span class="text-lg">of @Model.TotalPages</span>
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
+    <partial name="_Pagination" model="@(new PaginationViewModel
+    {
+        ActionName = "Products",
+        ControllerName = "Home",
+        EntityLabel = "prodotti",
+        CurrentPage = Model.CurrentPage,
+        PageSize = Model.PageSize,
+        TotalPages = Model.TotalPages,
+        TotalItems = Model.TotalProducts,
+        DisplayedItems = Model.Products.Count,
+        SortBy = Model.SortBy,
+        SortDirection = Model.SortDirection,
+        ExtraRouteValues = ProductRouteValues()
+    })" />
 </div>
