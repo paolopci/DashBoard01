@@ -9,9 +9,13 @@ public class HomeController : Controller
     /// <summary>
     /// Recupera i dati del dashboard e li visualizza.
     /// </summary>
-    public IActionResult Index()
+    /// <param name="page">Numero della pagina corrente.</param>
+    /// <param name="pageSize">Numero di elementi per pagina.</param>
+    /// <param name="sortBy">Campo di ordinamento.</param>
+    /// <param name="sortDirection">Direzione dell'ordinamento.</param>
+    public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
     {
-        var model = MockDataService.GetDashboardData();
+        var model = MockDataService.GetDashboardData(page, pageSize, sortBy, sortDirection);
         return View(model);
     }
 

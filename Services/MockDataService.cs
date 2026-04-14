@@ -290,6 +290,40 @@ public static class MockDataService
         };
     }
 
+    public static CategoryPageViewModel GetCategoryPageData(string sortBy = "code", string sortDirection = "asc")
+    {
+        var normalizedSortBy = sortBy?.ToLowerInvariant() switch
+        {
+            "code" => "code",
+            "name" => "name",
+            "description" => "description",
+            _ => "code"
+        };
+
+        var normalizedSortDirection = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+            ? "desc"
+            : "asc";
+
+        var orderedCategories = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("code", "asc") => Categories.OrderBy(category => category.Code).ToList(),
+            ("code", "desc") => Categories.OrderByDescending(category => category.Code).ToList(),
+            ("name", "asc") => Categories.OrderBy(category => category.Name).ThenBy(category => category.Code).ToList(),
+            ("name", "desc") => Categories.OrderByDescending(category => category.Name).ThenBy(category => category.Code).ToList(),
+            ("description", "asc") => Categories.OrderBy(category => category.Description).ThenBy(category => category.Code).ToList(),
+            ("description", "desc") => Categories.OrderByDescending(category => category.Description).ThenBy(category => category.Code).ToList(),
+            _ => Categories.OrderBy(category => category.Code).ToList()
+        };
+
+        return new CategoryPageViewModel
+        {
+            Categories = orderedCategories,
+            TotalCategories = orderedCategories.Count,
+            SortBy = normalizedSortBy,
+            SortDirection = normalizedSortDirection
+        };
+    }
+
     public static CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = sortBy?.ToLowerInvariant() switch
@@ -457,16 +491,65 @@ public static class MockDataService
         };
     }
 
-    public static DashboardViewModel GetDashboardData()
+    public static DashboardViewModel GetDashboardData(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
     {
+        var normalizedSortBy = sortBy?.ToLowerInvariant() switch
+        {
+            "ordernumber" => "orderNumber",
+            "customer" => "customer",
+            "items" => "items",
+            "date" => "date",
+            "amount" => "amount",
+            "status" => "status",
+            _ => "date"
+        };
+
+        var normalizedSortDirection = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "asc"
+            : "desc";
+
+        var sortedOrders = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("orderNumber", "asc") => Orders.OrderBy(order => order.OrderNumber).ToList(),
+            ("orderNumber", "desc") => Orders.OrderByDescending(order => order.OrderNumber).ToList(),
+            ("customer", "asc") => Orders.OrderBy(order => order.Customer.Name).ThenByDescending(order => order.OrderDate).ToList(),
+            ("customer", "desc") => Orders.OrderByDescending(order => order.Customer.Name).ThenByDescending(order => order.OrderDate).ToList(),
+            ("items", "asc") => Orders.OrderBy(order => order.ItemsCount).ThenBy(order => order.Quantity).ThenByDescending(order => order.OrderDate).ToList(),
+            ("items", "desc") => Orders.OrderByDescending(order => order.ItemsCount).ThenByDescending(order => order.Quantity).ThenByDescending(order => order.OrderDate).ToList(),
+            ("date", "asc") => Orders.OrderBy(order => order.OrderDate).ThenBy(order => order.OrderNumber).ToList(),
+            ("date", "desc") => Orders.OrderByDescending(order => order.OrderDate).ThenBy(order => order.OrderNumber).ToList(),
+            ("amount", "asc") => Orders.OrderBy(order => order.TotalAmount).ThenByDescending(order => order.OrderDate).ToList(),
+            ("amount", "desc") => Orders.OrderByDescending(order => order.TotalAmount).ThenByDescending(order => order.OrderDate).ToList(),
+            ("status", "asc") => Orders.OrderBy(order => order.Status).ThenByDescending(order => order.OrderDate).ToList(),
+            ("status", "desc") => Orders.OrderByDescending(order => order.Status).ThenByDescending(order => order.OrderDate).ToList(),
+            _ => Orders.OrderByDescending(order => order.OrderDate).ThenBy(order => order.OrderNumber).ToList()
+        };
+
+        var normalizedPageSize = pageSize is 10 or 20 or 50 ? pageSize : 0;
+        var totalPages = normalizedPageSize == 0
+            ? 1
+            : Math.Max(1, (int)Math.Ceiling(sortedOrders.Count / (double)normalizedPageSize));
+        var normalizedPage = Math.Clamp(page, 1, Math.Max(totalPages, 1));
+        var pagedOrders = normalizedPageSize == 0
+            ? sortedOrders
+            : sortedOrders
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToList();
+
         return new DashboardViewModel
         {
-            RecentOrders    = Orders.Take(10).ToList(),
+            RecentOrders    = pagedOrders,
             TotalOrders     = Orders.Count,
             TotalRevenue    = Orders.Where(o => o.Status != OrderStatus.Cancelled).Sum(o => o.TotalAmount),
             PendingOrders   = Orders.Count(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Processing),
             DeliveredOrders = Orders.Count(o => o.Status == OrderStatus.Delivered),
-            ActiveCustomers = Customers.Count
+            ActiveCustomers = Customers.Count,
+            SortBy = normalizedSortBy,
+            SortDirection = normalizedSortDirection,
+            CurrentPage = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalPages = totalPages
         };
     }
 }

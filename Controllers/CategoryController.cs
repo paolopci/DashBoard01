@@ -9,13 +9,15 @@ namespace DashboardOrders.Controllers;
 /// </summary>
 public class CategoryController : Controller
 {
+    private const string RequiredCodeMessage = "Il campo code è obbligatorio.";
+    private const string CategoryNotFoundMessage = "Categoria non trovata.";
+
     /// <summary>
-    /// Recupera la lista di tutte le categorie.
+    /// Recupera la lista di tutte le categorie con ordinamento.
     /// </summary>
-    public IActionResult Index()
+    public IActionResult Index(string sortBy = "code", string sortDirection = "asc")
     {
-        var model = MockDataService.GetCategories();
-        return View(model);
+        return View(MockDataService.GetCategoryPageData(sortBy, sortDirection));
     }
 
     /// <summary>
@@ -24,20 +26,11 @@ public class CategoryController : Controller
     /// <param name="code">Codice della categoria.</param>
     public IActionResult Details(string code)
     {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            return BadRequest("Il campo code è obbligatorio.");
-        }
+        var category = FindCategory(code);
 
-        var categories = MockDataService.GetCategories();
-        var category = categories.FirstOrDefault(c => c.Code == code);
-
-        if (category == null)
-        {
-            return NotFound("Categoria non trovata.");
-        }
-
-        return View(category);
+        return category == null
+            ? CategoryLookupError(code)
+            : View(category);
     }
 
     /// <summary>
@@ -56,12 +49,9 @@ public class CategoryController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Create(Category category)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(category);
-        }
-
-        return RedirectToAction(nameof(Index));
+        return ModelState.IsValid
+            ? RedirectToAction(nameof(Index))
+            : View(category);
     }
 
     /// <summary>
@@ -70,20 +60,11 @@ public class CategoryController : Controller
     /// <param name="code">Codice della categoria da modificare.</param>
     public IActionResult Edit(string code)
     {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            return BadRequest("Il campo code è obbligatorio.");
-        }
+        var category = FindCategory(code);
 
-        var categories = MockDataService.GetCategories();
-        var category = categories.FirstOrDefault(c => c.Code == code);
-
-        if (category == null)
-        {
-            return NotFound("Categoria non trovata.");
-        }
-
-        return View(category);
+        return category == null
+            ? CategoryLookupError(code)
+            : View(category);
     }
 
     /// <summary>
@@ -94,12 +75,9 @@ public class CategoryController : Controller
     [ValidateAntiForgeryToken]
     public IActionResult Edit(Category category)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(category);
-        }
-
-        return RedirectToAction(nameof(Index));
+        return ModelState.IsValid
+            ? RedirectToAction(nameof(Index))
+            : View(category);
     }
 
     /// <summary>
@@ -108,20 +86,11 @@ public class CategoryController : Controller
     /// <param name="code">Codice della categoria da eliminare.</param>
     public IActionResult Delete(string code)
     {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            return BadRequest("Il campo code è obbligatorio.");
-        }
+        var category = FindCategory(code);
 
-        var categories = MockDataService.GetCategories();
-        var category = categories.FirstOrDefault(c => c.Code == code);
-
-        if (category == null)
-        {
-            return NotFound("Categoria non trovata.");
-        }
-
-        return View(category);
+        return category == null
+            ? CategoryLookupError(code)
+            : View(category);
     }
 
     /// <summary>
@@ -133,5 +102,24 @@ public class CategoryController : Controller
     public IActionResult DeleteConfirmed(Category category)
     {
         return RedirectToAction(nameof(Index));
+    }
+
+    private static Category? FindCategory(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        return MockDataService
+            .GetCategories()
+            .FirstOrDefault(category => string.Equals(category.Code, code, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private IActionResult CategoryLookupError(string code)
+    {
+        return string.IsNullOrWhiteSpace(code)
+            ? BadRequest(RequiredCodeMessage)
+            : NotFound(CategoryNotFoundMessage);
     }
 }

@@ -1,7 +1,31 @@
 @using DashboardOrders.Models
-@model List<Category>
+@model CategoryPageViewModel
 @{
     ViewData["Title"] = "Categorie";
+    var currentSortBy = Model.SortBy;
+    var currentSortDirection = Model.SortDirection;
+
+    string GetNextSortDirection(string column)
+    {
+        return currentSortBy == column && currentSortDirection == "asc" ? "desc" : "asc";
+    }
+
+    string GetSortArrow(string column)
+    {
+        if (currentSortBy != column)
+        {
+            return "↑↓";
+        }
+
+        return currentSortDirection == "asc" ? "↑" : "↓";
+    }
+
+    string GetSortLabelClass(string column)
+    {
+        return currentSortBy == column
+            ? "font-bold text-slate-800"
+            : "font-semibold text-slate-500";
+    }
 }
 
 <div class="mb-8">
@@ -13,7 +37,7 @@
     <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <h3 class="text-lg font-semibold text-slate-800">Elenco Categorie</h3>
         <div class="flex items-center gap-3">
-            <span class="text-sm text-slate-500">Totale: @Model.Count categorie</span>
+            <span class="text-sm text-slate-500">Totale: @Model.TotalCategories categorie</span>
             <a asp-action="Create" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -27,47 +51,82 @@
         <table class="w-full min-w-[800px]">
             <thead>
                 <tr class="border-b border-slate-100 bg-slate-50">
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Codice</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Descrizione</th>
+                    <th class="px-6 py-4 text-left">
+                        <a asp-action="Index"
+                           asp-route-sortBy="code"
+                           asp-route-sortDirection="@GetNextSortDirection("code")"
+                           class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("code")">
+                            <span>Codice</span>
+                            <span class="text-sm text-indigo-600">@GetSortArrow("code")</span>
+                        </a>
+                    </th>
+                    <th class="px-6 py-4 text-left">
+                        <a asp-action="Index"
+                           asp-route-sortBy="name"
+                           asp-route-sortDirection="@GetNextSortDirection("name")"
+                           class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("name")">
+                            <span>Nome</span>
+                            <span class="text-sm text-indigo-600">@GetSortArrow("name")</span>
+                        </a>
+                    </th>
+                    <th class="px-6 py-4 text-left">
+                        <a asp-action="Index"
+                           asp-route-sortBy="description"
+                           asp-route-sortDirection="@GetNextSortDirection("description")"
+                           class="inline-flex items-center gap-2 text-xs uppercase tracking-wider transition-colors hover:text-indigo-600 @GetSortLabelClass("description")">
+                            <span>Descrizione</span>
+                            <span class="text-sm text-indigo-600">@GetSortArrow("description")</span>
+                        </a>
+                    </th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Azioni</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
-                @foreach (var category in Model)
+                @if (Model.HasCategories)
                 {
-                    <tr class="transition-colors hover:bg-slate-50">
-                        <td class="px-6 py-4">
-                            <span class="text-sm font-semibold text-indigo-600">@category.Code</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="text-sm font-medium text-slate-800">@category.Name</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="text-sm text-slate-600">@category.Description</span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <a asp-action="Details" asp-route-code="@category.Code" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-600 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-colors">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                    Vedi
-                                </a>
-                                <a asp-action="Edit" asp-route-code="@category.Code" class="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100 transition-colors">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                   Modifica
-                                </a>
-                                <a asp-action="Delete" asp-route-code="@category.Code" class="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-100 transition-colors">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                   Elimina
-                                </a>
-                            </div>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-6 py-4">
+                                <span class="text-sm font-semibold text-indigo-600">@category.Code</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-sm font-medium text-slate-800">@category.Name</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-sm text-slate-600">@category.Description</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a asp-action="Details" asp-route-code="@category.Code" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-600 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-colors">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        Vedi
+                                    </a>
+                                    <a asp-action="Edit" asp-route-code="@category.Code" class="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100 transition-colors">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        Modifica
+                                    </a>
+                                    <a asp-action="Delete" asp-route-code="@category.Code" class="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-100 transition-colors">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Elimina
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="4" class="px-6 py-10 text-center text-sm text-slate-500">
+                            Nessuna categoria disponibile.
                         </td>
                     </tr>
                 }
