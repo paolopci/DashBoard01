@@ -1,51 +1,10 @@
-### Lingua e Comunicazione
+# Guida Per Claude
 
-**Tutti i messaggi informativi della chat devono essere tradotti in italiano. I comandi (bash, codice, etc.) mantengono la loro sintassi originale.**
+Le istruzioni operative del progetto sono mantenute in `AGENTS.md`.
 
-### Comandi comunemente utilizzati
+Segui quelle regole anche quando lavori come Claude:
 
-Ecco i comandi principali per lo sviluppo in questo progetto ASP.NET Core MVC:
-
-1. **Compilare la soluzione**:
-
-```bash
-dotnet build
-```
-
-2. **Eseguire l'applicazione in modalità di sviluppo**:
-
-```bash
-dotnet run --urls=http://localhost:5000
-```
-
-_(Nota: Disabled Visual Studio project file detection in favor of explicit command for reliability)_
-
-3. **Eseguire test unitari per classe**:
-
-```bash
-dotnet test --filter FullyQualifiedName=OrdiniServiceTests"
-```
-
-4. **Eseguire test singoli**:
-
-```bash
-dotnet test --filter "TestCategory=Integration" \
-  --filter "FullyQualifiedName=Prova.Exempes.OrderDbServiceTests""
-```
-
-5. **Avviare connessione debugger con Visual Studio**:
-
-```bash
-dotnet run -- https://localhost:5000/launchDebugger
-```
-
-_(Permette di attivare il debugger remoto senza modificare il codice)_
-
-6. **Eseguire analisi codice con Roslyn Analyzers**:
-
-```bash
-dotnet msbuild -nologo -p:Analyzers=Microsoft.CodeAnalysis.CSharp.QualityGuidelines,
-   Microsoft.CodeAnalysis.CSharp.Modernization --flavor:roslyn
-```
-
-\*(Eseguire nell'editor principale, in cascade a build);`
+- rispondi in italiano per comunicazioni informative;
+- mantieni invariati comandi, codice e nomi tecnici;
+- usa i comandi documentati in `AGENTS.md`;
+- non duplicare qui istruzioni operative che rischiano di divergere.
