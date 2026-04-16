@@ -1,15 +1,8 @@
-@using System.Globalization
 @model DashboardOrders.Models.DashboardViewModel
 @{
     ViewData["Title"] = "Panoramica";
-    var italianCulture = CultureInfo.GetCultureInfo("it-IT");
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
-
-    string FormatEuro(decimal value, string numericFormat = "N2")
-    {
-        return $"{value.ToString(numericFormat, italianCulture)} €";
-    }
 
     SortableHeaderViewModel DashboardHeader(string column, string label, string alignment = "left")
     {
@@ -165,19 +158,11 @@
                         <td class="px-6 py-4 text-sm font-semibold text-slate-800 text-right">@FormatEuro(order.TotalAmount)</td>
                         <td class="px-6 py-4 text-center">
                             @{
-                                var (bgColor, color, label) = order.Status switch
-                                {
-                                    DashboardOrders.Models.OrderStatus.Delivered  => ("#d1fae5", "#065f46", "Consegnato"),
-                                    DashboardOrders.Models.OrderStatus.Shipped    => ("#dbeafe", "#1e40af", "Spedito"),
-                                    DashboardOrders.Models.OrderStatus.Processing => ("#e0e7ff", "#3730a3", "Elaborazione"),
-                                    DashboardOrders.Models.OrderStatus.Pending    => ("#fef3c7", "#92400e", "In Attesa"),
-                                    DashboardOrders.Models.OrderStatus.Cancelled  => ("#fee2e2", "#991b1b", "Annullato"),
-                                    _                                              => ("#f1f5f9", "#475569", "Sconosciuto")
-                                };
+                                var statusPresentation = OrderStatusPresentation.FromStatus(order.Status);
                             }
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
-                                  style="background-color: @bgColor; color: @color;">
-                                @label
+                                  style="background-color: @statusPresentation.BackgroundColor; color: @statusPresentation.ForegroundColor;">
+                                @statusPresentation.Label
                             </span>
                         </td>
                     </tr>

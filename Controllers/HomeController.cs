@@ -44,10 +44,7 @@ public class HomeController : Controller
     public IActionResult Customers(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
         var model = MockDataService.GetCustomersPageData(page, pageSize, sortBy, sortDirection, search);
-        ViewData["CustomerSearchTerm"] = model.SearchTerm;
-        ViewData["CustomerPageSize"] = model.PageSize;
-        ViewData["CustomerSortBy"] = model.SortBy;
-        ViewData["CustomerSortDirection"] = model.SortDirection;
+        CustomerSearchFormViewModel.From(model).ApplyTo(ViewData);
         return View(model);
     }
 

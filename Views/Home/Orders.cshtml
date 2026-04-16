@@ -1,15 +1,8 @@
-@using System.Globalization
 @model DashboardOrders.Models.OrdersPageViewModel
 @{
     ViewData["Title"] = "Ordini";
-    var italianCulture = CultureInfo.GetCultureInfo("it-IT");
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
-
-    string FormatEuro(decimal value, string numericFormat = "N2")
-    {
-        return $"{value.ToString(numericFormat, italianCulture)} €";
-    }
 
     Dictionary<string, string> OrderRouteValues()
     {
@@ -34,20 +27,6 @@
             ExtraRouteValues = OrderRouteValues()
         };
     }
-
-    (string RowAccent, string BackgroundColor, string ForegroundColor, string Label) GetStatusPresentation(DashboardOrders.Models.OrderStatus status)
-    {
-        return status switch
-        {
-            DashboardOrders.Models.OrderStatus.Delivered => ("bg-emerald-500", "#d1fae5", "#065f46", "Consegnato"),
-            DashboardOrders.Models.OrderStatus.Shipped => ("bg-blue-500", "#dbeafe", "#1e40af", "Spedito"),
-            DashboardOrders.Models.OrderStatus.Processing => ("bg-indigo-500", "#e0e7ff", "#3730a3", "Elaborazione"),
-            DashboardOrders.Models.OrderStatus.Pending => ("bg-amber-500", "#fef3c7", "#92400e", "In Attesa"),
-            DashboardOrders.Models.OrderStatus.Cancelled => ("bg-rose-500", "#fee2e2", "#991b1b", "Annullato"),
-            _ => ("bg-slate-400", "#f1f5f9", "#475569", "Sconosciuto")
-        };
-    }
-
 }
 
 <div class="mb-8">
@@ -146,7 +125,7 @@
     <div class="space-y-4 p-4 md:hidden">
         @foreach (var order in Model.Orders)
         {
-            var statusPresentation = GetStatusPresentation(order.Status);
+            var statusPresentation = OrderStatusPresentation.FromStatus(order.Status);
             var detailCardId = $"order-mobile-detail-{order.Id}";
             var detailButtonId = $"order-mobile-detail-button-{order.Id}";
 
@@ -240,7 +219,7 @@
             <tbody class="divide-y divide-slate-50">
                 @foreach (var order in Model.Orders)
                 {
-                    var statusPresentation = GetStatusPresentation(order.Status);
+                    var statusPresentation = OrderStatusPresentation.FromStatus(order.Status);
                     var detailRowId = $"order-detail-{order.Id}";
                     var detailButtonId = $"order-detail-button-{order.Id}";
 

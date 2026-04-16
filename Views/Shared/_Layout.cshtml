@@ -15,10 +15,14 @@
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var isCustomersPage = string.Equals(currentController, "Home", StringComparison.OrdinalIgnoreCase)
         && string.Equals(currentAction, "Customers", StringComparison.OrdinalIgnoreCase);
-    var customerSearchTerm = ViewData["CustomerSearchTerm"]?.ToString() ?? string.Empty;
-    var customerPageSize = ViewData["CustomerPageSize"]?.ToString() ?? "10";
-    var customerSortBy = ViewData["CustomerSortBy"]?.ToString() ?? "totalAmount";
-    var customerSortDirection = ViewData["CustomerSortDirection"]?.ToString() ?? "desc";
+    var customerSearch = CustomerSearchFormViewModel.FromViewData(ViewData, isCustomersPage);
+    var navigationItems = new[]
+    {
+        (ActionName: "Index", Label: "Panoramica", IconPath: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"),
+        (ActionName: "Orders", Label: "Ordini", IconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"),
+        (ActionName: "Customers", Label: "Clienti", IconPath: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"),
+        (ActionName: "Products", Label: "Prodotti", IconPath: "M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0l-2.293 2.293a1 1 0 00-.293.707V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a1 1 0 00-.293-.707L4 13m16 0H4m5 4h6")
+    };
 
     bool IsCurrentAction(string actionName) =>
         string.Equals(currentController, "Home", StringComparison.OrdinalIgnoreCase)
@@ -39,22 +43,13 @@
             <h1 class="text-xl font-bold tracking-wider text-indigo-400">DASHBOARD</h1>
         </div>
         <nav class="flex-1 space-y-2 overflow-y-auto px-4 py-6" id="sidebar-nav">
-            <a asp-action="Index" asp-controller="Home" class="@SidebarLinkClass("Index")">
-                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                Panoramica
-            </a>
-            <a asp-action="Orders" asp-controller="Home" class="@SidebarLinkClass("Orders")">
-                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                Ordini
-            </a>
-            <a asp-action="Customers" asp-controller="Home" class="@SidebarLinkClass("Customers")">
-                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                Clienti
-            </a>
-            <a asp-action="Products" asp-controller="Home" class="@SidebarLinkClass("Products")">
-                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0l-2.293 2.293a1 1 0 00-.293.707V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a1 1 0 00-.293-.707L4 13m16 0H4m5 4h6"></path></svg>
-                Prodotti
-            </a>
+            @foreach (var item in navigationItems)
+            {
+                <a asp-action="@item.ActionName" asp-controller="Home" class="@SidebarLinkClass(item.ActionName)">
+                    <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="@item.IconPath"></path></svg>
+                    @item.Label
+                </a>
+            }
         </nav>
     </aside>
 
@@ -67,22 +62,22 @@
                           asp-action="Customers"
                           asp-controller="Home"
                           class="relative"
-                          data-search-enabled="@(isCustomersPage ? "true" : "false")"
-                          data-current-search="@customerSearchTerm">
+                          data-search-enabled="@(customerSearch.IsEnabled ? "true" : "false")"
+                          data-current-search="@customerSearch.SearchTerm">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </span>
                         <input id="customer-search-input"
                                type="text"
                                name="search"
-                               value="@customerSearchTerm"
+                               value="@customerSearch.SearchTerm"
                                class="w-64 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                placeholder="Cerca..."
                                autocomplete="off">
                         <input type="hidden" name="page" value="1" />
-                        <input type="hidden" name="pageSize" value="@customerPageSize" />
-                        <input type="hidden" name="sortBy" value="@customerSortBy" />
-                        <input type="hidden" name="sortDirection" value="@customerSortDirection" />
+                        <input type="hidden" name="pageSize" value="@customerSearch.PageSize" />
+                        <input type="hidden" name="sortBy" value="@customerSearch.SortBy" />
+                        <input type="hidden" name="sortDirection" value="@customerSearch.SortDirection" />
                     </form>
                 </div>
             </div>
@@ -98,10 +93,10 @@
 
         <div class="border-b border-slate-200 bg-white px-4 py-3 md:hidden">
             <nav class="flex gap-2 overflow-x-auto pb-1" aria-label="Navigazione mobile">
-                <a asp-action="Index" asp-controller="Home" class="@MobileNavLinkClass("Index")">Panoramica</a>
-                <a asp-action="Orders" asp-controller="Home" class="@MobileNavLinkClass("Orders")">Ordini</a>
-                <a asp-action="Customers" asp-controller="Home" class="@MobileNavLinkClass("Customers")">Clienti</a>
-                <a asp-action="Products" asp-controller="Home" class="@MobileNavLinkClass("Products")">Prodotti</a>
+                @foreach (var item in navigationItems)
+                {
+                    <a asp-action="@item.ActionName" asp-controller="Home" class="@MobileNavLinkClass(item.ActionName)">@item.Label</a>
+                }
             </nav>
         </div>
 
@@ -113,41 +108,6 @@
     </div>
 
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            const currentPath = window.location.pathname.toLowerCase();
-
-            sidebarLinks.forEach(link => {
-                const linkHref = link.getAttribute('href')?.toLowerCase();
-                if (linkHref && (currentPath === linkHref || (currentPath === '/' && linkHref === '/'))) {
-                    setActive(link);
-                } else if (linkHref && currentPath.includes(linkHref) && linkHref !== '/') {
-                    setActive(link);
-                }
-            });
-
-            function setActive(activeLink) {
-                sidebarLinks.forEach(l => {
-                    l.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-                    l.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
-                });
-                activeLink.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-                activeLink.classList.remove('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
-            }
-
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', function (e) {
-                    const href = this.getAttribute('href');
-                    if (href === '#') {
-                        e.preventDefault();
-                    }
-
-                    setActive(this);
-                });
-            });
-        });
-    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

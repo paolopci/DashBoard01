@@ -7,4 +7,11 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="DashboardOrders.Tests\**" />
+    <Content Remove="DashboardOrders.Tests\**" />
+    <EmbeddedResource Remove="DashboardOrders.Tests\**" />
+    <None Remove="DashboardOrders.Tests\**" />
+  </ItemGroup>
+
 </Project>

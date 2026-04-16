@@ -1,15 +1,8 @@
-@using System.Globalization
 @model DashboardOrders.Models.CustomersPageViewModel
 @{
     ViewData["Title"] = "Clienti";
-    var italianCulture = CultureInfo.GetCultureInfo("it-IT");
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
-
-    string FormatEuro(decimal value, string numericFormat = "N2")
-    {
-        return $"{value.ToString(numericFormat, italianCulture)} €";
-    }
 
     Dictionary<string, string> CustomerRouteValues()
     {
