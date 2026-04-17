@@ -10,14 +10,24 @@ namespace DashboardOrders.Controllers;
 public class CategoryController : Controller
 {
     private const string RequiredCodeMessage = "Il campo code è obbligatorio.";
+    private const string RequiredNameMessage = "Il campo name è obbligatorio.";
     private const string CategoryNotFoundMessage = "Categoria non trovata.";
+    private const string CategoryDeleteBlockedMessage = "Categoria non eliminabile perché ha prodotti associati.";
+    private const string CategoryDuplicateMessage = "Categoria già presente.";
+
+    private readonly IDashboardOrdersDataService dataService;
+
+    public CategoryController(IDashboardOrdersDataService dataService)
+    {
+        this.dataService = dataService;
+    }
 
     /// <summary>
     /// Recupera la lista di tutte le categorie con ordinamento.
     /// </summary>
     public IActionResult Index(string sortBy = "code", string sortDirection = "asc")
     {
-        return View(MockDataService.GetCategoryPageData(sortBy, sortDirection));
+        return View(dataService.GetCategoryPageData(sortBy, sortDirection));
     }
 
     /// <summary>
@@ -26,7 +36,7 @@ public class CategoryController : Controller
     /// <param name="code">Codice della categoria.</param>
     public IActionResult Details(string code)
     {
-        var category = FindCategory(code);
+        var category = dataService.GetCategory(code);
 
         return category == null
             ? CategoryLookupError(code)
@@ -47,11 +57,23 @@ public class CategoryController : Controller
     /// <param name="category">Oggetto categoria da creare.</param>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(Category category)
+    public IActionResult Create(Category? category)
     {
-        return ModelState.IsValid
-            ? RedirectToAction(nameof(Index))
-            : View(category);
+        category ??= new Category();
+        ValidateCategory(category, requireCode: true, requireName: true);
+
+        if (!ModelState.IsValid)
+        {
+            return View(category);
+        }
+
+        if (!dataService.CreateCategory(category))
+        {
+            ModelState.AddModelError(nameof(Category.Code), CategoryDuplicateMessage);
+            return View(category);
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     /// <summary>
@@ -60,7 +82,7 @@ public class CategoryController : Controller
     /// <param name="code">Codice della categoria da modificare.</param>
     public IActionResult Edit(string code)
     {
-        var category = FindCategory(code);
+        var category = dataService.GetCategory(code);
 
         return category == null
             ? CategoryLookupError(code)
@@ -73,11 +95,19 @@ public class CategoryController : Controller
     /// <param name="category">Oggetto categoria con i dati aggiornati.</param>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(Category category)
+    public IActionResult Edit(Category? category)
     {
-        return ModelState.IsValid
+        category ??= new Category();
+        ValidateCategory(category, requireCode: true, requireName: true);
+
+        if (!ModelState.IsValid)
+        {
+            return View(category);
+        }
+
+        return dataService.UpdateCategory(category)
             ? RedirectToAction(nameof(Index))
-            : View(category);
+            : CategoryLookupError(category.Code);
     }
 
     /// <summary>
@@ -86,7 +116,7 @@ public class CategoryController : Controller
     /// <param name="code">Codice della categoria da eliminare.</param>
     public IActionResult Delete(string code)
     {
-        var category = FindCategory(code);
+        var category = dataService.GetCategory(code);
 
         return category == null
             ? CategoryLookupError(code)
@@ -96,24 +126,28 @@ public class CategoryController : Controller
     /// <summary>
     /// Elimina una categoria tramite POST.
     /// </summary>
-    /// <param name="category">Oggetto categoria da eliminare.</param>
+    /// <param name="code">Codice della categoria da eliminare.</param>
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public IActionResult DeleteConfirmed(Category category)
-    {
-        return RedirectToAction(nameof(Index));
-    }
-
-    private static Category? FindCategory(string code)
+    public IActionResult DeleteConfirmed(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
-            return null;
+            return BadRequest(RequiredCodeMessage);
         }
 
-        return MockDataService
-            .GetCategories()
-            .FirstOrDefault(category => string.Equals(category.Code, code, StringComparison.OrdinalIgnoreCase));
+        var category = dataService.GetCategory(code);
+        if (category == null)
+        {
+            return NotFound(CategoryNotFoundMessage);
+        }
+
+        if (!dataService.DeleteCategory(code))
+        {
+            return Conflict(CategoryDeleteBlockedMessage);
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     private IActionResult CategoryLookupError(string code)
@@ -121,5 +155,18 @@ public class CategoryController : Controller
         return string.IsNullOrWhiteSpace(code)
             ? BadRequest(RequiredCodeMessage)
             : NotFound(CategoryNotFoundMessage);
+    }
+
+    private void ValidateCategory(Category category, bool requireCode, bool requireName)
+    {
+        if (requireCode && string.IsNullOrWhiteSpace(category.Code))
+        {
+            ModelState.AddModelError(nameof(Category.Code), RequiredCodeMessage);
+        }
+
+        if (requireName && string.IsNullOrWhiteSpace(category.Name))
+        {
+            ModelState.AddModelError(nameof(Category.Name), RequiredNameMessage);
+        }
     }
 }

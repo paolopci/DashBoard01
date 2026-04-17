@@ -244,6 +244,7 @@ public static class MockDataService
     public static List<Order> GetOrders() => Orders;
     public static List<Product> GetProducts() => Products;
     public static List<Category> GetCategories() => Categories;
+    public static List<Customer> GetCustomers() => Customers;
 
     private static string NormalizeSortBy(string? sortBy, IReadOnlyDictionary<string, string> allowedColumns, string defaultSortBy)
     {

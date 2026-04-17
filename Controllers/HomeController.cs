@@ -6,6 +6,13 @@ namespace DashboardOrders.Controllers;
 
 public class HomeController : Controller
 {
+    private readonly IDashboardOrdersDataService dataService;
+
+    public HomeController(IDashboardOrdersDataService dataService)
+    {
+        this.dataService = dataService;
+    }
+
     /// <summary>
     /// Recupera i dati del dashboard e li visualizza.
     /// </summary>
@@ -16,7 +23,7 @@ public class HomeController : Controller
     /// <param name="search">Termine di ricerca facoltativo.</param>
     public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
-        var model = MockDataService.GetDashboardData(page, pageSize, sortBy, sortDirection, search);
+        var model = dataService.GetDashboardData(page, pageSize, sortBy, sortDirection, search);
         SearchFormViewModel.From(model, "Index", model.SortBy, model.SortDirection).ApplyTo(ViewData);
         return View(model);
     }
@@ -32,7 +39,7 @@ public class HomeController : Controller
     /// <param name="search">Termine di ricerca facoltativo.</param>
     public IActionResult Orders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
-        var model = MockDataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection, search);
+        var model = dataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection, search);
         SearchFormViewModel
             .From(model, "Orders", model.SortBy, model.SortDirection, new Dictionary<string, string>
             {
@@ -52,7 +59,7 @@ public class HomeController : Controller
     /// <param name="search">Termine di ricerca facoltativo.</param>
     public IActionResult Customers(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
-        var model = MockDataService.GetCustomersPageData(page, pageSize, sortBy, sortDirection, search);
+        var model = dataService.GetCustomersPageData(page, pageSize, sortBy, sortDirection, search);
         SearchFormViewModel.From(model, "Customers", model.SortBy, model.SortDirection).ApplyTo(ViewData);
         return View(model);
     }
@@ -68,7 +75,7 @@ public class HomeController : Controller
     /// <param name="search">Termine di ricerca facoltativo.</param>
     public IActionResult Products(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "", string search = "")
     {
-        var model = MockDataService.GetProductsPageData(page, pageSize, sortBy, sortDirection, categoryCode, search);
+        var model = dataService.GetProductsPageData(page, pageSize, sortBy, sortDirection, categoryCode, search);
         SearchFormViewModel
             .From(model, "Products", model.SortBy, model.SortDirection, new Dictionary<string, string>
             {

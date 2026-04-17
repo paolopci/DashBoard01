@@ -1,554 +1,567 @@
-# PLAN - Refactoring Incrementale DashBoard01
+# PLAN - Migrazione Dati Mock a SQL Server
 
 ## Stato Generale
 
-- PRD: completato in `docs/PRD.md`.
-- Piano: creato.
-- Fase corrente implementabile: nessuna, refactoring pianificato completato.
-- Regola operativa: refactoring eseguito per fasi tecniche validate e documentate.
+- PRD: aggiornato in `docs/PRD.md`.
+- Piano: nuova iterazione creata.
+- Fase corrente: Fase 6 completata. Prossima fase: Fase 7 - Avvio Finale e Chiusura.
+- Regola operativa: una sola fase tecnica per iterazione, con validazione e aggiornamento piano.
 
 ## Checklist Generale
 
-- [x] Analizzare struttura progetto e aree critiche.
-- [x] Creare `docs/PRD.md`.
-- [x] Creare `docs/PLAN.md`.
-- [x] Implementare Fase 1.
-- [x] Validare Fase 1.
-- [x] Aggiornare esito Fase 1 e prossimo step.
-- [x] Implementare Fase 2.
-- [x] Validare Fase 2.
-- [x] Aggiornare esito Fase 2 e prossimo step.
-- [x] Implementare Fase 3.
-- [x] Validare Fase 3.
-- [x] Aggiornare esito Fase 3 e prossimo step.
-- [x] Implementare Fase 4.
-- [x] Validare Fase 4.
-- [x] Aggiornare esito Fase 4 e prossimo step.
-- [x] Implementare Fase 5.
-- [x] Validare Fase 5.
-- [x] Aggiornare esito Fase 5 e prossimo step.
-- [x] Implementare Fase 6.
-- [x] Validare Fase 6.
-- [x] Aggiornare esito Fase 6 e prossimo step.
-- [x] Implementare Fase 7.
-- [x] Validare Fase 7.
-- [x] Aggiornare esito Fase 7 e prossimo step.
+- [x] Analizzare richiesta, repository e vincoli locali.
+- [x] Ricavare dettagli Docker disponibili per `sql-container`.
+- [x] Aggiornare `docs/PRD.md`.
+- [x] Aggiornare `docs/PLAN.md`.
+- [x] Completare Fase 1.
+- [x] Completare Fase 2.
+- [x] Completare Fase 3.
+- [x] Completare Fase 4.
+- [x] Completare Fase 5.
+- [x] Completare Fase 6.
+- [ ] Completare Fase 7.
+- [ ] Archiviare PRD/PLAN in `docs/History` a sviluppo complessivo concluso.
 
-## Fase 1 - Base Test di Regressione
+## Fase 1 - Configurazione Segreti e Verifica Database
 
 ### Obiettivo
 
-Creare una base minima di test automatizzati per proteggere paging, sorting, filtri e aggregazioni prima di refactoring piu invasivi su `MockDataService`.
+Creare la configurazione locale sicura per SQL Server e verificare che il database `DashboardAppDb` sia raggiungibile.
 
 ### Stato
 
 Completata e validata.
 
-### Checklist
+### Attivita
 
-- [x] Verificare lo stato di `DashboardOrders.Tests` e della solution.
-- [x] Creare o ripristinare un progetto test xUnit se assente.
-- [x] Aggiungere reference al progetto `DashboardOrders`.
-- [x] Coprire casi chiave di `MockDataService` per dashboard, ordini, clienti, prodotti e categorie.
-- [x] Includere il progetto test in `DashBoard01.sln`.
-- [x] Eseguire `dotnet test DashBoard01.sln` e `dotnet build DashBoard01.sln`.
+- [x] Verificare `git status --short`.
+- [x] Leggere `AGENTS.md`, `docs/PRD.md` e `docs/PLAN.md`.
+- [x] Verificare container Docker `sql-container`.
+- [x] Creare `secret.json` con la connection string locale.
+- [x] Inserire `secret.json` in `.gitignore`.
+- [x] Verificare connessione a `DashboardAppDb`.
+- [x] Rilevare tabelle applicative esistenti.
+- [x] Aggiornare il piano con esito fase.
 
 ### File o Aree Coinvolte
 
-- `DashboardOrders.Tests/`
-- `DashBoard01.sln`
-- `DashboardOrders.csproj`
-- `Services/MockDataService.cs` solo come codice sotto test, senza refactoring in questa fase.
-
-### Impatti Backend
-
-- Introduce copertura automatica sulla logica mock esistente.
-- Non deve modificare il comportamento runtime dell'app MVC.
-
-### Impatti Frontend
-
-- Nessun impatto frontend previsto.
+- `secret.json`
+- `.gitignore`
+- `docs/PRD.md`
+- `docs/PLAN.md`
+- SQL Server Docker `sql-container`
 
 ### Validazioni
 
-- `dotnet test DashBoard01.sln`
-- `dotnet build DashBoard01.sln`
+- `sqlcmd` verso `DashboardAppDb`.
+- `git status --short`.
 
 ### Definition of Done
 
-- Il progetto test e incluso nella solution.
-- I test coprono almeno un caso OK per paging/sorting/filtri per le pagine principali.
-- Build e test passano.
-- Questo piano viene aggiornato con file modificati, problemi emersi, decisioni e prossimo step.
-
-### Note
-
-- Se il restore o la creazione del progetto richiede accesso esterno, documentare il blocco e chiedere autorizzazione operativa.
-- Implementazione STEP 4: creato `DashboardOrders.Tests/DashboardOrders.Tests.csproj`, aggiunto `DashboardOrders.Tests/MockDataServiceTests.cs` e incluso il progetto test nella solution.
-- Validazione STEP 5: `dotnet test DashBoard01.sln` completato con 10 test superati, 0 falliti.
-- Validazione STEP 5: `dotnet build DashBoard01.sln` completato con 0 warning e 0 errori.
+- La connection string e disponibile localmente senza essere versionata.
+- `secret.json` e ignorato da Git.
+- La connessione SQL Server e verificata.
+- Lo stato iniziale delle tabelle e documentato.
 
 ### File Modificati
 
-- `DashBoard01.sln`: aggiunto il progetto `DashboardOrders.Tests`.
-- `DashboardOrders.csproj`: esclusa la cartella `DashboardOrders.Tests/**` dai glob del progetto web.
-- `DashboardOrders.Tests/DashboardOrders.Tests.csproj`: creato progetto test xUnit su .NET 9.
-- `DashboardOrders.Tests/MockDataServiceTests.cs`: aggiunti test di regressione per dashboard, ordini, clienti, prodotti e categorie.
-- `docs/PRD.md`: creato PRD del refactoring incrementale.
-- `docs/PLAN.md`: creato e aggiornato piano operativo.
+- `.gitignore`: aggiunto `secret.json`.
+- `secret.json`: creato localmente con connection string per `DashboardAppDb`.
+- `docs/PRD.md`: riscritto per la migrazione SQL Server.
+- `docs/PLAN.md`: creato nuovo piano per fasi.
+
+### Validazione Eseguita
+
+- `git status --short`: verificato prima delle modifiche; working tree inizialmente pulito.
+- `docker ps --filter name=sql-container`: verificato container `sql-container` su immagine `mcr.microsoft.com/mssql/server:2019-latest` con porta `1433`.
+- `docker inspect sql-container`: verificata disponibilita di variabili ambiente necessarie alla connection string.
+- `docker exec sql-container ... SELECT DB_NAME()`: verificato database `DashboardAppDb`.
+- `docker exec sql-container ... INFORMATION_SCHEMA.TABLES`: rilevate tabelle `Customers`, `OrderItems`, `Orders`, `Products` e tabelle ASP.NET Identity.
+- `docker exec sql-container ... INFORMATION_SCHEMA.COLUMNS`: rilevate colonne applicative correnti.
+- `docker exec sql-container ... COUNT(*)`: rilevati conteggi iniziali `Customers=3`, `Orders=4`, `OrderItems=5`, `Products=5`.
+
+### Schema Applicativo Rilevato
+
+- `Customers`: `Id`, `Name`, `Email`, `Phone`, `Address`, `CreatedAt`.
+- `Products`: `Id`, `Name`, `Description`, `Price`, `StockQuantity`, `Category`, `ImageUrl`, `CreatedAt`.
+- `Orders`: `Id`, `OrderNumber`, `CustomerId`, `TotalAmount`, `Status`, `Notes`, `CreatedAt`, `UpdatedAt`.
+- `OrderItems`: `Id`, `OrderId`, `ProductId`, `Quantity`, `UnitPrice`.
+- `Categories`: non presente come tabella dedicata nella verifica iniziale.
 
 ### Problemi Emersi nella Fase
 
-- `dotnet test DashBoard01.sln` in sandbox ha fallito per accesso negato alla sentinel `.dotnet`; fuori sandbox ha potuto eseguire restore/build/test.
-- Dopo l'aggiunta del progetto test, il progetto web compilava anche i file sotto `DashboardOrders.Tests` per via dei glob SDK-style predefiniti. Risolto escludendo `DashboardOrders.Tests/**` da `DashboardOrders.csproj`.
+- Il client Windows `sqlcmd` ha fallito la connessione per negoziazione TLS/ODBC. La verifica e stata completata con `sqlcmd` dentro il container tramite `docker exec`.
+- Lo screenshot mostrava una tabella `Product`, ma il database reale espone `dbo.Products`.
+- Lo schema corrente non contiene tutte le proprieta dei mock: ad esempio `Customers` non ha `AvatarInitials`, `Products` non ha `Code`, e non esiste `Categories`.
 
 ### Decisioni Prese
 
-- La prima fase tecnica introduce test diretti su `MockDataService`, senza refactoring del servizio sotto test.
-- Il progetto test usa `xunit` `2.9.3`, `FluentAssertions`, `NSubstitute`, `Microsoft.NET.Test.Sdk` e `xunit.runner.visualstudio`.
-- La copertura iniziale privilegia regressioni su paging, sorting, filtri e input null/non validi.
+- `secret.json` resta locale e ignorato da Git.
+- La Fase 2 dovra decidere se adeguare le tabelle esistenti o creare nuove colonne/tabelle per coprire fedelmente `MockDataService`.
+- Le tabelle Identity presenti non vengono toccate.
 
 ### Rischi Residui
 
-- I test coprono i casi principali, ma non tutte le combinazioni di ordinamento e paging.
-- `MockDataService` resta statico e monolitico; la riduzione della complessita iniziera dalla Fase 2.
+- Serve una decisione di mapping per categorie e codici prodotto prima di generare schema o seed.
+- Il database contiene gia dati minimi; la fase di seed dovra essere idempotente e non duplicare righe.
 
-## Fase 2 - Estrazione Helper di Paging e Normalizzazione
+## Fase 2 - Analisi Schema e Dati Mock
 
 ### Obiettivo
 
-Ridurre la duplicazione nella normalizzazione di `page`, `pageSize`, `totalPages` e paginazione oggi ripetuta in piu metodi di `MockDataService`.
+Tradurre `MockDataService.cs` in modello dati persistente e definire lo schema finale.
 
-### Stato
+### Attivita
 
-Completata e validata.
-
-### Checklist
-
-- [x] Individuare i blocchi duplicati di paginazione in `MockDataService`.
-- [x] Introdurre un helper interno piccolo e testabile senza cambiare contratti pubblici.
-- [x] Aggiornare i metodi dashboard, ordini, clienti e prodotti per usare l'helper.
-- [x] Eseguire test e build.
-- [x] Aggiornare il piano con esito e rischi residui.
+- [x] Analizzare categorie, prodotti, clienti, ordini e righe ordine generate dai mock.
+- [x] Confrontare le tabelle esistenti in `DashboardAppDb` con il modello necessario.
+- [x] Decidere mapping per tabella `Products` esistente e per eventuale tabella `Categories` mancante.
+- [x] Definire chiavi primarie, foreign key, indici e tipi SQL.
+- [x] Valutare impatti sui test senza modificarli in questa fase.
 
 ### File o Aree Coinvolte
 
 - `Services/MockDataService.cs`
-- `DashboardOrders.Tests/`
-
-### Impatti Backend
-
-- Riduce duplicazione su logica di paging.
-- Mantiene invariati valori ammessi e comportamento `pageSize = 0`.
-
-### Impatti Frontend
-
-- Nessun impatto previsto su markup o CSS.
-- Le view devono ricevere gli stessi valori di pagina di prima.
+- `Models/*.cs`
+- Database `DashboardAppDb`
 
 ### Validazioni
 
-- `dotnet test DashBoard01.sln`
-- `dotnet build DashBoard01.sln`
+- Script di introspezione schema.
+- Conteggio dati mock attesi.
 
 ### Definition of Done
 
-- La logica duplicata di paging e concentrata in un solo punto.
-- I test di regressione continuano a passare.
-- Nessun cambio intenzionale nei parametri query.
+- Schema target documentato nel piano.
+- Differenze rispetto al database esistente note prima di creare o modificare tabelle.
 
 ### File Modificati
 
-- `Services/MockDataService.cs`: aggiunto `PagedResult<T>` privato e helper `ApplyPaging<T>`.
-- `Services/MockDataService.cs`: sostituiti i blocchi duplicati di paging in `GetOrdersPageData`, `GetCustomersPageData`, `GetProductsPageData` e `GetDashboardData`.
-- `docs/PLAN.md`: aggiornata la chiusura della Fase 2.
+- `docs/PLAN.md`: documentata analisi Fase 2, schema target, differenze mock/database e prossima fase.
 
 ### Validazione Eseguita
 
-- `dotnet test DashBoard01.sln`: superato con 10 test passati, 0 falliti.
-- `dotnet build DashBoard01.sln`: superato con 0 warning e 0 errori.
+- `git status --short`: confermate solo modifiche gia note su `.gitignore`, `docs/PLAN.md`, `docs/PRD.md`.
+- Lettura `Services/MockDataService.cs`: analizzati generatori mock e metodi pubblici runtime.
+- Lettura model dominio: `Category`, `Product`, `Customer`, `Order`, `OrderItem`, `OrderStatus`.
+- Lettura view model principali: dashboard, ordini, clienti, prodotti e categorie.
+- Query read-only su `DashboardAppDb` via `docker exec` e `INFORMATION_SCHEMA`.
+- Conteggi mock stimati dalla logica `Random(42)`: `Categories=7`, `Products=200`, `Customers=100`, `Orders=173`, `OrderItems=654`.
+- Conteggi database rilevati: `Customers=3`, `Products=5`, `Orders=4`, `OrderItems=5`.
+
+### Dati Mock Rilevati
+
+- `Categories`: 7 record con `Code`, `Name`, `Description`.
+- `Products`: 200 record con `Code`, `Name`, `Category`, `Description`, `UnitCost`, `Stock`.
+- `Customers`: 100 record con `Id`, `Name`, `Email`, `Phone`, `AvatarInitials`.
+- `Orders`: 173 record con `Id`, `OrderNumber`, `Customer`, `OrderDate`, `TotalAmount`, `Status`, `Items`.
+- `OrderItems`: 654 righe con `ProductName`, `Quantity`, `UnitPrice`; `TotalPrice` resta calcolato.
+
+### Schema SQL Reale Rilevato
+
+- `Customers`: `Id int PK`, `Name nvarchar(100)`, `Email nvarchar(100)`, `Phone nvarchar(20)`, `Address nvarchar(200)`, `CreatedAt datetime2`.
+- `Products`: `Id int PK`, `Name nvarchar(100)`, `Description nvarchar(500) NULL`, `Price decimal(18,2)`, `StockQuantity int`, `Category nvarchar(50) NULL`, `ImageUrl nvarchar(200) NULL`, `CreatedAt datetime2`.
+- `Orders`: `Id int PK`, `OrderNumber nvarchar(max)`, `CustomerId int FK`, `TotalAmount decimal(18,2)`, `Status int`, `Notes nvarchar(500) NULL`, `CreatedAt datetime2`, `UpdatedAt datetime2 NULL`.
+- `OrderItems`: `Id int PK`, `OrderId int FK`, `ProductId int FK`, `Quantity int`, `UnitPrice decimal(18,2)`.
+- `Categories`: assente.
+
+### Schema Target Consigliato
+
+- Creare `Categories` con `Code nvarchar(20)` come chiave logica univoca, `Name nvarchar(100)`, `Description nvarchar(500)`.
+- Adeguare `Products` aggiungendo `Code nvarchar(30)` univoco e una relazione verso `Categories`.
+- Mappare `Product.UnitCost` su `Products.Price` e `Product.Stock` su `Products.StockQuantity`.
+- Mantenere `Products.Category` solo se serve compatibilita temporanea; preferire una FK verso `Categories` per integrita referenziale.
+- Adeguare `Customers` aggiungendo `AvatarInitials nvarchar(5)` e rendendo gestibile `Address` con default o nullable se non usato dalle view.
+- Mappare `Order.OrderDate` su `Orders.CreatedAt`; lasciare `UpdatedAt` nullable e `Notes` nullable.
+- Usare `OrderItems.ProductId` come relazione verso `Products`; ricavare `ProductName` tramite join quando si costruiscono i model per le view.
+- Mantenere `OrderItem.TotalPrice` come valore calcolato lato model/query, senza colonna persistita obbligatoria.
+
+### Differenze Principali
+
+- Il mock ha categorie normalizzate; il database attuale ha solo categoria testuale su `Products`.
+- Il mock identifica prodotti con `Code`; il database attuale non ha codice prodotto.
+- Il mock espone `AvatarInitials`; il database attuale espone `Address`, non usato dalle view principali.
+- Il mock usa `OrderDate`; il database attuale usa `CreatedAt`.
+- Il mock collega righe ordine al prodotto tramite nome; il database reale usa `ProductId`.
+- Il database contiene gia dati demo minimi, molto meno estesi dei mock.
 
 ### Decisioni Prese
 
-- L'helper e rimasto privato dentro `MockDataService` per limitare il perimetro della modifica.
-- Non sono stati aggiornati i test nello STEP 3 perche la suite di regressione esistente copre gia il comportamento pubblico toccato: page size non valido, page size tutti, filtri e ordinamenti principali.
-- Non sono stati modificati controller, Razor view, parametri query, sorting o filtri.
+- Fase 3 dovra creare o adeguare lo schema prima del seed, senza modificare le tabelle ASP.NET Identity.
+- Il modello target deve preservare i contratti MVC esistenti e i parametri query delle view.
+- `MockDataService` puo restare temporaneamente come fonte seed, ma non dovra restare sorgente runtime dopo la Fase 5.
+- Il seed dovra essere idempotente e riconoscere dati mock tramite codici stabili `CAT-*`, `PRD-2026-*`, `ORD-2026-*`.
 
 ### Rischi Residui
 
-- I test non coprono ancora tutte le combinazioni di `page` fuori range e `pageSize`; la copertura puo essere ampliata in una fase test dedicata se necessario.
-- La normalizzazione di sorting e filtri resta duplicata e verra affrontata nella Fase 3.
+- Serve decidere nella Fase 3 se conservare i dati demo attuali o affiancare i dati seed mock.
+- Se `Products.Category` viene mantenuta insieme alla FK, bisogna evitare doppia fonte di verita.
+- La generazione mock degli ordini usa `DateTime.Now`; il seed deve fissare o normalizzare le date per evitare variazioni non desiderate.
+- L'adeguamento schema puo richiedere migration EF Core o script SQL controllato; la scelta andra verificata rispetto al progetto esistente.
 
-## Fase 3 - Separazione Query e Ordinamenti Mock
+### Prossimo Step
+
+Eseguire Fase 3: introdurre accesso dati EF Core e schema database coerente con lo schema target.
+
+## Fase 3 - Accesso Dati EF Core e Schema Database
 
 ### Obiettivo
 
-Rendere piu leggibili sorting e filtri per ordini, clienti, prodotti e categorie, mantenendo dati mock e contratti correnti.
+Introdurre il layer dati SQL Server e creare/adeguare le tabelle necessarie.
 
-### Stato
+### Attivita
 
-Completata e validata.
-
-### Checklist
-
-- [x] Separare normalizzazione sort da applicazione ordinamenti.
-- [x] Evitare switch troppo lunghi dove una piccola funzione dedicata migliora leggibilita.
-- [x] Mantenere fallback esistenti per valori non validi.
-- [x] Aggiornare o aggiungere test per sort non validi e direzioni non valide.
-- [x] Eseguire test e build.
+- [x] Aggiungere pacchetti EF Core SQL Server se necessari.
+- [x] Creare `DbContext` e configurazioni entity.
+- [x] Registrare configurazione e DI in `Program.cs`.
+- [x] Caricare `secret.json` nella configurazione.
+- [x] Creare schema SQL coerente con `DashboardAppDb`.
+- [x] Applicare schema al database.
 
 ### File o Aree Coinvolte
 
-- `Services/MockDataService.cs`
-- `DashboardOrders.Tests/`
-
-### Impatti Backend
-
-- Migliora leggibilita e riduce rischio di regressioni future su sorting e filtri.
-
-### Impatti Frontend
-
-- Nessun cambio previsto alle view.
+- `DashboardOrders.csproj`
+- `Program.cs`
+- `Data/`
+- `scripts/`
 
 ### Validazioni
 
-- `dotnet test DashBoard01.sln`
 - `dotnet build DashBoard01.sln`
+- Verifica tabelle e foreign key su SQL Server.
 
 ### Definition of Done
 
-- Sorting e filtri sono piu isolati e coperti da test.
-- Parametri `sortBy` e `sortDirection` restano compatibili.
+- Il progetto compila con accesso dati configurato.
+- Le tabelle applicative sono presenti e coerenti.
 
 ### File Modificati
 
-- `Services/MockDataService.cs`: aggiunte mappe private delle colonne ordinabili per ordini, categorie, clienti, prodotti e dashboard.
-- `Services/MockDataService.cs`: aggiunti helper privati `NormalizeSortBy` e `NormalizeSortDirection`.
-- `Services/MockDataService.cs`: separata l'applicazione degli ordinamenti in `SortOrders`, `SortCategories`, `SortCustomerSummaries`, `SortProducts` e `SortDashboardOrders`.
-- `DashboardOrders.Tests/MockDataServiceTests.cs`: aggiunti test di fallback per sort non valido su dashboard, clienti e prodotti.
+- `DashboardOrders.csproj`: aggiunti package EF Core `Microsoft.EntityFrameworkCore.SqlServer`, `Microsoft.EntityFrameworkCore.Design` e `Microsoft.EntityFrameworkCore.Tools` versione `9.0.12`.
+- `Program.cs`: aggiunto caricamento opzionale di `secret.json`, lettura di `ConnectionStrings:DashboardAppDb` e registrazione scoped di `DashboardOrdersDbContext`.
+- `Data/DashboardOrdersDbContext.cs`: creato `DbContext` con mapping di tabelle, chiavi, indici, precisioni decimal e relazioni.
+- `Data/Entities/CategoryEntity.cs`: aggiunta entity per `Categories`.
+- `Data/Entities/ProductEntity.cs`: aggiunta entity per `Products`.
+- `Data/Entities/CustomerEntity.cs`: aggiunta entity per `Customers`.
+- `Data/Entities/OrderEntity.cs`: aggiunta entity per `Orders`.
+- `Data/Entities/OrderItemEntity.cs`: aggiunta entity per `OrderItems`.
+- `scripts/2026-04-17-prepare-dashboard-schema.sql`: aggiunto script SQL idempotente per adeguare lo schema esistente.
 - `docs/PLAN.md`: aggiornata la chiusura della Fase 3.
 
-### Validazione Eseguita
+### Schema Applicato
 
-- `dotnet test DashBoard01.sln`: superato con 13 test passati, 0 falliti.
-- `dotnet build DashBoard01.sln`: superato con 0 warning e 0 errori.
-
-### Decisioni Prese
-
-- Gli helper di sort restano privati dentro `MockDataService` per evitare nuove astrazioni pubbliche.
-- I fallback esistenti sono mantenuti: ordini e dashboard su `date/desc`, categorie su `code/asc`, clienti su `totalAmount/desc`, prodotti su `name/asc`.
-- Nessuna modifica a controller, Razor view, route o parametri query.
-
-### Rischi Residui
-
-- Le funzioni di sort sono piu isolate ma restano nello stesso servizio statico.
-- I test coprono i fallback principali, non ogni singola combinazione colonna/direzione.
-
-## Fase 4 - Consolidamento Presentazione Razor Ricorrente
-
-### Obiettivo
-
-Ridurre duplicazione nelle view Razor su formattazione valuta, stato ordine e route values condivisi, senza introdurre un sistema UI nuovo.
-
-### Stato
-
-Completata e validata.
-
-### Checklist
-
-- [x] Identificare duplicazioni reali tra `Index`, `Orders`, `Customers` e `Products`.
-- [x] Estrarre solo componenti o helper piccoli, coerenti con partial esistenti.
-- [x] Evitare modifiche visuali estese.
-- [x] Verificare rendering Razor con build.
-- [x] Eseguire controllo desktop/mobile se vengono toccati layout o CSS.
-
-### File o Aree Coinvolte
-
-- `Views/Home/*.cshtml`
-- `Views/Shared/*.cshtml`
-- `Models/` se servono view model di supporto piccoli.
-- `Styles/app.css` solo se necessario.
-
-### Impatti Backend
-
-- Limitati a eventuali view model di supporto.
-
-### Impatti Frontend
-
-- Possibile riduzione markup duplicato.
-- Nessun cambio visuale intenzionale.
-- Layout desktop/mobile da verificare se cambia struttura HTML.
-
-### Validazioni
-
-- `dotnet build DashBoard01.sln`
-- `npm run build:css` se viene modificato `Styles/app.css`.
-
-### Definition of Done
-
-- La duplicazione Razor scelta e ridotta.
-- Le pagine principali compilano.
-- Nessuna regressione intenzionale di layout o form.
-
-### File Modificati
-
-- `Models/DisplayFormatter.cs`: aggiunto helper condiviso per `FormatEuro` e `FormatNumber`.
-- `Models/OrderStatusPresentation.cs`: aggiunta rappresentazione condivisa dello stato ordine.
-- `Views/_ViewImports.cshtml`: aggiunto import statico di `DisplayFormatter`.
-- `Views/Home/Index.cshtml`: rimossa formattazione locale e sostituito switch stato ordine con helper condiviso.
-- `Views/Home/Orders.cshtml`: rimossa formattazione locale e sostituito helper locale stato ordine con helper condiviso.
-- `Views/Home/Customers.cshtml`: rimossa formattazione locale.
-- `Views/Home/Products.cshtml`: rimossa formattazione locale numerica e valuta.
-- `docs/PLAN.md`: aggiornata la chiusura della Fase 4.
+- Creata tabella `dbo.Categories` con `Code`, `Name`, `Description`.
+- Inserita categoria tecnica `UNCATEGORIZED` per conservare i dati demo preesistenti.
+- Aggiunte a `dbo.Products` le colonne `Code nvarchar(30) NOT NULL` e `CategoryCode nvarchar(20) NOT NULL`.
+- Aggiunti indici `IX_Products_Code` e `IX_Products_CategoryCode`.
+- Aggiunta FK `FK_Products_Categories_CategoryCode` da `Products.CategoryCode` a `Categories.Code`.
+- Aggiunta a `dbo.Customers` la colonna `AvatarInitials nvarchar(5) NOT NULL`.
+- Resa nullable la colonna `dbo.Customers.Address`.
+- Adeguata `dbo.Orders.OrderNumber` a `nvarchar(30) NOT NULL`.
+- Aggiunto indice univoco `IX_Orders_OrderNumber`.
+- `OrderItems` non e stata modificata perche gia coerente con `OrderId`, `ProductId`, `Quantity`, `UnitPrice`.
 
 ### Validazione Eseguita
 
-- `dotnet build DashBoard01.sln`: superato con 0 warning e 0 errori.
-- `npm run build:css`: non eseguito perche `Styles/app.css` e asset CSS non sono stati modificati.
+- `git status --short`: verificato prima delle modifiche documentali e prima dell'applicazione schema.
+- Lettura riferimenti `aspnet-core` su `Program.cs`, DI, configurazione e EF Core.
+- `dotnet build DashBoard01.sln`: superato dopo introduzione EF Core con 0 warning e 0 errori.
+- Validazione iniziale dello script SQL con transazione e `ROLLBACK`: superata prima dell'applicazione effettiva.
+- Applicazione di `scripts/2026-04-17-prepare-dashboard-schema.sql` su `DashboardAppDb`: completata.
+- Query di verifica tabelle e colonne: `Categories`, `Customers`, `Products`, `Orders`, `OrderItems` presenti e coerenti con il mapping.
+- Query di verifica FK e indici: relazioni e indici previsti presenti.
+- Query di verifica conteggi: `Categories=1`, `Customers=3`, `Products=5`, `Orders=4`, `OrderItems=5`.
+- `dotnet build DashBoard01.sln`: superato dopo applicazione schema con 0 warning e 0 errori.
+- `git diff --check`: superato senza errori; restano solo warning LF/CRLF gia noti.
 
 ### Decisioni Prese
 
-- Il consolidamento resta limitato a helper di presentazione e import Razor.
-- Non sono state modificate classi Tailwind, struttura HTML, controller, route o parametri query.
-- Non sono stati introdotti nuovi componenti UI o librerie.
+- Usare EF Core 9.0.12 per coerenza con `net9.0` e con i pacchetti disponibili in cache locale.
+- Non usare migration EF automatica in questa fase: il database esiste gia, contiene `__EFMigrationsHistory`, Identity e tabelle applicative parziali; e stato preferito uno script SQL controllato.
+- Non modificare le tabelle ASP.NET Identity.
+- Non eseguire seed dati mock nella Fase 3.
+- Conservare i dati demo preesistenti, assegnando codici legacy e categoria tecnica `UNCATEGORIZED`.
+
+### Problemi Emersi nella Fase
+
+- La validazione SQL con `SET NOEXEC ON` non e adatta a script che aggiungono colonne usate in batch successive, perche SQL Server compila contro lo schema iniziale.
+- Lo script e stato corretto con separatori `GO` e validato con transazione `ROLLBACK` prima dell'applicazione.
 
 ### Rischi Residui
 
-- Restano duplicazioni sui factory locali degli header ordinabili e sui route values nelle view.
-- La verifica desktop/mobile e stata considerata non necessaria in questa fase perche non sono cambiate classi CSS o struttura del layout.
+- `Products.Category` resta presente insieme a `CategoryCode`: fino al refactor runtime bisogna evitare doppia fonte di verita.
+- I dati demo attuali sono conservati e marcati come legacy; la Fase 4 deve decidere come affiancare i dati mock senza duplicazioni.
+- `dotnet-ef` installato e versione `10.0.5`, mentre i package runtime EF sono `9.0.12`; non e stato usato per generare migration in questa fase.
 
-## Fase 5 - Revisione View Model di Paginazione
+### Prossimo Step
+
+Eseguire Fase 4: creare seed idempotente da `MockDataService` e popolare il database con categorie, prodotti, clienti, ordini e righe ordine mock.
+
+## Fase 4 - Seed Database da MockDataService
 
 ### Obiettivo
 
-Valutare e ridurre la duplicazione delle proprieta di paginazione nei view model di pagina, intervenendo solo se il risultato resta semplice e leggibile.
+Popolare il database con dati ricavati da `MockDataService` in modo idempotente.
 
-### Stato
+### Attivita
 
-Completata e validata.
-
-### Checklist
-
-- [x] Confrontare duplicazioni tra `DashboardViewModel`, `OrdersPageViewModel`, `CustomersPageViewModel` e `ProductsPageViewModel`.
-- [x] Decidere se usare un base model, un record di supporto o lasciare invariato se l'astrazione peggiora la chiarezza.
-- [x] Applicare il cambiamento minimo utile.
-- [x] Aggiornare test se cambia costruzione dei model.
-- [x] Eseguire test e build.
+- [x] Creare servizio di seed o script controllato.
+- [x] Usare i dati generati da `MockDataService` come fonte iniziale.
+- [x] Evitare duplicazioni su riesecuzioni.
+- [x] Verificare conteggi e aggregazioni.
 
 ### File o Aree Coinvolte
 
-- `Models/*PageViewModel.cs`
 - `Services/MockDataService.cs`
-- `DashboardOrders.Tests/`
-
-### Impatti Backend
-
-- Possibile consolidamento di proprieta derivate di paginazione.
-
-### Impatti Frontend
-
-- Le view devono continuare a usare le stesse proprieta o essere aggiornate in modo puntuale.
+- `Data/`
+- `Program.cs` se il seed viene avviato in startup controllato
 
 ### Validazioni
 
-- `dotnet test DashBoard01.sln`
-- `dotnet build DashBoard01.sln`
+- Conteggio categorie, prodotti, clienti, ordini e righe ordine.
+- Query di controllo aggregazioni.
 
 ### Definition of Done
 
-- Duplicazione ridotta solo se il codice resta piu chiaro.
-- Tutte le view compilano.
+- Database popolato.
+- Rilanci successivi non duplicano i dati.
 
 ### File Modificati
 
-- `Models/PagedPageViewModel.cs`: aggiunta base class astratta per proprieta e helper derivati di paginazione.
-- `Models/DashboardViewModel.cs`: rimossa duplicazione di paginazione e aggiunta ereditarieta da `PagedPageViewModel`.
-- `Models/OrdersPageViewModel.cs`: rimossa duplicazione di paginazione e aggiunta ereditarieta da `PagedPageViewModel`.
-- `Models/CustomersPageViewModel.cs`: rimossa duplicazione di paginazione e aggiunta ereditarieta da `PagedPageViewModel`.
-- `Models/ProductsPageViewModel.cs`: rimossa duplicazione di paginazione e aggiunta ereditarieta da `PagedPageViewModel`.
-- `docs/PLAN.md`: aggiornata la chiusura della Fase 5.
+- `Services/MockDataService.cs`: esposto `GetCustomers()` per riutilizzare i clienti mock come fonte seed.
+- `Services/DashboardOrdersDatabaseSeeder.cs`: creato seeder EF Core idempotente per categorie, prodotti, clienti, ordini e righe ordine.
+- `Program.cs`: registrato `DashboardOrdersDatabaseSeeder` e aggiunto comando controllato `--seed-database`.
+- `Data/Entities/ProductEntity.cs`: adeguata navigation EF nullable-safe.
+- `Data/Entities/OrderEntity.cs`: adeguata navigation EF nullable-safe.
+- `Data/Entities/OrderItemEntity.cs`: adeguate navigation EF nullable-safe.
+- `docs/PLAN.md`: aggiornata chiusura Fase 4.
 
 ### Validazione Eseguita
 
-- `dotnet test DashBoard01.sln`: superato con 13 test passati, 0 falliti.
-- `dotnet build DashBoard01.sln`: superato con 0 warning e 0 errori.
+- `git status --short`: verificato prima delle modifiche e prima dell'aggiornamento documentale.
+- `dotnet build DashBoard01.sln`: superato prima dell'esecuzione seed con 0 warning e 0 errori.
+- `dotnet run --project DashboardOrders.csproj -- --seed-database`: eseguito con successo.
+- Conteggi post-seed: `Categories=8`, `Customers=103`, `Products=205`, `Orders=177`, `OrderItems=659`.
+- Conteggi mock post-seed: `MockCategories=7`, `MockProducts=200`, `MockOrders=173`.
+- Aggregazioni post-seed: `TotalOrders=177`, `Revenue=668854.95`, `AverageOrderValue=3778.84`.
+- Coerenza relazionale: `OrderItemsWithoutOrder=0`, `OrderItemsWithoutProduct=0`, `OrdersWithoutItems=0`, `ProductsWithoutCategory=0`.
+- Idempotenza: seconda esecuzione di `--seed-database` completata senza duplicare record; i conteggi sono rimasti invariati.
 
 ### Decisioni Prese
 
-- Introdotta una base class piccola per i soli view model di pagina che espongono direttamente stato di paginazione.
-- `PaginationViewModel` resta separato perche include responsabilita specifiche della partial, come route values e pagine visibili.
-- Non sono stati modificati controller, servizi, Razor view, route o parametri query.
-- Non sono stati aggiunti test perche il comportamento pubblico dei model e rimasto invariato e la suite esistente copre i flussi serviti da `MockDataService`.
+- Il seed e avviabile solo in modo esplicito con argomento `--seed-database`, non automaticamente allo startup MVC.
+- I dati demo preesistenti vengono conservati e affiancati ai dati mock.
+- Le categorie e i prodotti mock sono riconosciuti tramite codici stabili `CAT-*` e `PRD-2026-*`.
+- Gli ordini mock sono riconosciuti tramite `OrderNumber` stabile `ORD-2026-*`.
+
+### Problemi Emersi nella Fase
+
+- La prima esecuzione sandbox di `dotnet run --project DashboardOrders.csproj -- --seed-database` e stata bloccata da `UnauthorizedAccessException` sulla sentinel `.dotnet`; il comando e stato rieseguito con permessi elevati.
+- La verifica con una password SQL ipotizzata ha fallito; le query successive hanno usato le credenziali gia presenti in `secret.json` senza duplicarle nel piano.
+- La query iniziale di aggregazione usava `OrderDate`, ma lo schema reale usa `Orders.CreatedAt`.
+- Rilevata anomalia dati preesistente: `ORD-002` ha `TotalAmount=549.99`, mentre le righe ordine sommano `599.99`, differenza `-50.00`.
 
 ### Rischi Residui
 
-- La logica derivata di paginazione resta duplicata anche in `PaginationViewModel`, ma e stata lasciata intenzionalmente per evitare accoppiamento con la partial.
-- Le view dipendono ancora direttamente da alcune proprieta di paging dei model pagina; eventuali ulteriori consolidamenti vanno valutati solo se riducono codice senza peggiorare la leggibilita Razor.
+- `ORD-002` resta incoerente finche non viene corretta la riga ordine o il totale ordine.
+- Il runtime MVC usa ancora `MockDataService`; la Fase 5 deve spostare view ed endpoint sul database.
 
-## Fase 6 - Pulizia Layout e Ricerca Clienti
+### Prossimo Step
+
+Eseguire Fase 5: creare un servizio applicativo database equivalente a `MockDataService` e aggiornare controller/view per leggere da SQL Server.
+
+## Fase 5 - Sostituzione Runtime di MockDataService
 
 ### Obiettivo
 
-Rendere piu chiara la logica in `_Layout.cshtml` relativa a navigazione attiva e ricerca clienti, preservando comportamento desktop/mobile.
+Far leggere view ed endpoint dal database invece che dai dati mock statici.
 
-### Stato
+### Attivita
 
-Completata e validata.
-
-### Checklist
-
-- [x] Isolare logica di navigazione attiva dove utile.
-- [x] Verificare la gestione `ViewData` per ricerca clienti.
-- [x] Evitare modifiche non necessarie agli stili.
-- [x] Validare build Razor.
-- [x] Verificare layout desktop/mobile.
+- [x] Creare servizio applicativo database con metodi equivalenti a quelli usati dai controller.
+- [x] Portare sorting, filtri, paging e aggregazioni su query database.
+- [x] Aggiornare `HomeController` e `CategoryController`.
+- [x] Mantenere compatibili view model e parametri query.
+- [x] Lasciare `MockDataService` solo come fonte seed o rimuoverne l'uso runtime.
 
 ### File o Aree Coinvolte
 
-- `Views/Shared/_Layout.cshtml`
 - `Controllers/HomeController.cs`
-- `Views/Home/Customers.cshtml`
-- `Styles/app.css` solo se necessario.
-
-### Impatti Backend
-
-- Possibile piccola revisione dei dati passati al layout.
-
-### Impatti Frontend
-
-- Navigazione e ricerca devono mantenere comportamento attuale.
-
-### Validazioni
-
-- `dotnet build DashBoard01.sln`
-- `npm run build:css` se viene modificato `Styles/app.css`.
-
-### Definition of Done
-
-- `_Layout.cshtml` e piu leggibile.
-- Navigazione e ricerca clienti restano operative.
-
-### File Modificati
-
-- `Models/CustomerSearchFormViewModel.cs`: aggiunto view model di supporto per centralizzare stato e fallback della ricerca clienti nel layout.
-- `Controllers/HomeController.cs`: sostituita la scrittura diretta di quattro valori `ViewData` con `CustomerSearchFormViewModel`.
-- `Views/Shared/_Layout.cshtml`: consolidata la navigazione desktop/mobile in una sola lista di voci, collegata la ricerca clienti al nuovo view model e rimosso lo script inline ridondante di active state.
-- `docs/PLAN.md`: aggiornata la chiusura della Fase 6.
-
-### Validazione Eseguita
-
-- `dotnet build DashBoard01.sln`: superato con 0 warning e 0 errori.
-- `dotnet test DashBoard01.sln`: superato con 13 test passati, 0 falliti.
-- Verifica HTTP locale su `http://localhost:5032/Home/Customers?search=mar&pageSize=20&sortBy=customer&sortDirection=asc`: risposta 200.
-- Verifica Playwright desktop 1440x900 sulla pagina clienti: sidebar, ricerca e contenuto principale renderizzati.
-- Verifica Playwright mobile 390x844 sulla pagina clienti: navigazione mobile, contenuto e tabella scrollabile renderizzati.
-- `npm run build:css`: non eseguito perche `Styles/app.css` e asset CSS non sono stati modificati.
-
-### Decisioni Prese
-
-- La ricerca clienti resta nel layout con gli stessi `id`, `name`, hidden field e data attribute usati da `wwwroot/js/site.js`.
-- Lo stato active della navigazione e calcolato lato Razor; lo script inline duplicato e stato rimosso per evitare doppia fonte di verita.
-- Non sono state modificate classi Tailwind, struttura dei form, route o parametri query.
-
-### Rischi Residui
-
-- Il form di ricerca resta visibile solo da `sm` in su come prima della fase; non e stata introdotta una ricerca mobile per evitare cambi visuali.
-- La lista delle voci di navigazione resta locale al layout; potra diventare un model dedicato solo se altre view dovranno riusarla.
-
-## Fase 7 - Revisione Finale e Debito Residuo
-
-### Obiettivo
-
-Consolidare gli esiti delle fasi, verificare che il refactoring abbia ridotto complessita e documentare eventuale debito tecnico residuo.
-
-### Stato
-
-Completata e validata.
-
-### Checklist
-
-- [x] Eseguire build e test completi.
-- [x] Verificare `git status --short`.
-- [x] Aggiornare PRD o PLAN se ci sono deviazioni motivate.
-- [x] Documentare rischi residui e follow-up.
-- [x] Preparare riepilogo finale dei file modificati e delle validazioni.
-
-### File o Aree Coinvolte
-
-- `docs/PRD.md`
-- `docs/PLAN.md`
-- File toccati nelle fasi precedenti.
-
-### Impatti Backend
-
-- Nessun nuovo impatto previsto; fase di verifica.
-
-### Impatti Frontend
-
-- Nessun nuovo impatto previsto; fase di verifica.
+- `Controllers/CategoryController.cs`
+- `Services/`
+- `Data/`
+- `Models/`
 
 ### Validazioni
 
 - `dotnet test DashBoard01.sln`
 - `dotnet build DashBoard01.sln`
-- `npm run build:css` se sono stati toccati file Tailwind.
+- Verifiche HTTP sulle pagine principali.
 
 ### Definition of Done
 
-- Piano aggiornato.
-- Validazioni complete registrate.
-- Prossimi passi chiari o refactoring chiuso.
+- Nessuna action MVC usa `MockDataService` come sorgente runtime.
+- Pagine principali rispondono con dati da SQL Server.
 
 ### File Modificati
 
-- `docs/PLAN.md`: aggiornata la chiusura della Fase 7 e registrato l'esito complessivo del refactoring.
+- `Services/IDashboardOrdersDataService.cs`: aggiunta interfaccia runtime per dashboard, ordini, clienti, prodotti e categorie.
+- `Services/DashboardOrdersDataService.cs`: aggiunto servizio EF Core che mappa entity SQL Server verso model e view model MVC.
+- `Program.cs`: registrato `IDashboardOrdersDataService`, normalizzata connection string SQL Server con `TrustServerCertificate`, abilitato `EnableRetryOnFailure()` e limitati i provider logging a console/debug per evitare dipendenza da Windows EventLog.
+- `Controllers/HomeController.cs`: sostituite le chiamate runtime a `MockDataService` con il servizio database iniettato.
+- `Controllers/CategoryController.cs`: sostituite letture e POST categorie con persistenza tramite servizio database.
 
 ### Validazione Eseguita
 
-- `git status --short`: verificato il perimetro dei file modificati e non tracciati.
-- `dotnet test DashBoard01.sln`: superato con 13 test passati, 0 falliti.
+- `git status --short`: verificato prima delle modifiche documentali e prima degli interventi sui controller.
+- `dotnet build DashBoard01.sln`: superato dopo il nuovo servizio, dopo `HomeController`, dopo `CategoryController` e nelle verifiche finali con 0 warning e 0 errori.
+- Controllo statico `MockDataService` su `Controllers`, `Program.cs` e nuovo servizio runtime: nessun riferimento residuo.
+- Smoke runtime fuori sandbox con SQL Server Docker:
+  - `/`: `200`
+  - `/Home/Orders`: `200`
+  - `/Home/Customers`: `200`
+  - `/Home/Products`: `200`
+  - `/Category`: `200`
+  - `/Category/Details?code=CAT-001`: `200`
+  - `/Category/Details?code=NO-SUCH-CATEGORY`: `404` atteso.
+
+### Decisioni Prese
+
+- I controller MVC restano responsabili solo di orchestrazione HTTP; query, mapping e aggregazioni sono nel servizio applicativo.
+- Le view continuano a ricevere i model/view model esistenti, non entity EF Core.
+- `MockDataService` resta disponibile come fonte seed per `DashboardOrdersDatabaseSeeder`, ma non viene piu usato dai controller runtime.
+- La cancellazione categoria viene bloccata dal servizio se esistono prodotti collegati.
+
+### Problemi Emersi nella Fase
+
+- Lo smoke runtime in sandbox ha fallito per `Accesso negato` sul provider Windows EventLog; `Program.cs` e stato aggiornato per usare console/debug.
+- La connessione EF Core verso SQL Server Docker locale ha richiesto `TrustServerCertificate = true`; la configurazione viene applicata in codice senza esporre segreti.
+- Le verifiche HTTP che raggiungono SQL Server Docker richiedono esecuzione fuori sandbox nell'ambiente corrente.
+
+### Rischi Residui
+
+- Non sono stati ancora aggiunti test automatici specifici per `DashboardOrdersDataService` e controller; rimandato alla Fase 6.
+- Le query runtime caricano liste applicative in memoria prima di sorting/paging per mantenere compatibilita con il comportamento mock; valutare ottimizzazione se il dataset cresce.
+
+### Prossimo Step
+
+Eseguire Fase 6: aggiungere o aggiornare test e rieseguire build/verifiche complete.
+
+## Fase 6 - Test, Build e Verifica UI
+
+### Obiettivo
+
+Proteggere la migrazione con test e controlli end-to-end essenziali.
+
+### Attivita
+
+- [x] Aggiornare o aggiungere test per servizio database e controller.
+- [x] Validare CRUD categorie.
+- [x] Verificare desktop/mobile se vengono toccate view o CSS.
+- [x] Eseguire build/test completi.
+
+### File o Aree Coinvolte
+
+- `DashboardOrders.Tests/`
+- `Controllers/`
+- `Services/`
+- `Views/`
+
+### Validazioni
+
+- `dotnet test DashBoard01.sln`
+- `dotnet build DashBoard01.sln`
+- Verifiche HTTP locali.
+- Playwright desktop/mobile se markup o CSS cambiano.
+
+### Definition of Done
+
+- Suite test e build passano.
+- Le pagine principali funzionano con il database.
+
+### File Modificati
+
+- `DashboardOrders.Tests/HomeControllerTests.cs`: aggiunti test unitari su `HomeController` con `IDashboardOrdersDataService` mockato.
+- `DashboardOrders.Tests/CategoryControllerTests.cs`: aggiunti test unitari su letture, create, edit, delete, errori 400/404/409 e input nulli per `CategoryController`.
+- `Controllers/CategoryController.cs`: rafforzati i POST `Create` ed `Edit` per gestire payload nulli con `ModelState` non valido.
+- `docs/PLAN.md`: aggiornata chiusura Fase 6.
+
+### Validazione Eseguita
+
+- `git status --short`: verificato prima delle modifiche di test e prima dell'aggiornamento piano.
+- Verifica pacchetti test: `xunit` `2.9.3`, `FluentAssertions` e `NSubstitute` presenti in `DashboardOrders.Tests.csproj`.
+- `dotnet test DashBoard01.sln`: superato fuori sandbox con `36` test passati, `0` falliti, `0` ignorati.
 - `dotnet build DashBoard01.sln`: superato con 0 warning e 0 errori.
-- `git diff --check`: superato senza errori; Git segnala solo avvisi di conversione LF/CRLF nella working copy.
-- `npm run build:css`: non eseguito perche nessuna fase ha modificato `Styles/app.css` o introdotto cambi CSS da compilare.
+- Smoke HTTP finale fuori sandbox con SQL Server Docker:
+  - `/`: `200`
+  - `/Home/Orders`: `200`
+  - `/Home/Customers`: `200`
+  - `/Home/Products`: `200`
+  - `/Category`: `200`
+  - `/Category/Details?code=CAT-001`: `200`
+  - `/Category/Details?code=NO-SUCH-CATEGORY`: `404` atteso.
 
-### Esito Complessivo
+### Decisioni Prese
 
-- Creato un progetto test xUnit attivo nella solution.
-- Ridotta duplicazione di paging e sorting in `MockDataService`.
-- Consolidata la presentazione Razor ricorrente per formattazione valuta, numeri e stato ordine.
-- Consolidate le proprieta comuni dei view model paginati.
-- Semplificato il layout condiviso per navigazione e ricerca clienti.
-- Mantenuti invariati contratti principali: route, parametri query, sorting, filtri e paginazione.
+- La copertura automatica della Fase 6 si concentra su controller MVC isolati tramite `NSubstitute`, evitando dipendenze da SQL Server reale nei test unitari.
+- I test diretti sul servizio EF Core restano fuori da questa fase per non introdurre un provider database aggiuntivo solo per test; la copertura runtime del servizio e garantita dagli smoke HTTP contro SQL Server Docker.
+- Non sono state modificate view o CSS nella Fase 6; la verifica UI resta una smoke HTTP server-side sulle pagine principali.
 
-### Debito Residuo e Follow-up
+### Problemi Emersi nella Fase
 
-- `MockDataService` resta un servizio statico ampio: i dati mock, le query e le aggregazioni sono piu leggibili, ma non sono stati separati in repository o provider dedicati.
-- I test coprono regressioni principali su paging, sorting, filtri e aggregazioni, ma non tutte le combinazioni colonna/direzione e non includono ancora test controller MVC.
-- `PaginationViewModel` mantiene logica di paging derivata separata da `PagedPageViewModel` per evitare accoppiamento con la partial; unificazione ulteriore va valutata solo se emerge riuso reale.
-- Le factory locali degli header ordinabili nelle view restano nelle singole pagine; una partial o helper dedicato potrebbe essere utile solo se si interviene ancora sulle view.
-- Il CRUD categorie non e stato rifattorizzato in queste fasi, perche il piano si e concentrato sulle pagine dashboard, ordini, clienti, prodotti e sul layout.
+- `dotnet test DashBoard01.sln` in sandbox ha fallito per `UnauthorizedAccessException` sulla sentinel `.dotnet`; il comando e stato rieseguito fuori sandbox.
+
+### Rischi Residui
+
+- Manca ancora una suite di integrazione con `WebApplicationFactory` o database test dedicato; da valutare se il progetto cresce.
+- L'anomalia dati preesistente `ORD-002` resta fuori scope della Fase 6.
+
+### Prossimo Step
+
+Eseguire Fase 7: avviare l'applicazione, verificare il flusso finale e archiviare PRD/PLAN.
+
+## Fase 7 - Avvio Finale e Chiusura
+
+### Obiettivo
+
+Avviare la solution senza errori, documentare esito finale e archiviare PRD/PLAN.
+
+### Attivita
+
+- Avviare l'applicazione.
+- Verificare home, ordini, clienti, prodotti e categorie.
+- Controllare `git status --short`.
+- Aggiornare piano con file modificati, validazioni, rischi residui.
+- Archiviare `docs/PRD.md` e `docs/PLAN.md` in `docs/History`.
+
+### Validazioni
+
+- `dotnet run --project DashboardOrders.csproj --urls http://localhost:5000`
+- Verifica HTTP home.
+
+### Definition of Done
+
+- L'app si avvia senza errori.
+- Migrazione documentata e archiviata.
 
 ## Registro Decisioni
 
-- 2026-04-16: il primo intervento tecnico sara la base test, per ridurre il rischio prima di refactoring su `MockDataService`.
-- 2026-04-16: nessuna modifica visuale intenzionale e inclusa nelle prime fasi.
-- 2026-04-16: la Fase 1 usa test diretti su `MockDataService`, senza modificare il servizio sotto test.
-- 2026-04-16: `DashboardOrders.csproj` esclude `DashboardOrders.Tests/**` per evitare che il progetto web compili i file test.
-- 2026-04-16: la Fase 2 concentra il paging in un helper privato di `MockDataService` senza cambiare contratti pubblici.
-- 2026-04-16: la Fase 3 separa normalizzazione e applicazione degli ordinamenti restando dentro `MockDataService`.
-- 2026-04-16: la Fase 4 consolida formattazione e presentazione stato ordine senza modifiche visuali intenzionali.
-- 2026-04-16: la Fase 5 introduce `PagedPageViewModel` per i view model pagina, lasciando separato `PaginationViewModel`.
-- 2026-04-16: la Fase 6 centralizza lo stato ricerca clienti in `CustomerSearchFormViewModel` e mantiene l'active navigation lato Razor.
-- 2026-04-16: la Fase 7 chiude il refactoring pianificato con build, test e controllo diff superati.
+- 2026-04-17: il task viene gestito con `.NET Task Decomposition` perche include configurazione segreti, database, schema, seed, layer dati, controller, test e avvio.
+- 2026-04-17: SQL Server target e `sql-container` su `localhost,1433`, database `DashboardAppDb`.
+- 2026-04-17: le tabelle ASP.NET Identity gia presenti restano fuori scope.
+- 2026-04-17: la prima fase si limita a segreti e verifica connettivita/schema per ridurre rischio prima delle modifiche runtime.
+- 2026-04-17: il seed da `MockDataService` e stato implementato come comando esplicito `--seed-database`, idempotente e non automatico allo startup MVC.
+- 2026-04-17: il runtime MVC e stato spostato da `MockDataService` a `DashboardOrdersDataService` basato su EF Core e SQL Server.
+- 2026-04-17: aggiunti test xUnit su controller MVC con `NSubstitute` e `FluentAssertions`; suite validata con 36 test passati.
 
 ## Problemi Emersi
 
-- `dotnet build DashBoard01.sln` in sandbox ha fallito per accesso negato alla sentinel `.dotnet`; fuori sandbox ha completato con 0 warning e 0 errori.
-- `DashboardOrders.Tests` esiste come cartella ma non contiene un progetto test attivo rilevato.
-- `dotnet test DashBoard01.sln` in sandbox ha fallito per lo stesso accesso negato alla sentinel `.dotnet`; fuori sandbox ha completato correttamente.
-- Il primo `dotnet test` fuori sandbox ha evidenziato che i glob del progetto web includevano i file test; corretto con esclusioni in `DashboardOrders.csproj`.
-- `git diff --check` segnala avvisi di normalizzazione LF/CRLF, ma non errori di whitespace.
+- L'accesso Docker dal sandbox ha richiesto autorizzazione per leggere stato e variabili ambiente del container.
+- La validazione SQL con `NOEXEC` ha fallito su colonne aggiunte nello stesso script; la validazione e stata completata con transazione e `ROLLBACK`.
+- La Fase 4 ha rilevato una incoerenza dati preesistente su `ORD-002`: totale ordine `549.99`, totale righe `599.99`.
+- Lo smoke runtime della Fase 5 ha richiesto disattivazione del provider Windows EventLog e trust esplicito del certificato SQL Server Docker locale.
+- `dotnet test` in sandbox ha richiesto esecuzione fuori sandbox per il blocco sulla sentinel `.dotnet`.
 
 ## Prossimo Step
 
-Refactoring pianificato completato. Prossimo passo opzionale: preparare commit focalizzato oppure aprire una nuova iterazione dedicata a test controller MVC e CRUD categorie.
+Eseguire Fase 7: avvio finale, verifica applicazione e chiusura documentale.
