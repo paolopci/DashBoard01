@@ -20,6 +20,37 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext)
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
         var productIdsByName = await GetProductIdsByNameAsync(products, cancellationToken);
         await SeedOrdersAsync(orders, customerIdsByEmail, productIdsByName, cancellationToken);
+        await FillNullAddressesAsync(cancellationToken);
+    }
+
+    private async Task FillNullAddressesAsync(CancellationToken cancellationToken)
+    {
+        var nullAddressCustomers = await dbContext.Customers
+            .Where(c => c.Address == null)
+            .ToListAsync(cancellationToken);
+
+        var validCustomers = await dbContext.Customers
+            .Where(c => c.Address != null)
+            .ToListAsync(cancellationToken);
+
+        if (!validCustomers.Any())
+        {
+            Console.WriteLine("Nessun cliente con indirizzo valido trovato per il campionamento.");
+            return;
+        }
+
+        var rng = new Random();
+        foreach (var customer in nullAddressCustomers)
+        {
+            var randomValidCustomer = validCustomers[rng.Next(validCustomers.Count)];
+            customer.Address = randomValidCustomer.Address;
+        }
+
+        if (nullAddressCustomers.Any())
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            Console.WriteLine($"{nullAddressCustomers.Count} indirizzi null aggiornati con successo.");
+        }
     }
 
     private async Task SeedCategoriesAsync(IEnumerable<Models.Category> categories, CancellationToken cancellationToken)
