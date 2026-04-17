@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Remove="DashboardOrders.Tests\**" />
+    <Compile Remove="scripts\**" />
     <Content Remove="DashboardOrders.Tests\**" />
     <EmbeddedResource Remove="DashboardOrders.Tests\**" />
     <None Remove="DashboardOrders.Tests\**" />
