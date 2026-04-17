@@ -1,5 +1,6 @@
 using DashboardOrders.Models;
 using DashboardOrders.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DashboardOrders.Controllers;
@@ -7,6 +8,7 @@ namespace DashboardOrders.Controllers;
 /// <summary>
 /// Controller per la gestione delle categorie.
 /// </summary>
+[Authorize]
 public class CategoryController : Controller
 {
     private const string RequiredCodeMessage = "Il campo code è obbligatorio.";

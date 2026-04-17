@@ -1,9 +1,12 @@
+using System.Diagnostics;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DashboardOrders.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly IDashboardOrdersDataService dataService;
@@ -83,5 +86,16 @@ public class HomeController : Controller
             })
             .ApplyTo(ViewData);
         return View(model);
+    }
+
+    [AllowAnonymous]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error(int? statusCode = null)
+    {
+        Response.StatusCode = statusCode ?? Response.StatusCode;
+        return View(new ErrorViewModel
+        {
+            RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+        });
     }
 }

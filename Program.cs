@@ -1,19 +1,22 @@
+using System.Reflection;
 using DashboardOrders.Data;
+using DashboardOrders.Extensions.Auth;
 using DashboardOrders.Services;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddJsonFile("secret.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true, reloadOnChange: true);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddDashboardCors(builder.Configuration);
 
 var connectionString = builder.Configuration.GetConnectionString("DashboardAppDb")
-    ?? throw new InvalidOperationException("Connection string 'DashboardAppDb' non configurata. Crea secret.json con la connection string locale.");
+    ?? throw new InvalidOperationException("Connection string 'DashboardAppDb' non configurata. Usa .NET User Secrets, variabili d'ambiente o un secret store sicuro.");
 var sqlConnectionStringBuilder = new SqlConnectionStringBuilder(connectionString)
 {
     TrustServerCertificate = true
@@ -25,6 +28,9 @@ builder.Services.AddDbContext<DashboardOrdersDbContext>(options =>
 
 builder.Services.AddScoped<IDashboardOrdersDataService, DashboardOrdersDataService>();
 builder.Services.AddScoped<DashboardOrdersDatabaseSeeder>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddDashboardIdentity();
+builder.Services.AddDashboardJwtAuthentication(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
@@ -37,16 +43,19 @@ if (args.Any(arg => string.Equals(arg, "--seed-database", StringComparison.Ordin
     return;
 }
 
-// Configure the HTTP request pipeline.
+app.UseExceptionHandler("/Home/Error");
+app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseDashboardCors();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();

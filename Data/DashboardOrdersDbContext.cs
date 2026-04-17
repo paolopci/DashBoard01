@@ -1,9 +1,10 @@
 using DashboardOrders.Data.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace DashboardOrders.Data;
 
-public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext> options) : DbContext(options)
+public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext> options) : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<CategoryEntity> Categories => Set<CategoryEntity>();
     public DbSet<ProductEntity> Products => Set<ProductEntity>();
@@ -14,6 +15,16 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ApplicationUser>(entity =>
+        {
+            entity.Property(user => user.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.City).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.Country).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.FiscalCode).HasMaxLength(16).IsRequired();
+            entity.HasIndex(user => user.FiscalCode).IsUnique();
+        });
 
         modelBuilder.Entity<CategoryEntity>(entity =>
         {

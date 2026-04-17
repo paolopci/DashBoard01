@@ -24,6 +24,21 @@
     string MobileNavLinkClass(string actionName) => IsCurrentAction(actionName)
         ? "inline-flex min-w-max items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30"
         : "inline-flex min-w-max items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600";
+
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var userName = User.Identity?.Name ?? "Utente";
+    var userInitials = string.Join(
+        string.Empty,
+        userName
+            .Split('@')[0]
+            .Split(['.', '-', '_', ' '], StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(part => part[0].ToString().ToUpperInvariant()));
+
+    if (string.IsNullOrWhiteSpace(userInitials))
+    {
+        userInitials = "UT";
+    }
 }
 <!DOCTYPE html>
 <html lang="it">
@@ -38,6 +53,7 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
+    <partial name="_ToastMessages" />
 
     <aside class="hidden w-64 shrink-0 flex-col bg-slate-900 text-white shadow-xl md:flex">
         <div class="flex h-16 items-center justify-center border-b border-slate-800">
@@ -86,13 +102,30 @@
                     </form>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <button class="text-slate-400 transition-colors hover:text-indigo-600" aria-label="Notifiche">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                </button>
-                <div class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 font-bold text-white shadow-sm">
-                    PA
-                </div>
+            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+                @if (isAuthenticated)
+                {
+                    <div class="hidden min-w-0 items-center gap-3 sm:flex">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-sm font-bold text-white shadow-sm">
+                            @userInitials
+                        </div>
+                        <span class="max-w-44 truncate text-sm font-semibold text-slate-700">@userName</span>
+                    </div>
+                    <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
+                        <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:border-rose-200 hover:text-rose-600 sm:px-4">
+                            Logout
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 sm:px-4">
+                        Login
+                    </a>
+                    <a asp-controller="Account" asp-action="Register" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:px-4">
+                        Registrati
+                    </a>
+                }
             </div>
         </header>
 
