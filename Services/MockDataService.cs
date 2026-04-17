@@ -281,6 +281,18 @@ public static class MockDataService
         return new PagedResult<T>(pagedItems, normalizedPage, normalizedPageSize, totalPages);
     }
 
+    private static string NormalizeSearch(string? search)
+    {
+        return (search ?? string.Empty).Trim();
+    }
+
+    private static List<T> ApplySearch<T>(IEnumerable<T> items, string search, Func<T, bool> predicate)
+    {
+        return search.Length >= 3
+            ? items.Where(predicate).ToList()
+            : items.ToList();
+    }
+
     private static List<Order> SortOrders(IEnumerable<Order> orders, string sortBy, string sortDirection)
     {
         return (sortBy, sortDirection) switch
@@ -409,10 +421,11 @@ public static class MockDataService
         };
     }
 
-    public static OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
+    public static OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, OrdersSortColumns, "date");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
+        var normalizedSearch = NormalizeSearch(search);
 
         var filteredOrders = customerId.HasValue
             ? Orders.Where(order => order.Customer.Id == customerId.Value).ToList()
@@ -420,6 +433,12 @@ public static class MockDataService
         var selectedCustomer = customerId.HasValue
             ? Customers.FirstOrDefault(customer => customer.Id == customerId.Value)
             : null;
+        filteredOrders = ApplySearch(filteredOrders, normalizedSearch, order =>
+            order.OrderNumber.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            order.Items.Any(item => item.ProductName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
+            OrderStatusPresentation.FromStatus(order.Status).Label.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
         filteredOrders = SortOrders(filteredOrders, normalizedSortBy, normalizedSortDirection);
         var pagedOrders = ApplyPaging(filteredOrders, page, pageSize);
 
@@ -430,6 +449,7 @@ public static class MockDataService
             TotalRevenue = filteredOrders.Where(order => order.Status != OrderStatus.Cancelled).Sum(order => order.TotalAmount),
             PendingOrders = filteredOrders.Count(order => order.Status == OrderStatus.Pending || order.Status == OrderStatus.Processing),
             ShippedOrders = filteredOrders.Count(order => order.Status == OrderStatus.Shipped || order.Status == OrderStatus.Delivered),
+            SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
             CurrentPage = pagedOrders.CurrentPage,
@@ -459,7 +479,7 @@ public static class MockDataService
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, CustomerSortColumns, "totalAmount");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
-        var normalizedSearch = (search ?? string.Empty).Trim();
+        var normalizedSearch = NormalizeSearch(search);
 
         var customerSummaries = Customers
             .Select(customer =>
@@ -479,14 +499,9 @@ public static class MockDataService
             })
             .ToList();
 
-        if (normalizedSearch.Length >= 3)
-        {
-            customerSummaries = customerSummaries
-                .Where(summary =>
-                    summary.Customer.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                    summary.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
+        customerSummaries = ApplySearch(customerSummaries, normalizedSearch, summary =>
+            summary.Customer.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            summary.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
 
         customerSummaries = SortCustomerSummaries(customerSummaries, normalizedSortBy, normalizedSortDirection);
 
@@ -507,17 +522,25 @@ public static class MockDataService
         };
     }
 
-    public static ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "")
+    public static ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, ProductSortColumns, "name");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "asc");
+        var normalizedSearch = NormalizeSearch(search);
 
-        var normalizedCategoryCode = (categoryCode ?? string.Empty).Trim();
+        var normalizedCategoryCode = NormalizeSearch(categoryCode);
         var filteredProducts = string.IsNullOrWhiteSpace(normalizedCategoryCode)
             ? Products
             : Products
                 .Where(product => string.Equals(product.Category.Code, normalizedCategoryCode, StringComparison.OrdinalIgnoreCase))
                 .ToList();
+        filteredProducts = ApplySearch(filteredProducts, normalizedSearch, product =>
+            product.Code.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            product.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            product.Description.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            product.Category.Code.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            product.Category.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            product.Category.Description.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
 
         var sortedProducts = SortProducts(filteredProducts, normalizedSortBy, normalizedSortDirection);
 
@@ -531,6 +554,7 @@ public static class MockDataService
             TotalCategories = Categories.Count,
             TotalStock = sortedProducts.Sum(product => product.Stock),
             InventoryValue = sortedProducts.Sum(product => product.UnitCost * product.Stock),
+            SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
             SelectedCategoryCode = normalizedCategoryCode,
@@ -540,22 +564,30 @@ public static class MockDataService
         };
     }
 
-    public static DashboardViewModel GetDashboardData(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
+    public static DashboardViewModel GetDashboardData(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, DashboardSortColumns, "date");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
-        var sortedOrders = SortDashboardOrders(Orders, normalizedSortBy, normalizedSortDirection);
+        var normalizedSearch = NormalizeSearch(search);
+        var filteredOrders = ApplySearch(Orders, normalizedSearch, order =>
+            order.OrderNumber.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            order.Product.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+            OrderStatusPresentation.FromStatus(order.Status).Label.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
+        var sortedOrders = SortDashboardOrders(filteredOrders, normalizedSortBy, normalizedSortDirection);
 
         var pagedOrders = ApplyPaging(sortedOrders, page, pageSize);
 
         return new DashboardViewModel
         {
             RecentOrders    = pagedOrders.Items,
-            TotalOrders     = Orders.Count,
-            TotalRevenue    = Orders.Where(o => o.Status != OrderStatus.Cancelled).Sum(o => o.TotalAmount),
-            PendingOrders   = Orders.Count(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Processing),
-            DeliveredOrders = Orders.Count(o => o.Status == OrderStatus.Delivered),
+            TotalOrders     = sortedOrders.Count,
+            TotalRevenue    = sortedOrders.Where(o => o.Status != OrderStatus.Cancelled).Sum(o => o.TotalAmount),
+            PendingOrders   = sortedOrders.Count(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Processing),
+            DeliveredOrders = sortedOrders.Count(o => o.Status == OrderStatus.Delivered),
             ActiveCustomers = Customers.Count,
+            SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
             CurrentPage = pagedOrders.CurrentPage,

@@ -4,6 +4,14 @@
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
 
+    Dictionary<string, string> DashboardRouteValues()
+    {
+        return new Dictionary<string, string>
+        {
+            ["search"] = Model.SearchTerm
+        };
+    }
+
     SortableHeaderViewModel DashboardHeader(string column, string label, string alignment = "left")
     {
         return new SortableHeaderViewModel
@@ -15,7 +23,8 @@
             CurrentSortBy = currentSortBy,
             CurrentSortDirection = currentSortDirection,
             PageSize = Model.PageSize,
-            Alignment = alignment
+            Alignment = alignment,
+            ExtraRouteValues = DashboardRouteValues()
         };
     }
 }
@@ -23,7 +32,16 @@
 <!-- Page Header -->
 <div class="mb-8">
     <h2 class="text-2xl font-bold text-slate-800">Panoramica</h2>
-    <p class="text-slate-500 mt-1">Benvenuto! Ecco il riepilogo degli ordini aggiornato al @DateTime.Now.ToString("dd MMMM yyyy").</p>
+    <p class="text-slate-500 mt-1">
+        @if (Model.HasActiveSearch)
+        {
+            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
+        }
+        else
+        {
+            <span>Benvenuto! Ecco il riepilogo degli ordini aggiornato al @DateTime.Now.ToString("dd MMMM yyyy").</span>
+        }
+    </p>
 </div>
 
 <!-- KPI Cards -->
@@ -87,7 +105,8 @@
             ControllerName = "Home",
             PageSize = Model.PageSize,
             SortBy = Model.SortBy,
-            SortDirection = Model.SortDirection
+            SortDirection = Model.SortDirection,
+            ExtraRouteValues = DashboardRouteValues()
         })" />
 
         <div class="text-sm text-slate-500">
@@ -181,6 +200,7 @@
         TotalItems = Model.TotalOrders,
         DisplayedItems = Model.RecentOrders.Count,
         SortBy = Model.SortBy,
-        SortDirection = Model.SortDirection
+        SortDirection = Model.SortDirection,
+        ExtraRouteValues = DashboardRouteValues()
     })" />
 </div>

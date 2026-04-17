@@ -13,9 +13,11 @@ public class HomeController : Controller
     /// <param name="pageSize">Numero di elementi per pagina.</param>
     /// <param name="sortBy">Campo di ordinamento.</param>
     /// <param name="sortDirection">Direzione dell'ordinamento.</param>
-    public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
+    /// <param name="search">Termine di ricerca facoltativo.</param>
+    public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
-        var model = MockDataService.GetDashboardData(page, pageSize, sortBy, sortDirection);
+        var model = MockDataService.GetDashboardData(page, pageSize, sortBy, sortDirection, search);
+        SearchFormViewModel.From(model, "Index", model.SortBy, model.SortDirection).ApplyTo(ViewData);
         return View(model);
     }
 
@@ -27,9 +29,16 @@ public class HomeController : Controller
     /// <param name="pageSize">Numero di elementi per pagina.</param>
     /// <param name="sortBy">Campo di ordinamento.</param>
     /// <param name="sortDirection">Direzione dell'ordinamento.</param>
-    public IActionResult Orders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc")
+    /// <param name="search">Termine di ricerca facoltativo.</param>
+    public IActionResult Orders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
-        var model = MockDataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection);
+        var model = MockDataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection, search);
+        SearchFormViewModel
+            .From(model, "Orders", model.SortBy, model.SortDirection, new Dictionary<string, string>
+            {
+                ["customerId"] = model.SelectedCustomerId?.ToString() ?? string.Empty
+            })
+            .ApplyTo(ViewData);
         return View(model);
     }
 
@@ -44,7 +53,7 @@ public class HomeController : Controller
     public IActionResult Customers(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
         var model = MockDataService.GetCustomersPageData(page, pageSize, sortBy, sortDirection, search);
-        CustomerSearchFormViewModel.From(model).ApplyTo(ViewData);
+        SearchFormViewModel.From(model, "Customers", model.SortBy, model.SortDirection).ApplyTo(ViewData);
         return View(model);
     }
 
@@ -56,9 +65,16 @@ public class HomeController : Controller
     /// <param name="sortBy">Campo di ordinamento.</param>
     /// <param name="sortDirection">Direzione dell'ordinamento.</param>
     /// <param name="categoryCode">Codice della categoria (facoltativo).</param>
-    public IActionResult Products(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "")
+    /// <param name="search">Termine di ricerca facoltativo.</param>
+    public IActionResult Products(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "", string search = "")
     {
-        var model = MockDataService.GetProductsPageData(page, pageSize, sortBy, sortDirection, categoryCode);
+        var model = MockDataService.GetProductsPageData(page, pageSize, sortBy, sortDirection, categoryCode, search);
+        SearchFormViewModel
+            .From(model, "Products", model.SortBy, model.SortDirection, new Dictionary<string, string>
+            {
+                ["categoryCode"] = model.SelectedCategoryCode
+            })
+            .ApplyTo(ViewData);
         return View(model);
     }
 }

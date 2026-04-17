@@ -8,7 +8,8 @@
     {
         return new Dictionary<string, string>
         {
-            ["categoryCode"] = Model.SelectedCategoryCode
+            ["categoryCode"] = Model.SelectedCategoryCode,
+            ["search"] = Model.SearchTerm
         };
     }
 
@@ -31,7 +32,16 @@
 
 <div class="mb-8">
     <h2 class="text-2xl font-bold text-slate-800">Prodotti</h2>
-    <p class="mt-1 text-slate-500">Catalogo completo con 200 prodotti, categorie dedicate, disponibilita di magazzino e costi unitari coerenti con gli ordini esistenti.</p>
+    <p class="mt-1 text-slate-500">
+        @if (Model.HasActiveSearch)
+        {
+            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
+        }
+        else
+        {
+            <span>Catalogo completo con 200 prodotti, categorie dedicate, disponibilita di magazzino e costi unitari coerenti con gli ordini esistenti.</span>
+        }
+    </p>
 </div>
 
 <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[0.9fr_0.9fr_0.9fr_1.35fr]">
@@ -116,6 +126,7 @@
             <input type="hidden" name="pageSize" value="@Model.PageSize" />
             <input type="hidden" name="sortBy" value="@Model.SortBy" />
             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+            <input type="hidden" name="search" value="@Model.SearchTerm" />
         </form>
 
         <partial name="_PageSizeSelector" model="@(new PageSizeSelectorViewModel

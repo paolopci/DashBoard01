@@ -2,31 +2,31 @@
 // for details on configuring this project to bundle and minify static web assets.
 
 document.addEventListener("DOMContentLoaded", function () {
-    const customerSearchForm = document.getElementById("customer-search-form");
-    const customerSearchInput = document.getElementById("customer-search-input");
+    const pageSearchForm = document.getElementById("page-search-form");
+    const pageSearchInput = document.getElementById("page-search-input");
 
-    if (!customerSearchForm || !customerSearchInput) {
+    if (!pageSearchForm || !pageSearchInput) {
         return;
     }
 
-    if (customerSearchForm.dataset.searchEnabled !== "true") {
-        customerSearchInput.disabled = true;
+    if (pageSearchForm.dataset.searchEnabled !== "true") {
+        pageSearchInput.disabled = true;
         return;
     }
 
     let debounceTimer;
-    let lastSubmittedValue = (customerSearchForm.dataset.currentSearch || "").trim();
+    let lastSubmittedValue = (pageSearchForm.dataset.currentSearch || "").trim();
 
-    customerSearchForm.addEventListener("submit", function (event) {
-        const currentValue = customerSearchInput.value.trim();
+    pageSearchForm.addEventListener("submit", function (event) {
+        const currentValue = pageSearchInput.value.trim();
 
         if (currentValue.length > 0 && currentValue.length < 3) {
             event.preventDefault();
         }
     });
 
-    customerSearchInput.addEventListener("input", function () {
-        const currentValue = customerSearchInput.value.trim();
+    pageSearchInput.addEventListener("input", function () {
+        const currentValue = pageSearchInput.value.trim();
 
         window.clearTimeout(debounceTimer);
 
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (currentValue.length >= 3) {
                 if (currentValue !== lastSubmittedValue) {
                     lastSubmittedValue = currentValue;
-                    customerSearchForm.submit();
+                    pageSearchForm.submit();
                 }
 
                 return;
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (currentValue.length === 0 && lastSubmittedValue.length > 0) {
                 lastSubmittedValue = "";
-                customerSearchForm.submit();
+                pageSearchForm.submit();
             }
         }, 2000);
     });

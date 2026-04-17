@@ -8,7 +8,8 @@
     {
         return new Dictionary<string, string>
         {
-            ["customerId"] = Model.SelectedCustomerId?.ToString() ?? string.Empty
+            ["customerId"] = Model.SelectedCustomerId?.ToString() ?? string.Empty,
+            ["search"] = Model.SearchTerm
         };
     }
 
@@ -34,7 +35,18 @@
     <p class="text-slate-500 mt-1">
         @if (Model.HasCustomerFilter)
         {
-            <span>Visualizzazione filtrata sugli ordini del cliente <span class="font-semibold text-slate-700">@Model.SelectedCustomerName</span>.</span>
+            if (Model.HasActiveSearch)
+            {
+                <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span> negli ordini di <span class="font-semibold text-slate-700">@Model.SelectedCustomerName</span>.</span>
+            }
+            else
+            {
+                <span>Visualizzazione filtrata sugli ordini del cliente <span class="font-semibold text-slate-700">@Model.SelectedCustomerName</span>.</span>
+            }
+        }
+        else if (Model.HasActiveSearch)
+        {
+            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
         }
         else
         {
@@ -52,6 +64,7 @@
         </div>
         <a asp-action="Orders"
            asp-controller="Home"
+           asp-route-search="@Model.SearchTerm"
            class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 transition-colors hover:border-indigo-300 hover:text-indigo-700">
             Mostra tutti gli ordini
         </a>

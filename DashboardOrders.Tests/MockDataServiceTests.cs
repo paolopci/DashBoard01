@@ -58,6 +58,25 @@ public class MockDataServiceTests
     }
 
     [Fact]
+    public void GetDashboardData_QuandoRicercaValida_AlloraRestituisceSoloOrdiniCoerenti()
+    {
+        // Arrange
+        const string search = "ORD-2026-001";
+
+        // Act
+        var result = MockDataService.GetDashboardData(pageSize: 0, search: search);
+
+        // Assert
+        result.SearchTerm.Should().Be(search);
+        result.RecentOrders.Should().OnlyContain(order =>
+            order.OrderNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            order.Product.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            OrderStatusPresentation.FromStatus(order.Status).Label.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void GetOrdersPageData_QuandoClienteValido_AlloraRestituisceSoloOrdiniDelCliente()
     {
         // Arrange
@@ -86,6 +105,38 @@ public class MockDataServiceTests
             SortBy = "date",
             SortDirection = "desc"
         });
+    }
+
+    [Fact]
+    public void GetOrdersPageData_QuandoRicercaValida_AlloraRestituisceSoloOrdiniCoerenti()
+    {
+        // Arrange
+        const string search = "Laptop";
+
+        // Act
+        var result = MockDataService.GetOrdersPageData(pageSize: 0, search: search);
+
+        // Assert
+        result.SearchTerm.Should().Be(search);
+        result.Orders.Should().OnlyContain(order =>
+            order.OrderNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            order.Customer.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            order.Items.Any(item => item.ProductName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+            OrderStatusPresentation.FromStatus(order.Status).Label.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void GetOrdersPageData_QuandoRicercaNull_AlloraNormalizzaTermineVuoto()
+    {
+        // Arrange
+        string search = null!;
+
+        // Act
+        var result = MockDataService.GetOrdersPageData(search: search);
+
+        // Assert
+        result.SearchTerm.Should().BeEmpty();
     }
 
     [Fact]
@@ -163,6 +214,39 @@ public class MockDataServiceTests
             SelectedCategoryCode = string.Empty,
             TotalProducts = totalProducts
         });
+    }
+
+    [Fact]
+    public void GetProductsPageData_QuandoRicercaValida_AlloraRestituisceSoloProdottiCoerenti()
+    {
+        // Arrange
+        const string search = "Laptop";
+
+        // Act
+        var result = MockDataService.GetProductsPageData(pageSize: 0, search: search);
+
+        // Assert
+        result.SearchTerm.Should().Be(search);
+        result.Products.Should().OnlyContain(product =>
+            product.Code.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            product.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            product.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            product.Category.Code.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            product.Category.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            product.Category.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void GetProductsPageData_QuandoRicercaNull_AlloraNormalizzaTermineVuoto()
+    {
+        // Arrange
+        string search = null!;
+
+        // Act
+        var result = MockDataService.GetProductsPageData(search: search);
+
+        // Assert
+        result.SearchTerm.Should().BeEmpty();
     }
 
     [Fact]
