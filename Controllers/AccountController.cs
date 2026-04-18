@@ -23,7 +23,7 @@ public class AccountController : Controller
     [AllowAnonymous]
     public IActionResult Register()
     {
-        return View(new Register());
+        return View(CreateRegisterViewModel());
     }
 
     [HttpPost]
@@ -31,7 +31,12 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(Register? model)
     {
-        model ??= new Register();
+        if (model is null)
+        {
+            model = CreateRegisterViewModel();
+            ModelState.AddModelError(string.Empty, GenericRegisterErrorMessage);
+        }
+
         ValidateRegister(model);
 
         if (!ModelState.IsValid)
@@ -124,10 +129,15 @@ public class AccountController : Controller
         {
             ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita è obbligatoria.");
         }
-        else if (model.DateOfBirth.Date >= DateTime.Today)
+        else if (model.DateOfBirth.Date > DateTime.Today)
         {
-            ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita deve essere nel passato.");
+            ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita non può essere nel futuro.");
         }
+    }
+
+    private static Register CreateRegisterViewModel()
+    {
+        return new Register { DateOfBirth = DateTime.Today };
     }
 
     private void ValidateLogin(Login model)

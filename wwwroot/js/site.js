@@ -2,6 +2,12 @@
 // for details on configuring this project to bundle and minify static web assets.
 
 document.addEventListener("DOMContentLoaded", function () {
+    initPageSearch();
+    initToasts();
+    initRegisterForm();
+});
+
+function initPageSearch() {
     const pageSearchForm = document.getElementById("page-search-form");
     const pageSearchInput = document.getElementById("page-search-input");
 
@@ -46,4 +52,51 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }, 2000);
     });
-});
+}
+
+function initToasts() {
+    const toasts = document.querySelectorAll("[data-toast]");
+
+    toasts.forEach(function (toast) {
+        const closeToast = function () {
+            toast.classList.add("opacity-0");
+            window.setTimeout(function () {
+                toast.remove();
+            }, 200);
+        };
+
+        toast.addEventListener("click", closeToast);
+        window.setTimeout(closeToast, 5000);
+    });
+}
+
+function initRegisterForm() {
+    const registerForm = document.querySelector("[data-register-form]");
+
+    if (!registerForm) {
+        return;
+    }
+
+    const requiredFields = registerForm.querySelectorAll("[data-register-required]");
+    const submitButton = registerForm.querySelector("[data-register-submit]");
+
+    if (!submitButton) {
+        return;
+    }
+
+    const refreshSubmitState = function () {
+        const allRequiredFieldsFilled = Array.from(requiredFields)
+            .every(function (field) {
+                return field.value.trim().length > 0;
+            });
+
+        submitButton.disabled = !allRequiredFieldsFilled;
+    };
+
+    requiredFields.forEach(function (field) {
+        field.addEventListener("input", refreshSubmitState);
+        field.addEventListener("change", refreshSubmitState);
+    });
+
+    refreshSubmitState();
+}

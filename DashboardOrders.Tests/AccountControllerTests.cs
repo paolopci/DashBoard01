@@ -41,6 +41,21 @@ public class AccountControllerTests
     }
 
     [Fact]
+    public void Register_Get_QuandoRichiesto_AlloraInizializzaDataDiNascitaAOggi()
+    {
+        // Arrange
+        var dataAttesa = DateTime.Today;
+
+        // Act
+        var risultato = sut.Register();
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<Register>()
+            .Which.DateOfBirth.Date.Should().Be(dataAttesa);
+    }
+
+    [Fact]
     public async Task Register_Post_QuandoModelValido_AlloraReindirizzaALogin()
     {
         // Arrange
@@ -76,6 +91,21 @@ public class AccountControllerTests
         var model = CreateRegisterModel();
         accountService.RegisterAsync(Arg.Any<RegisterDto>())
             .Returns(AccountOperationResult.Failure("Registrazione non completata.", ["Utente già presente."]));
+
+        // Act
+        var risultato = await sut.Register(model);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>();
+        sut.ModelState.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Register_Post_QuandoDataDiNascitaFutura_AlloraRestituisceVistaConModelStateNonValido()
+    {
+        // Arrange
+        var model = CreateRegisterModel();
+        model.DateOfBirth = DateTime.Today.AddDays(1);
 
         // Act
         var risultato = await sut.Register(model);
