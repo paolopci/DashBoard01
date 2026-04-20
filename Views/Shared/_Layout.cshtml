@@ -5,28 +5,36 @@
     var searchActionName = string.IsNullOrWhiteSpace(searchForm.ActionName)
         ? currentAction ?? "Index"
         : searchForm.ActionName;
-    var navigationItems = new[]
-    {
-        (ActionName: "Index", Label: "Panoramica", IconPath: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"),
-        (ActionName: "Orders", Label: "Ordini", IconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"),
-        (ActionName: "Customers", Label: "Clienti", IconPath: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"),
-        (ActionName: "Products", Label: "Prodotti", IconPath: "M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0l-2.293 2.293a1 1 0 00-.293.707V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a1 1 0 00-.293-.707L4 13m16 0H4m5 4h6")
-    };
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var userName = User.Identity?.Name ?? "Utente";
+    var isAdmin = string.Equals(userName, "admin@micene.it", StringComparison.OrdinalIgnoreCase);
+    var navigationItems = isAdmin
+        ? new[]
+        {
+            (ControllerName: "Home", ActionName: "Index", Label: "Panoramica", IconPath: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"),
+            (ControllerName: "Home", ActionName: "Orders", Label: "Ordini", IconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"),
+            (ControllerName: "Home", ActionName: "Customers", Label: "Clienti", IconPath: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"),
+            (ControllerName: "Home", ActionName: "Products", Label: "Prodotti", IconPath: "M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0l-2.293 2.293a1 1 0 00-.293.707V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a1 1 0 00-.293-.707L4 13m16 0H4m5 4h6")
+        }
+        : new[]
+        {
+            (ControllerName: "Account", ActionName: "Profile", Label: "Profilo", IconPath: "M5.121 17.804A8.966 8.966 0 0112 15c2.21 0 4.236.8 5.802 2.129M15 11a3 3 0 10-6 0 3 3 0 006 0z"),
+            (ControllerName: "Home", ActionName: "Orders", Label: "I miei ordini", IconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"),
+            (ControllerName: "Home", ActionName: "NewOrder", Label: "Nuovo ordine", IconPath: "M12 4v16m8-8H4")
+        };
 
-    bool IsCurrentAction(string actionName) =>
-        string.Equals(currentController, "Home", StringComparison.OrdinalIgnoreCase)
+    bool IsCurrentAction(string controllerName, string actionName) =>
+        string.Equals(currentController, controllerName, StringComparison.OrdinalIgnoreCase)
         && string.Equals(currentAction, actionName, StringComparison.OrdinalIgnoreCase);
 
-    string SidebarLinkClass(string actionName) => IsCurrentAction(actionName)
+    string SidebarLinkClass(string controllerName, string actionName) => IsCurrentAction(controllerName, actionName)
         ? "sidebar-link flex items-center px-4 py-3 bg-indigo-600 rounded-lg text-white font-medium shadow-md shadow-indigo-600/30 transition-all"
         : "sidebar-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg font-medium transition-colors";
 
-    string MobileNavLinkClass(string actionName) => IsCurrentAction(actionName)
+    string MobileNavLinkClass(string controllerName, string actionName) => IsCurrentAction(controllerName, actionName)
         ? "inline-flex min-w-max items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30"
         : "inline-flex min-w-max items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600";
 
-    var isAuthenticated = User.Identity?.IsAuthenticated == true;
-    var userName = User.Identity?.Name ?? "Utente";
     var userInitials = string.Join(
         string.Empty,
         userName
@@ -62,7 +70,7 @@
         <nav class="flex-1 space-y-2 overflow-y-auto px-4 py-6" id="sidebar-nav">
             @foreach (var item in navigationItems)
             {
-                <a asp-action="@item.ActionName" asp-controller="Home" class="@SidebarLinkClass(item.ActionName)">
+                <a asp-action="@item.ActionName" asp-controller="@item.ControllerName" class="@SidebarLinkClass(item.ControllerName, item.ActionName)">
                     <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="@item.IconPath"></path></svg>
                     @item.Label
                 </a>
@@ -105,17 +113,29 @@
             <div class="flex min-w-0 items-center gap-2 sm:gap-3">
                 @if (isAuthenticated)
                 {
-                    <div class="hidden min-w-0 items-center gap-3 sm:flex">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-sm font-bold text-white shadow-sm">
-                            @userInitials
-                        </div>
-                        <span class="max-w-44 truncate text-sm font-semibold text-slate-700">@userName</span>
-                    </div>
-                    <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
-                        <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:border-rose-200 hover:text-rose-600 sm:px-4">
-                            Logout
+                    <div class="relative" data-user-menu>
+                        <button type="button"
+                                class="inline-flex min-h-10 max-w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-700"
+                                data-user-menu-button
+                                aria-expanded="false"
+                                aria-haspopup="true">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-sm font-bold text-white shadow-sm">
+                                @userInitials
+                            </span>
+                            <span class="hidden max-w-44 truncate sm:inline">@userName</span>
+                            <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
-                    </form>
+                        <div class="absolute right-0 z-20 mt-2 hidden w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-2 shadow-lg"
+                             data-user-menu-panel>
+                            <a asp-controller="Account" asp-action="Profile" class="block px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-indigo-700">Profilo</a>
+                            <a asp-controller="Account" asp-action="EditProfile" class="block px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-indigo-700">Edit Profilo</a>
+                            <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
+                                <button type="submit" class="block w-full px-4 py-2 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50">
+                                    Log out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 }
                 else
                 {
@@ -133,7 +153,7 @@
             <nav class="flex gap-2 overflow-x-auto pb-1" aria-label="Navigazione mobile">
                 @foreach (var item in navigationItems)
                 {
-                    <a asp-action="@item.ActionName" asp-controller="Home" class="@MobileNavLinkClass(item.ActionName)">@item.Label</a>
+                    <a asp-action="@item.ActionName" asp-controller="@item.ControllerName" class="@MobileNavLinkClass(item.ControllerName, item.ActionName)">@item.Label</a>
                 }
             </nav>
         </div>

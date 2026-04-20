@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using NSubstitute;
+using System.Security.Claims;
 using Xunit;
 
 namespace DashboardOrders.Tests;
@@ -128,18 +129,35 @@ public class AccountControllerTests
     }
 
     [Fact]
-    public async Task Login_Post_QuandoCredenzialiValide_AlloraReindirizzaAIndex()
+    public async Task Login_Post_QuandoCredenzialiAdminValide_AlloraReindirizzaAIndex()
     {
         // Arrange
-        var model = new Login { UserLogin = "mario.rossi@example.com", Password = "Password1" };
+        var model = new Login { UserLogin = "admin@micene.it", Password = "Password1" };
         accountService.LoginAsync(Arg.Any<LoginDto>())
-            .Returns(AccountOperationResult.Success("Accesso eseguito.", token: "token"));
+            .Returns(AccountOperationResult.Success("Accesso eseguito.", email: "admin@micene.it", token: "token"));
 
         // Act
         var risultato = await sut.Login(model);
 
         // Assert
         risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
+    }
+
+    [Fact]
+    public async Task Login_Post_QuandoCredenzialiUtenteValide_AlloraReindirizzaAOrders()
+    {
+        // Arrange
+        var model = new Login { UserLogin = "giulia.lombardi65@example.com", Password = "Password1" };
+        accountService.LoginAsync(Arg.Any<LoginDto>())
+            .Returns(AccountOperationResult.Success("Accesso eseguito.", email: "giulia.lombardi65@example.com", token: "token"));
+
+        // Act
+        var risultato = await sut.Login(model);
+
+        // Assert
+        var redirect = risultato.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be("Orders");
+        redirect.ControllerName.Should().Be("Home");
     }
 
     [Fact]
@@ -187,6 +205,55 @@ public class AccountControllerTests
     }
 
     [Fact]
+    public async Task Profile_QuandoProfiloEsiste_AlloraRestituisceVistaConProfilo()
+    {
+        // Arrange
+        var profile = CreateProfile();
+        sut.ControllerContext.HttpContext.User = CreateUser(profile.Email);
+        accountService.GetProfileAsync(profile.Email).Returns(profile);
+
+        // Act
+        var risultato = await sut.Profile();
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(profile);
+    }
+
+    [Fact]
+    public async Task EditProfile_Post_QuandoModelValido_AlloraNonModificaNomeCognomeEmail()
+    {
+        // Arrange
+        var currentProfile = CreateProfile();
+        sut.ControllerContext.HttpContext.User = CreateUser(currentProfile.Email);
+        accountService.GetProfileAsync(currentProfile.Email).Returns(currentProfile);
+        accountService.UpdateProfileAsync(currentProfile.Email, Arg.Any<UserProfileViewModel>())
+            .Returns(AccountOperationResult.Success("Profilo aggiornato."));
+        var model = new UserProfileViewModel
+        {
+            FirstName = "Alterato",
+            LastName = "Alterato",
+            Email = "altro@example.com",
+            DateOfBirth = new DateTime(1991, 2, 3),
+            City = "Roma",
+            Country = "Italia",
+            FiscalCode = "RSSMRA91B03H501Y"
+        };
+
+        // Act
+        var risultato = await sut.EditProfile(model);
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(AccountController.Profile));
+        await accountService.Received(1).UpdateProfileAsync(
+            currentProfile.Email,
+            Arg.Is<UserProfileViewModel>(profile =>
+                profile.FirstName == currentProfile.FirstName &&
+                profile.LastName == currentProfile.LastName &&
+                profile.Email == currentProfile.Email &&
+                profile.City == "Roma"));
+    }
+
+    [Fact]
     public void AccessDenied_QuandoRichiesto_AlloraRestituisceVistaConStatus403()
     {
         // Arrange
@@ -213,5 +280,26 @@ public class AccountControllerTests
             Password = "Password1",
             RepeatPassword = "Password1"
         };
+    }
+
+    private static UserProfileViewModel CreateProfile()
+    {
+        return new UserProfileViewModel
+        {
+            FirstName = "Mario",
+            LastName = "Rossi",
+            Email = "mario.rossi@example.com",
+            DateOfBirth = new DateTime(1990, 1, 1),
+            City = "Milano",
+            Country = "Italia",
+            FiscalCode = "RSSMRA90A01F205X"
+        };
+    }
+
+    private static ClaimsPrincipal CreateUser(string email)
+    {
+        return new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, email)],
+            authenticationType: "Test"));
     }
 }

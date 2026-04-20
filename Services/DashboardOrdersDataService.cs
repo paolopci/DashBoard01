@@ -128,6 +128,17 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         };
     }
 
+    public OrdersPageViewModel GetOrdersPageDataForCustomerEmail(string? email, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    {
+        var customer = GetCustomerByEmail(email);
+        if (customer is null)
+        {
+            return CreateEmptyOrdersPage(page, pageSize, sortBy, sortDirection, search);
+        }
+
+        return GetOrdersPageData(customer.Id, page, pageSize, sortBy, sortDirection, search);
+    }
+
     public CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, CustomerSortColumns, "totalAmount");
@@ -217,6 +228,157 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         };
     }
 
+    public Customer? GetCustomer(int id)
+    {
+        var customer = dbContext.Customers.AsNoTracking().FirstOrDefault(customer => customer.Id == id);
+
+        return customer is null ? null : MapCustomer(customer);
+    }
+
+    public Customer? GetCustomerByEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var customer = dbContext.Customers
+            .AsNoTracking()
+            .FirstOrDefault(customer => customer.Email.ToLower() == normalizedEmail);
+
+        return customer is null ? null : MapCustomer(customer);
+    }
+
+    public bool UpdateCustomer(Customer customer)
+    {
+        var entity = dbContext.Customers.FirstOrDefault(existing => existing.Id == customer.Id);
+        if (entity is null)
+        {
+            return false;
+        }
+
+        entity.Name = customer.Name.Trim();
+        entity.Email = customer.Email.Trim().ToLowerInvariant();
+        entity.Phone = customer.Phone.Trim();
+        entity.AvatarInitials = CreateInitials(entity.Name);
+        dbContext.SaveChanges();
+
+        return true;
+    }
+
+    public Product? GetProduct(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        var normalizedCode = NormalizeCode(code);
+        var product = dbContext.Products
+            .AsNoTracking()
+            .Include(product => product.Category)
+            .FirstOrDefault(product => product.Code == normalizedCode);
+
+        return product is null ? null : MapProduct(product);
+    }
+
+    public List<Product> GetAvailableProducts()
+    {
+        return dbContext.Products
+            .AsNoTracking()
+            .Include(product => product.Category)
+            .Where(product => product.StockQuantity > 0)
+            .OrderBy(product => product.Name)
+            .Select(MapProduct)
+            .ToList();
+    }
+
+    public bool CreateProduct(Product product)
+    {
+        var normalizedCode = NormalizeCode(product.Code);
+        if (string.IsNullOrWhiteSpace(normalizedCode) || dbContext.Products.Any(existing => existing.Code == normalizedCode))
+        {
+            return false;
+        }
+
+        var categoryCode = NormalizeCode(product.Category.Code);
+        if (!dbContext.Categories.Any(category => category.Code == categoryCode))
+        {
+            return false;
+        }
+
+        dbContext.Products.Add(new ProductEntity
+        {
+            Code = normalizedCode,
+            Name = product.Name.Trim(),
+            Description = product.Description.Trim(),
+            Price = product.UnitCost,
+            StockQuantity = product.Stock,
+            CategoryCode = categoryCode,
+            CreatedAt = DateTime.UtcNow
+        });
+        dbContext.SaveChanges();
+
+        return true;
+    }
+
+    public bool UpdateProduct(Product product)
+    {
+        var normalizedCode = NormalizeCode(product.Code);
+        var categoryCode = NormalizeCode(product.Category.Code);
+        var entity = dbContext.Products.FirstOrDefault(existing => existing.Code == normalizedCode);
+        if (entity is null || !dbContext.Categories.Any(category => category.Code == categoryCode))
+        {
+            return false;
+        }
+
+        entity.Name = product.Name.Trim();
+        entity.Description = product.Description.Trim();
+        entity.Price = product.UnitCost;
+        entity.StockQuantity = product.Stock;
+        entity.CategoryCode = categoryCode;
+        dbContext.SaveChanges();
+
+        return true;
+    }
+
+    public bool CreateOrder(string? customerEmail, string productCode, int quantity)
+    {
+        if (string.IsNullOrWhiteSpace(customerEmail) || string.IsNullOrWhiteSpace(productCode) || quantity <= 0)
+        {
+            return false;
+        }
+
+        var product = dbContext.Products.FirstOrDefault(product => product.Code == NormalizeCode(productCode));
+        if (product is null || product.StockQuantity < quantity)
+        {
+            return false;
+        }
+
+        var customer = FindOrCreateCustomer(customerEmail);
+        product.StockQuantity -= quantity;
+        var order = new OrderEntity
+        {
+            OrderNumber = CreateNextOrderNumber(),
+            CustomerId = customer.Id,
+            TotalAmount = product.Price * quantity,
+            Status = (int)OrderStatus.Pending,
+            CreatedAt = DateTime.Now
+        };
+        order.Items.Add(new OrderItemEntity
+        {
+            ProductId = product.Id,
+            Quantity = quantity,
+            UnitPrice = product.Price
+        });
+
+        dbContext.Orders.Add(order);
+        dbContext.SaveChanges();
+
+        return true;
+    }
+
     public CategoryPageViewModel GetCategoryPageData(string sortBy = "code", string sortDirection = "asc")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, CategorySortColumns, "code");
@@ -299,6 +461,72 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         dbContext.SaveChanges();
 
         return true;
+    }
+
+    private OrdersPageViewModel CreateEmptyOrdersPage(int page, int pageSize, string sortBy, string sortDirection, string search)
+    {
+        var normalizedSortBy = NormalizeSortBy(sortBy, OrdersSortColumns, "date");
+        var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
+        var normalizedSearch = NormalizeSearch(search);
+        var pagedOrders = ApplyPaging(Array.Empty<Order>(), page, pageSize);
+
+        return new OrdersPageViewModel
+        {
+            Orders = [],
+            TotalOrders = 0,
+            SearchTerm = normalizedSearch,
+            SortBy = normalizedSortBy,
+            SortDirection = normalizedSortDirection,
+            CurrentPage = pagedOrders.CurrentPage,
+            PageSize = pagedOrders.PageSize,
+            TotalPages = pagedOrders.TotalPages
+        };
+    }
+
+    private CustomerEntity FindOrCreateCustomer(string email)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var existing = dbContext.Customers.FirstOrDefault(customer => customer.Email.ToLower() == normalizedEmail);
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        var displayName = normalizedEmail.Split('@')[0].Replace('.', ' ').Replace('_', ' ').Replace('-', ' ');
+        displayName = string.IsNullOrWhiteSpace(displayName) ? normalizedEmail : displayName;
+        var customer = new CustomerEntity
+        {
+            Name = displayName,
+            Email = normalizedEmail,
+            Phone = "-",
+            AvatarInitials = CreateInitials(displayName),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        dbContext.Customers.Add(customer);
+        dbContext.SaveChanges();
+
+        return customer;
+    }
+
+    private string CreateNextOrderNumber()
+    {
+        var nextId = dbContext.Orders.Any()
+            ? dbContext.Orders.Max(order => order.Id) + 1
+            : 1;
+
+        return $"ORD-{DateTime.Now.Year}-{nextId:D3}";
+    }
+
+    private static string CreateInitials(string name)
+    {
+        var initials = string.Join(
+            string.Empty,
+            name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2)
+                .Select(part => char.ToUpperInvariant(part[0])));
+
+        return string.IsNullOrWhiteSpace(initials) ? "UT" : initials;
     }
 
     private List<Order> LoadOrders()

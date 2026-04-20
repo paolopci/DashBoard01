@@ -7,6 +7,7 @@ namespace DashboardOrders.Controllers;
 
 public class AccountController : Controller
 {
+    private const string AdminEmail = "admin@micene.it";
     private const string ToastSuccessKey = "Toast.Success";
     private const string ToastErrorKey = "Toast.Error";
     private const string GenericRegisterErrorMessage = "Controlla i dati inseriti e riprova.";
@@ -89,7 +90,7 @@ public class AccountController : Controller
         }
 
         SetSuccessToast(result.Message);
-        return RedirectToLocal(returnUrl);
+        return RedirectAfterLogin(returnUrl, result.Email ?? model.UserLogin);
     }
 
     [HttpGet]
@@ -113,6 +114,67 @@ public class AccountController : Controller
 
         SetSuccessToast(result.Message);
         return RedirectToLocal(model?.ReturnUrl);
+    }
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Profile()
+    {
+        var profile = await accountService.GetProfileAsync(User.Identity?.Name);
+        if (profile is null)
+        {
+            return RedirectToAction(nameof(AccessDenied));
+        }
+
+        return View(profile);
+    }
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> EditProfile()
+    {
+        var profile = await accountService.GetProfileAsync(User.Identity?.Name);
+        if (profile is null)
+        {
+            return RedirectToAction(nameof(AccessDenied));
+        }
+
+        return View(profile);
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditProfile(UserProfileViewModel? model)
+    {
+        model ??= new UserProfileViewModel();
+
+        var currentProfile = await accountService.GetProfileAsync(User.Identity?.Name);
+        if (currentProfile is null)
+        {
+            return RedirectToAction(nameof(AccessDenied));
+        }
+
+        model.FirstName = currentProfile.FirstName;
+        model.LastName = currentProfile.LastName;
+        model.Email = currentProfile.Email;
+
+        if (!ModelState.IsValid)
+        {
+            SetErrorToast("Controlla i dati del profilo e riprova.");
+            return View(model);
+        }
+
+        var result = await accountService.UpdateProfileAsync(User.Identity?.Name, model);
+        if (!result.Succeeded)
+        {
+            AddOperationErrorsToModelState(result);
+            SetErrorToast(result.Message);
+            return View(model);
+        }
+
+        SetSuccessToast(result.Message);
+        return RedirectToAction(nameof(Profile));
     }
 
     [HttpGet]
@@ -180,6 +242,23 @@ public class AccountController : Controller
         }
 
         return RedirectToAction("Index", "Home");
+    }
+
+    private IActionResult RedirectAfterLogin(string? returnUrl, string? email)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
+        return IsAdmin(email)
+            ? RedirectToAction("Index", "Home")
+            : RedirectToAction("Orders", "Home");
+    }
+
+    private static bool IsAdmin(string? email)
+    {
+        return string.Equals(email?.Trim(), AdminEmail, StringComparison.OrdinalIgnoreCase);
     }
 
     private void AddOperationErrorsToModelState(AccountOperationResult result)

@@ -133,6 +133,55 @@ public class AccountService : IAccountService
             email: null);
     }
 
+    public async Task<UserProfileViewModel?> GetProfileAsync(string? email)
+    {
+        var user = await FindUserByEmailAsync(email);
+        if (user is null)
+        {
+            return null;
+        }
+
+        return new UserProfileViewModel
+        {
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email ?? string.Empty,
+            DateOfBirth = user.DateOfBirth,
+            City = user.City,
+            Country = user.Country,
+            FiscalCode = user.FiscalCode
+        };
+    }
+
+    public async Task<AccountOperationResult> UpdateProfileAsync(string? email, UserProfileViewModel? profile)
+    {
+        if (profile is null)
+        {
+            return AccountOperationResult.Failure("Profilo non aggiornato.", ["Dati profilo mancanti."]);
+        }
+
+        var user = await FindUserByEmailAsync(email);
+        if (user is null)
+        {
+            return AccountOperationResult.Failure("Profilo non aggiornato.", ["Utente non trovato."]);
+        }
+
+        user.DateOfBirth = profile.DateOfBirth.Date;
+        user.City = profile.City.Trim();
+        user.Country = profile.Country.Trim();
+        user.FiscalCode = profile.FiscalCode.Trim().ToUpperInvariant();
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return AccountOperationResult.Failure(
+                "Profilo non aggiornato.",
+                result.Errors.Select(error => error.Description));
+        }
+
+        return AccountOperationResult.Success("Profilo aggiornato correttamente.", user.Id, user.Email);
+    }
+
     private static bool IsPasswordConfirmationValid(RegisterDto registerDto)
     {
         return string.Equals(registerDto.Password, registerDto.RepeatPassword, StringComparison.Ordinal);
@@ -141,6 +190,16 @@ public class AccountService : IAccountService
     private static string NormalizeEmail(string email)
     {
         return email.Trim().ToLowerInvariant();
+    }
+
+    private async Task<ApplicationUser?> FindUserByEmailAsync(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        return await userManager.FindByEmailAsync(NormalizeEmail(email));
     }
 
     private static string GenerateJwtToken(ApplicationUser user, JwtOptions jwtOptions, DateTimeOffset tokenExpiresAt)

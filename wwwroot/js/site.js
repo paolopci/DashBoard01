@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initPageSearch();
     initToasts();
     initRegisterForm();
+    initUserMenu();
 });
 
 function initPageSearch() {
@@ -99,4 +100,42 @@ function initRegisterForm() {
     });
 
     refreshSubmitState();
+}
+
+function initUserMenu() {
+    const userMenu = document.querySelector("[data-user-menu]");
+
+    if (!userMenu) {
+        return;
+    }
+
+    const button = userMenu.querySelector("[data-user-menu-button]");
+    const panel = userMenu.querySelector("[data-user-menu-panel]");
+
+    if (!button || !panel) {
+        return;
+    }
+
+    const setOpen = function (isOpen) {
+        panel.classList.toggle("hidden", !isOpen);
+        button.setAttribute("aria-expanded", String(isOpen));
+    };
+
+    button.addEventListener("click", function (event) {
+        event.stopPropagation();
+        setOpen(panel.classList.contains("hidden"));
+    });
+
+    document.addEventListener("click", function (event) {
+        if (!userMenu.contains(event.target)) {
+            setOpen(false);
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            setOpen(false);
+            button.focus();
+        }
+    });
 }

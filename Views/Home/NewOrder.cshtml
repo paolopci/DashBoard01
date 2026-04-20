@@ -1,0 +1,50 @@
+@model DashboardOrders.Models.NewOrderViewModel
+@{
+    ViewData["Title"] = "Nuovo ordine";
+}
+
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-slate-800">Nuovo ordine</h2>
+    <p class="mt-1 text-slate-500">Seleziona un prodotto disponibile e conferma la quantita.</p>
+</div>
+
+<form method="post" asp-controller="Home" asp-action="NewOrder" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+    @Html.AntiForgeryToken()
+    <div class="border-b border-slate-100 px-6 py-5">
+        <h3 class="text-lg font-semibold text-slate-800">Dettaglio ordine</h3>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="px-6 pt-5 text-sm font-semibold text-rose-600"></div>
+
+    <div class="grid grid-cols-1 gap-5 px-6 py-6 md:grid-cols-[1fr_180px]">
+        <div>
+            <label asp-for="ProductCode" class="mb-2 block text-sm font-semibold text-slate-700">Prodotto</label>
+            <select asp-for="ProductCode" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                <option value="">Seleziona prodotto</option>
+                @foreach (var product in Model.Products)
+                {
+                    <option value="@product.Code">@product.Name - @FormatEuro(product.UnitCost) - stock @product.Stock</option>
+                }
+            </select>
+            <span asp-validation-for="ProductCode" class="mt-1 block text-xs font-semibold text-rose-600"></span>
+        </div>
+        <div>
+            <label asp-for="Quantity" class="mb-2 block text-sm font-semibold text-slate-700">Quantita</label>
+            <input asp-for="Quantity" type="number" min="1" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <span asp-validation-for="Quantity" class="mt-1 block text-xs font-semibold text-rose-600"></span>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-3 border-t border-slate-100 px-6 py-5 sm:flex-row sm:justify-end">
+        <a asp-controller="Home" asp-action="Orders" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-300">
+            Annulla
+        </a>
+        <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700">
+            Conferma ordine
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

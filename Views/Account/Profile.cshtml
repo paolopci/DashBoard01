@@ -1,0 +1,41 @@
+@model DashboardOrders.Models.UserProfileViewModel
+@{
+    ViewData["Title"] = "Profilo";
+}
+
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-slate-800">Profilo</h2>
+    <p class="mt-1 text-slate-500">Dati account collegati all'utente autenticato.</p>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+    <div class="border-b border-slate-100 px-6 py-5">
+        <h3 class="text-lg font-semibold text-slate-800">@Model.FirstName @Model.LastName</h3>
+        <p class="text-sm text-slate-500">@Model.Email</p>
+    </div>
+    <dl class="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-2">
+        <div>
+            <dt class="text-sm font-semibold text-slate-500">Data di nascita</dt>
+            <dd class="mt-1 text-base font-medium text-slate-800">@Model.DateOfBirth.ToString("dd/MM/yyyy")</dd>
+        </div>
+        <div>
+            <dt class="text-sm font-semibold text-slate-500">Citta</dt>
+            <dd class="mt-1 text-base font-medium text-slate-800">@Model.City</dd>
+        </div>
+        <div>
+            <dt class="text-sm font-semibold text-slate-500">Paese</dt>
+            <dd class="mt-1 text-base font-medium text-slate-800">@Model.Country</dd>
+        </div>
+        <div>
+            <dt class="text-sm font-semibold text-slate-500">Codice fiscale</dt>
+            <dd class="mt-1 text-base font-medium text-slate-800">@Model.FiscalCode</dd>
+        </div>
+    </dl>
+    <div class="border-t border-slate-100 px-6 py-5">
+        <a asp-controller="Account"
+           asp-action="EditProfile"
+           class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700">
+            Edit Profilo
+        </a>
+    </div>
+</div>

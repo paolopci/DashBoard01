@@ -1,12 +1,14 @@
 using DashboardOrders.Data;
 using DashboardOrders.Data.Entities;
 using DashboardOrders.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace DashboardOrders.Services;
 
-public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext)
+public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, UserManager<ApplicationUser> userManager)
 {
+    private const string DefaultCustomerPassword = "Micene@65";
     private static readonly DateTime SeedCreatedAt = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -19,6 +21,7 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext)
         await SeedCategoriesAsync(categories, cancellationToken);
         await SeedProductsAsync(products, cancellationToken);
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
+        await SeedCustomerUsersAsync(cancellationToken);
         var productIdsByName = await GetProductIdsByNameAsync(products, cancellationToken);
         await SeedOrdersAsync(orders, customerIdsByEmail, productIdsByName, cancellationToken);
     }
@@ -113,6 +116,87 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext)
         return await dbContext.Customers
             .Where(customer => customerEmails.Contains(customer.Email))
             .ToDictionaryAsync(customer => customer.Email, customer => customer.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
+    }
+
+    private async Task SeedCustomerUsersAsync(CancellationToken cancellationToken)
+    {
+        var customers = await dbContext.Customers
+            .OrderBy(customer => customer.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var customer in customers)
+        {
+            var normalizedEmail = customer.Email.Trim().ToLowerInvariant();
+            var user = await userManager.FindByEmailAsync(normalizedEmail);
+
+            if (user is null)
+            {
+                user = CreateApplicationUser(customer, normalizedEmail);
+                var createResult = await userManager.CreateAsync(user, DefaultCustomerPassword);
+                EnsureIdentityResultSucceeded(createResult, $"Creazione utente cliente {normalizedEmail} non completata.");
+                continue;
+            }
+
+            var hasPassword = await userManager.HasPasswordAsync(user);
+            if (hasPassword)
+            {
+                var removeResult = await userManager.RemovePasswordAsync(user);
+                EnsureIdentityResultSucceeded(removeResult, $"Reset password cliente {normalizedEmail} non completato.");
+            }
+
+            var addPasswordResult = await userManager.AddPasswordAsync(user, DefaultCustomerPassword);
+            EnsureIdentityResultSucceeded(addPasswordResult, $"Impostazione password cliente {normalizedEmail} non completata.");
+        }
+    }
+
+    private static ApplicationUser CreateApplicationUser(CustomerEntity customer, string normalizedEmail)
+    {
+        var (firstName, lastName) = SplitCustomerName(customer.Name);
+
+        return new ApplicationUser
+        {
+            UserName = normalizedEmail,
+            Email = normalizedEmail,
+            EmailConfirmed = true,
+            FirstName = firstName,
+            LastName = lastName,
+            DateOfBirth = new DateTime(1990, 1, 1),
+            City = "Non indicata",
+            Country = "Italia",
+            FiscalCode = CreateSeedFiscalCode(customer.Id)
+        };
+    }
+
+    private static (string FirstName, string LastName) SplitCustomerName(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return ("Cliente", "Dashboard");
+        }
+
+        if (parts.Length == 1)
+        {
+            return (parts[0], "Dashboard");
+        }
+
+        return (parts[0], string.Join(' ', parts.Skip(1)));
+    }
+
+    private static string CreateSeedFiscalCode(int customerId)
+    {
+        return $"CUST{customerId:D12}";
+    }
+
+    private static void EnsureIdentityResultSucceeded(IdentityResult result, string message)
+    {
+        if (result.Succeeded)
+        {
+            return;
+        }
+
+        var errors = string.Join("; ", result.Errors.Select(error => error.Description));
+        throw new InvalidOperationException($"{message} {errors}");
     }
 
     private async Task<Dictionary<string, int>> GetProductIdsByNameAsync(IEnumerable<Models.Product> products, CancellationToken cancellationToken)
