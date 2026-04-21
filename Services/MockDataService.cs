@@ -118,6 +118,7 @@ public static class MockDataService
                 Name = seed.Name,
                 Category = categories[index % categories.Count],
                 Description = $"Soluzione {categories[index % categories.Count].Name.ToLowerInvariant()} pensata per {seed.Name.ToLowerInvariant()}.",
+                ImageUrl = CreateProductImageUrl(seed.Name, categories[index % categories.Count].Name, index + 1),
                 UnitCost = seed.Price,
                 Stock = random.Next(12, 180)
             })
@@ -168,12 +169,144 @@ public static class MockDataService
                 Name = generatedName,
                 Category = category,
                 Description = $"Articolo della categoria {category.Name.ToLowerInvariant()} progettato per ambienti operativi moderni.",
+                ImageUrl = CreateProductImageUrl(generatedName, category.Name, products.Count + 1),
                 UnitCost = decimal.Round(basePrice, 2),
                 Stock = 10 + ((nextIndex * 13) % 240)
             });
         }
 
         return products;
+    }
+
+    private static string CreateProductImageUrl(string productName, string categoryName, int productNumber)
+    {
+        var keywords = GetProductImageKeywords(productName, categoryName);
+        return $"https://loremflickr.com/320/240/{keywords}?lock={productNumber}";
+    }
+
+    private static string GetProductImageKeywords(string productName, string categoryName)
+    {
+        var name = productName.ToLowerInvariant();
+
+        if (name.Contains("calcolatrice"))
+        {
+            return "calculator,office/all";
+        }
+
+        if (name.Contains("cuffie") || name.Contains("headset"))
+        {
+            return "headphones,audio/all";
+        }
+
+        if (name.Contains("laptop") || name.Contains("notebook"))
+        {
+            return "laptop,computer/all";
+        }
+
+        if (name.Contains("tastiera"))
+        {
+            return "keyboard,computer/all";
+        }
+
+        if (name.Contains("monitor"))
+        {
+            return "monitor,computer/all";
+        }
+
+        if (name.Contains("mouse"))
+        {
+            return "mouse,computer/all";
+        }
+
+        if (name.Contains("workstation") || name.Contains("desktop") || name.Contains("mini pc"))
+        {
+            return "desktop,computer/all";
+        }
+
+        if (name.Contains("webcam") || name.Contains("videobar"))
+        {
+            return "webcam,video/all";
+        }
+
+        if (name.Contains("ssd") || name.Contains("hard disk") || name.Contains("storage") || name.Contains("chiavetta"))
+        {
+            return "harddrive,storage/all";
+        }
+
+        if (name.Contains("stampante") || name.Contains("multifunzione") || name.Contains("plotter"))
+        {
+            return "printer,office/all";
+        }
+
+        if (name.Contains("hub") || name.Contains("usb"))
+        {
+            return "usb,technology/all";
+        }
+
+        if (name.Contains("scanner") || name.Contains("barcode"))
+        {
+            return "scanner,office/all";
+        }
+
+        if (name.Contains("nas") || name.Contains("backup") || name.Contains("server"))
+        {
+            return "server,storage/all";
+        }
+
+        if (name.Contains("microfono"))
+        {
+            return "microphone,audio/all";
+        }
+
+        if (name.Contains("speaker"))
+        {
+            return "speaker,audio/all";
+        }
+
+        if (name.Contains("router") || name.Contains("switch") || name.Contains("firewall") || name.Contains("sfp"))
+        {
+            return "network,router/all";
+        }
+
+        if (name.Contains("access point") || name.Contains("bridge"))
+        {
+            return "wifi,network/all";
+        }
+
+        if (name.Contains("etichettatrice"))
+        {
+            return "label,printer/all";
+        }
+
+        if (name.Contains("distruggidocumenti"))
+        {
+            return "shredder,office/all";
+        }
+
+        if (name.Contains("proiettore"))
+        {
+            return "projector,office/all";
+        }
+
+        if (name.Contains("controller"))
+        {
+            return "gamepad,gaming/all";
+        }
+
+        if (name.Contains("console") || name.Contains("game hub"))
+        {
+            return "console,gaming/all";
+        }
+
+        return categoryName switch
+        {
+            "Audio Video" => "audio,video/all",
+            "Networking" => "network,technology/all",
+            "Archiviazione" => "storage,technology/all",
+            "Ufficio" => "office,technology/all",
+            "Gaming" => "gaming,technology/all",
+            _ => "technology,product/all"
+        };
     }
 
     private static List<Order> GenerateOrders(List<Customer> customers)

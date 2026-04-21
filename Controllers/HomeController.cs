@@ -302,6 +302,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             Name = product.Name,
             CategoryCode = product.Category.Code,
             Description = product.Description,
+            ImageUrl = product.ImageUrl,
             UnitCost = product.UnitCost,
             Stock = product.Stock,
             Categories = dataService.GetCategoryPageData().Categories
@@ -316,6 +317,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             Name = model.Name,
             Category = new Category { Code = model.CategoryCode },
             Description = model.Description,
+            ImageUrl = model.ImageUrl,
             UnitCost = model.UnitCost,
             Stock = model.Stock
         };

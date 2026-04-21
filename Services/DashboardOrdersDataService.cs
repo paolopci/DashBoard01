@@ -359,6 +359,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             Price = product.UnitCost,
             StockQuantity = product.Stock,
             CategoryCode = categoryCode,
+            ImageUrl = NormalizeImageUrl(product.ImageUrl),
             CreatedAt = DateTime.UtcNow
         });
         dbContext.SaveChanges();
@@ -381,6 +382,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         entity.Price = product.UnitCost;
         entity.StockQuantity = product.Stock;
         entity.CategoryCode = categoryCode;
+        entity.ImageUrl = NormalizeImageUrl(product.ImageUrl);
         dbContext.SaveChanges();
 
         return true;
@@ -631,6 +633,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             Name = entity.Name,
             Category = MapCategory(entity.Category),
             Description = entity.Description ?? string.Empty,
+            ImageUrl = entity.ImageUrl ?? string.Empty,
             UnitCost = entity.Price,
             Stock = entity.StockQuantity
         };
@@ -673,6 +676,12 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
     private static string NormalizeCode(string? code)
     {
         return (code ?? string.Empty).Trim().ToUpperInvariant();
+    }
+
+    private static string? NormalizeImageUrl(string? imageUrl)
+    {
+        var normalizedImageUrl = (imageUrl ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalizedImageUrl) ? null : normalizedImageUrl;
     }
 
     private static PagedResult<T> ApplyPaging<T>(IReadOnlyList<T> items, int page, int pageSize)

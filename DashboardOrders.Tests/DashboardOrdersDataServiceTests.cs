@@ -173,6 +173,73 @@ public class DashboardOrdersDataServiceTests
         risultato.Items.Should().NotBeEmpty(); // Should return all products
     }
 
+    [Fact]
+    public void GetProducts_QuandoProdottoHaImmagine_AlloraMappaImageUrl()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.GetProducts(page: 1, pageSize: 10);
+
+        // Assert
+        risultato.Items.Single().ImageUrl.Should().Be("https://loremflickr.com/320/240/laptop,computer/all?lock=1");
+    }
+
+    [Fact]
+    public void CreateProduct_QuandoImmagineValida_AlloraSalvaImageUrl()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedCategory(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+        var product = new Product
+        {
+            Code = "prd-002",
+            Name = "Cuffie Flex",
+            Category = new Category { Code = "CAT-001" },
+            Description = "Cuffie per ufficio",
+            ImageUrl = "https://loremflickr.com/320/240/headphones,audio/all?lock=2",
+            UnitCost = 49m,
+            Stock = 7
+        };
+
+        // Act
+        var risultato = sut.CreateProduct(product);
+
+        // Assert
+        risultato.Should().BeTrue();
+        dbContext.Products.Single(product => product.Code == "PRD-002").ImageUrl.Should().Be("https://loremflickr.com/320/240/headphones,audio/all?lock=2");
+    }
+
+    [Fact]
+    public void UpdateProduct_QuandoImmagineValida_AlloraAggiornaImageUrl()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        var product = new Product
+        {
+            Code = "PRD-001",
+            Name = "Laptop tracer",
+            Category = new Category { Code = "CAT-001" },
+            Description = "Prodotto aggiornato",
+            ImageUrl = "https://loremflickr.com/320/240/computer,office/all?lock=99",
+            UnitCost = 30m,
+            Stock = 4
+        };
+
+        // Act
+        var risultato = sut.UpdateProduct(product);
+
+        // Assert
+        risultato.Should().BeTrue();
+        dbContext.Products.Single(product => product.Code == "PRD-001").ImageUrl.Should().Be("https://loremflickr.com/320/240/computer,office/all?lock=99");
+    }
+
     private static DashboardOrdersDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<DashboardOrdersDbContext>()
@@ -184,12 +251,7 @@ public class DashboardOrdersDataServiceTests
 
     private static void SeedProduct(DashboardOrdersDbContext dbContext, int stockQuantity, decimal price)
     {
-        dbContext.Categories.Add(new CategoryEntity
-        {
-            Code = "CAT-001",
-            Name = "Informatica",
-            Description = "Prodotti informatici"
-        });
+        SeedCategory(dbContext);
         dbContext.Products.Add(new ProductEntity
         {
             Code = "PRD-001",
@@ -198,7 +260,24 @@ public class DashboardOrdersDataServiceTests
             Price = price,
             StockQuantity = stockQuantity,
             CategoryCode = "CAT-001",
+            ImageUrl = "https://loremflickr.com/320/240/laptop,computer/all?lock=1",
             CreatedAt = DateTime.UtcNow
+        });
+        dbContext.SaveChanges();
+    }
+
+    private static void SeedCategory(DashboardOrdersDbContext dbContext)
+    {
+        if (dbContext.Categories.Any(category => category.Code == "CAT-001"))
+        {
+            return;
+        }
+
+        dbContext.Categories.Add(new CategoryEntity
+        {
+            Code = "CAT-001",
+            Name = "Informatica",
+            Description = "Prodotti informatici"
         });
         dbContext.SaveChanges();
     }

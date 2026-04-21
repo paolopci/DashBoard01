@@ -18,6 +18,10 @@ public class ProductFormViewModel
     [StringLength(500, ErrorMessage = "La descrizione non puo superare 500 caratteri.")]
     public string Description { get; set; } = string.Empty;
 
+    [Url(ErrorMessage = "L'immagine deve essere un URL valido.")]
+    [StringLength(200, ErrorMessage = "L'URL immagine non puo superare 200 caratteri.")]
+    public string ImageUrl { get; set; } = string.Empty;
+
     [Range(0.01, 999999.99, ErrorMessage = "Il costo unitario deve essere maggiore di zero.")]
     public decimal UnitCost { get; set; }
 

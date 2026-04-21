@@ -45,6 +45,11 @@
             }
         </div>
         <div class="md:col-span-2">
+            <label asp-for="ImageUrl" class="mb-2 block text-sm font-semibold text-slate-700">URL immagine</label>
+            <input asp-for="ImageUrl" type="url" maxlength="200" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <span asp-validation-for="ImageUrl" class="mt-1 block text-xs font-semibold text-rose-600"></span>
+        </div>
+        <div class="md:col-span-2">
             <label asp-for="Description" class="mb-2 block text-sm font-semibold text-slate-700">Descrizione</label>
             <textarea asp-for="Description" rows="4" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"></textarea>
             <span asp-validation-for="Description" class="mt-1 block text-xs font-semibold text-rose-600"></span>

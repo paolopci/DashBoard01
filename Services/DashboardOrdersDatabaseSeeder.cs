@@ -65,6 +65,7 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, U
                 existingProduct.Price = product.UnitCost;
                 existingProduct.StockQuantity = product.Stock;
                 existingProduct.CategoryCode = product.Category.Code;
+                existingProduct.ImageUrl = product.ImageUrl;
                 continue;
             }
 
@@ -76,6 +77,7 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, U
                 Price = product.UnitCost,
                 StockQuantity = product.Stock,
                 CategoryCode = product.Category.Code,
+                ImageUrl = product.ImageUrl,
                 CreatedAt = SeedCreatedAt
             });
         }
