@@ -85,7 +85,32 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         };
     }
 
-    public OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+        public OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    {
+        var paginationResult = GetOrders(customerId, page, pageSize, sortBy, sortDirection, search);
+        var selectedCustomer = customerId.HasValue
+            ? dbContext.Customers.AsNoTracking().FirstOrDefault(customer => customer.Id == customerId.Value)
+            : null;
+
+        return new OrdersPageViewModel
+        {
+            Orders = paginationResult.Items,
+            TotalOrders = paginationResult.TotalItems,
+            TotalRevenue = paginationResult.Items.Where(order => order.Status != OrderStatus.Cancelled).Sum(order => order.TotalAmount),
+            PendingOrders = paginationResult.Items.Count(order => order.Status is OrderStatus.Pending or OrderStatus.Processing),
+            ShippedOrders = paginationResult.Items.Count(order => order.Status is OrderStatus.Shipped or OrderStatus.Delivered),
+            SearchTerm = search,
+            SortBy = sortBy,
+            SortDirection = sortDirection,
+            CurrentPage = paginationResult.CurrentPage,
+            PageSize = paginationResult.PageSize,
+            TotalPages = paginationResult.TotalPages,
+            SelectedCustomerId = selectedCustomer?.Id,
+            SelectedCustomerName = selectedCustomer?.Name ?? string.Empty
+        };
+    }
+
+    public PaginationResult<Order> GetOrders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, OrdersSortColumns, "date");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
@@ -107,25 +132,16 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             order.Items.Any(item => item.ProductName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
             OrderStatusPresentation.FromStatus(order.Status).Label.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
 
+        var totalCount = filteredOrders.Count;
         filteredOrders = SortOrders(filteredOrders, normalizedSortBy, normalizedSortDirection);
-        var pagedOrders = ApplyPaging(filteredOrders, page, pageSize);
+        var pagedOrders = ApplyPagingImproved(filteredOrders, page, pageSize);
 
-        return new OrdersPageViewModel
-        {
-            Orders = pagedOrders.Items,
-            TotalOrders = filteredOrders.Count,
-            TotalRevenue = filteredOrders.Where(order => order.Status != OrderStatus.Cancelled).Sum(order => order.TotalAmount),
-            PendingOrders = filteredOrders.Count(order => order.Status is OrderStatus.Pending or OrderStatus.Processing),
-            ShippedOrders = filteredOrders.Count(order => order.Status is OrderStatus.Shipped or OrderStatus.Delivered),
-            SearchTerm = normalizedSearch,
-            SortBy = normalizedSortBy,
-            SortDirection = normalizedSortDirection,
-            CurrentPage = pagedOrders.CurrentPage,
-            PageSize = pagedOrders.PageSize,
-            TotalPages = pagedOrders.TotalPages,
-            SelectedCustomerId = selectedCustomer?.Id,
-            SelectedCustomerName = selectedCustomer?.Name ?? string.Empty
-        };
+        return new PaginationResult<Order>(
+            pagedOrders.Items,
+            pagedOrders.CurrentPage,
+            pagedOrders.PageSize,
+            totalCount,
+            pagedOrders.TotalPages);
     }
 
     public OrdersPageViewModel GetOrdersPageDataForCustomerEmail(string? email, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
@@ -139,7 +155,26 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return GetOrdersPageData(customer.Id, page, pageSize, sortBy, sortDirection, search);
     }
 
-    public CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
+        public CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
+    {
+        var paginationResult = GetCustomers(page, pageSize, sortBy, sortDirection, search);
+
+        return new CustomersPageViewModel
+        {
+            Customers = paginationResult.Items,
+            TotalCustomers = paginationResult.TotalItems,
+            CustomersWithOrders = paginationResult.Items.Count(summary => summary.OrdersCount > 0),
+            TotalRevenue = paginationResult.Items.Sum(summary => summary.TotalOrdersAmount),
+            SearchTerm = search,
+            SortBy = sortBy,
+            SortDirection = sortDirection,
+            CurrentPage = paginationResult.CurrentPage,
+            PageSize = paginationResult.PageSize,
+            TotalPages = paginationResult.TotalPages
+        };
+    }
+
+    public PaginationResult<CustomerOrdersSummaryViewModel> GetCustomers(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, CustomerSortColumns, "totalAmount");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
@@ -161,25 +196,42 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             summary.Customer.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
             summary.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
 
+        var totalCount = customerSummaries.Count;
         customerSummaries = SortCustomerSummaries(customerSummaries, normalizedSortBy, normalizedSortDirection);
-        var pagedCustomers = ApplyPaging(customerSummaries, page, pageSize);
+        var pagedCustomers = ApplyPagingImproved(customerSummaries, page, pageSize);
 
-        return new CustomersPageViewModel
+        return new PaginationResult<CustomerOrdersSummaryViewModel>(
+            pagedCustomers.Items,
+            pagedCustomers.CurrentPage,
+            pagedCustomers.PageSize,
+            totalCount,
+            pagedCustomers.TotalPages);
+    }
+
+        public ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "", string search = "")
+    {
+        var categories = dbContext.Categories.AsNoTracking().Select(MapCategory).OrderBy(category => category.Name).ToList();
+        var paginationResult = GetProducts(page, pageSize, sortBy, sortDirection, categoryCode, search);
+
+        return new ProductsPageViewModel
         {
-            Customers = pagedCustomers.Items,
-            TotalCustomers = customerSummaries.Count,
-            CustomersWithOrders = customerSummaries.Count(summary => summary.OrdersCount > 0),
-            TotalRevenue = customerSummaries.Sum(summary => summary.TotalOrdersAmount),
-            SearchTerm = normalizedSearch,
-            SortBy = normalizedSortBy,
-            SortDirection = normalizedSortDirection,
-            CurrentPage = pagedCustomers.CurrentPage,
-            PageSize = pagedCustomers.PageSize,
-            TotalPages = pagedCustomers.TotalPages
+            Products = paginationResult.Items,
+            Categories = categories,
+            TotalProducts = paginationResult.TotalItems,
+            TotalCategories = categories.Count,
+            TotalStock = paginationResult.Items.Sum(product => product.Stock),
+            InventoryValue = paginationResult.Items.Sum(product => product.UnitCost * product.Stock),
+            SearchTerm = search,
+            SortBy = sortBy,
+            SortDirection = sortDirection,
+            SelectedCategoryCode = categoryCode,
+            CurrentPage = paginationResult.CurrentPage,
+            PageSize = paginationResult.PageSize,
+            TotalPages = paginationResult.TotalPages
         };
     }
 
-    public ProductsPageViewModel GetProductsPageData(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "", string search = "")
+    public PaginationResult<Product> GetProducts(int page = 1, int pageSize = 10, string sortBy = "code", string sortDirection = "asc", string categoryCode = "", string search = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, ProductSortColumns, "name");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "asc");
@@ -207,25 +259,16 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             product.Category.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
             product.Category.Description.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
 
+        var totalCount = filteredProducts.Count;
         var sortedProducts = SortProducts(filteredProducts, normalizedSortBy, normalizedSortDirection);
-        var pagedProducts = ApplyPaging(sortedProducts, page, pageSize);
+        var pagedProducts = ApplyPagingImproved(sortedProducts, page, pageSize);
 
-        return new ProductsPageViewModel
-        {
-            Products = pagedProducts.Items,
-            Categories = categories,
-            TotalProducts = sortedProducts.Count,
-            TotalCategories = categories.Count,
-            TotalStock = sortedProducts.Sum(product => product.Stock),
-            InventoryValue = sortedProducts.Sum(product => product.UnitCost * product.Stock),
-            SearchTerm = normalizedSearch,
-            SortBy = normalizedSortBy,
-            SortDirection = normalizedSortDirection,
-            SelectedCategoryCode = normalizedCategoryCode,
-            CurrentPage = pagedProducts.CurrentPage,
-            PageSize = pagedProducts.PageSize,
-            TotalPages = pagedProducts.TotalPages
-        };
+        return new PaginationResult<Product>(
+            pagedProducts.Items,
+            pagedProducts.CurrentPage,
+            pagedProducts.PageSize,
+            totalCount,
+            pagedProducts.TotalPages);
     }
 
     public Customer? GetCustomer(int id)
@@ -635,6 +678,27 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
     private static PagedResult<T> ApplyPaging<T>(IReadOnlyList<T> items, int page, int pageSize)
     {
         var normalizedPageSize = pageSize is 10 or 20 or 50 ? pageSize : 0;
+        var totalPages = normalizedPageSize == 0
+            ? 1
+            : Math.Max(1, (int)Math.Ceiling(items.Count / (double)normalizedPageSize));
+        var normalizedPage = Math.Clamp(page, 1, totalPages);
+        var pagedItems = normalizedPageSize == 0
+            ? items.ToList()
+            : items
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToList();
+
+        return new PagedResult<T>(pagedItems, normalizedPage, normalizedPageSize, totalPages);
+    }
+
+    private static PagedResult<T> ApplyPagingImproved<T>(IReadOnlyList<T> items, int page, int pageSize)
+    {
+        // Standard page sizes
+        var standardPageSizes = new[] { 10, 25, 50, 100 };
+        var normalizedPageSize = pageSize == 0
+            ? 0
+            : standardPageSizes.Contains(pageSize) ? pageSize : 10;
         var totalPages = normalizedPageSize == 0
             ? 1
             : Math.Max(1, (int)Math.Ceiling(items.Count / (double)normalizedPageSize));

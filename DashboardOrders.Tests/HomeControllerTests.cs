@@ -1,4 +1,5 @@
 using DashboardOrders.Controllers;
+using DashboardOrders.Data;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using FluentAssertions;
@@ -6,6 +7,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Xunit;
 
@@ -15,11 +17,15 @@ public class HomeControllerTests
 {
     private readonly IDashboardOrdersDataService dataService;
     private readonly HomeController sut;
+    private readonly DashboardOrdersDbContext dbContext;
 
     public HomeControllerTests()
     {
         dataService = Substitute.For<IDashboardOrdersDataService>();
-        sut = new HomeController(dataService)
+        dbContext = new DashboardOrdersDbContext(new DbContextOptionsBuilder<DashboardOrdersDbContext>()
+            .UseInMemoryDatabase($"HomeControllerTests-{Guid.NewGuid()}")
+            .Options);
+        sut = new HomeController(dataService, dbContext)
         {
             ControllerContext = new ControllerContext
             {

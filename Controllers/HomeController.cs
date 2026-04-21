@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DashboardOrders.Data;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +14,12 @@ public class HomeController : Controller
     private const string ToastSuccessKey = "Toast.Success";
 
     private readonly IDashboardOrdersDataService dataService;
+    private readonly DashboardOrdersDbContext dbContext;
 
-    public HomeController(IDashboardOrdersDataService dataService)
+    public HomeController(IDashboardOrdersDataService dataService, DashboardOrdersDbContext dbContext)
     {
         this.dataService = dataService;
+        this.dbContext = dbContext;
     }
 
     /// <summary>
@@ -27,7 +30,19 @@ public class HomeController : Controller
     /// <param name="sortBy">Campo di ordinamento.</param>
     /// <param name="sortDirection">Direzione dell'ordinamento.</param>
     /// <param name="search">Termine di ricerca facoltativo.</param>
-    public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    public IActionResult Dashboard(string period = "30d")
+    {
+        if (!IsAdmin())
+        {
+            return RedirectToAction("AccessDenied", "Account");
+        }
+
+        var analyticsService = new DashboardAnalyticsService(dbContext);
+        var model = analyticsService.GetAnalytics(period);
+        return View(model);
+    }
+
+public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
         if (!IsAdmin())
         {
@@ -54,9 +69,9 @@ public class HomeController : Controller
             ? dataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection, search)
             : dataService.GetOrdersPageDataForCustomerEmail(GetCurrentEmail(), page, pageSize, sortBy, sortDirection, search);
         SearchFormViewModel
-            .From(model, "Orders", model.SortBy, model.SortDirection, new Dictionary<string, string>
+            .From(model, "Orders", sortBy, sortDirection, new Dictionary<string, string>
             {
-                ["customerId"] = IsAdmin() ? model.SelectedCustomerId?.ToString() ?? string.Empty : string.Empty
+                ["customerId"] = IsAdmin() ? customerId?.ToString() ?? string.Empty : string.Empty
             })
             .ApplyTo(ViewData);
         return View(model);
@@ -95,9 +110,9 @@ public class HomeController : Controller
     {
         var model = dataService.GetProductsPageData(page, pageSize, sortBy, sortDirection, categoryCode, search);
         SearchFormViewModel
-            .From(model, "Products", model.SortBy, model.SortDirection, new Dictionary<string, string>
+            .From(model, "Products", sortBy, sortDirection, new Dictionary<string, string>
             {
-                ["categoryCode"] = model.SelectedCategoryCode
+                ["categoryCode"] = categoryCode
             })
             .ApplyTo(ViewData);
         return View(model);

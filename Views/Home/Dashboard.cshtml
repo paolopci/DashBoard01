@@ -1,0 +1,33 @@
+@model DashboardOrders.Models.DashboardAnalyticsViewModel
+
+@{
+    ViewData["Title"] = "Dashboard Analytics";
+}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-slate-800">Dashboard Analytics</h1>
+</div>
+
+<partial name="_MetricsCards" model="Model.Metrics" />
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-slate-800">Trend Ordini Ultimi 30 Giorni</h2>
+        <select onchange="updatePeriod(this.value)" class="rounded-lg border px-3 py-2">
+            <option value="7d">7 giorni</option>
+            <option value="30d" selected>30 giorni</option>
+            <option value="90d">90 giorni</option>
+        </select>
+    </div>
+    <partial name="_Charts" model="Model.OrderTrend" />
+</div>
+
+<script>
+function updatePeriod(period) {
+    window.location.href = '?period=' + period;
+}
+
+setInterval(() => {
+    location.reload();
+}, 300000); // Auto-refresh every 5 min
+</script>

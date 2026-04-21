@@ -45,6 +45,7 @@
     </p>
 </div>
 
+<partial name="_FilterPanel" />
 <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[0.9fr_0.9fr_0.9fr_1.35fr]">
     <div class="flex items-center space-x-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
         <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-indigo-100">
@@ -140,26 +141,7 @@
             <input type="hidden" name="search" value="@Model.SearchTerm" />
         </form>
 
-        <partial name="_PageSizeSelector" model="@(new PageSizeSelectorViewModel
-        {
-            ActionName = "Products",
-            ControllerName = "Home",
-            PageSize = Model.PageSize,
-            SortBy = Model.SortBy,
-            SortDirection = Model.SortDirection,
-            ExtraRouteValues = ProductRouteValues()
-        })" />
-
-        <div class="text-sm text-slate-500">
-            @if (Model.ShowAll)
-            {
-                <span>Tutti i prodotti in una sola pagina</span>
-            }
-            else
-            {
-                <span>Pagina @Model.CurrentPage di @Model.TotalPages</span>
-            }
-        </div>
+        <partial name="_PaginationControls" model="Model" />
     </div>
 
     <div class="overflow-x-auto">

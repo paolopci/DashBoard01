@@ -85,6 +85,7 @@
     </div>
 }
 
+<partial name="_FilterPanel" />
 <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 mb-8">
     <div class="bg-white rounded-2xl shadow-sm p-6 flex items-center space-x-4 border border-slate-100 hover:shadow-md transition-shadow">
         <div class="h-14 w-14 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
@@ -126,28 +127,7 @@
         <h3 class="text-lg font-semibold text-slate-800">Elenco Ordini</h3>
         <span class="text-sm text-slate-500">Totale: @Model.TotalOrders ordini</span>
     </div>
-    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <partial name="_PageSizeSelector" model="@(new PageSizeSelectorViewModel
-        {
-            ActionName = "Orders",
-            ControllerName = "Home",
-            PageSize = Model.PageSize,
-            SortBy = Model.SortBy,
-            SortDirection = Model.SortDirection,
-            ExtraRouteValues = OrderRouteValues()
-        })" />
-
-        <div class="text-sm text-slate-500">
-            @if (Model.ShowAll)
-            {
-                <span>Tutti gli ordini in una sola pagina</span>
-            }
-            else
-            {
-                <span>Pagina @Model.CurrentPage di @Model.TotalPages</span>
-            }
-        </div>
-    </div>
+    <partial name="_PaginationControls" model="Model" />
 
     <div class="space-y-4 p-4 md:hidden">
         @foreach (var order in Model.Orders)

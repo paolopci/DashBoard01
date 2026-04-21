@@ -1,0 +1,43 @@
+@model object
+
+<!-- Generic for different view models -->
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+    <h3 class="text-lg font-semibold text-slate-800 mb-4">Filtri Avanzati</h3>
+
+    <form method="get" asp-action="@ViewContext.RouteData.Values["Action"]" asp-controller="@ViewContext.RouteData.Values["Controller"]" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Common search -->
+        <div>
+            <label for="search" class="block text-sm font-medium text-slate-700 mb-1">Ricerca Testo</label>
+            <input type="text" id="search" name="search" value="@(ViewData["SearchTerm"] ?? "")" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cerca...">
+        </div>
+
+        <!-- Date range for orders -->
+        <div>
+            <label for="dateFrom" class="block text-sm font-medium text-slate-700 mb-1">Da Data</label>
+            <input type="date" id="dateFrom" name="dateFrom" value="@(ViewData["DateFrom"] ?? "")" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <div>
+            <label for="dateTo" class="block text-sm font-medium text-slate-700 mb-1">A Data</label>
+            <input type="date" id="dateTo" name="dateTo" value="@(ViewData["DateTo"] ?? "")" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <!-- Min/Max fields - customize per view -->
+        <div class="lg:col-span-1">
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">Applica Filtri</button>
+        </div>
+
+        <div class="lg:col-span-2">
+            <a href="@Context.Request.Path?page=1" class="text-indigo-600 hover:text-indigo-700 font-medium text-sm">Reset Filtri</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('change', function() {
+        this.closest('form').submit();
+    });
+});
+</script>
