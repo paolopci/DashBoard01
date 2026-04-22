@@ -4,21 +4,24 @@
 
 Leggi sempre `AGENTS.md` come prima azione di ogni nuova richiesta sul progetto, prima di analisi, piano, uso tool o modifiche.
 
+Unica eccezione: se `AGENTS.md` non esiste e l'utente ha detto esattamente `crea AGENTS.md`, segui prima la procedura `/init` definita dalla skill `agents-md-refactor`, poi leggi il nuovo `AGENTS.md`.
+
 Se `AGENTS.md` non è stato letto nella richiesta corrente:
 - non proporre checklist;
 - non usare tool;
 - non eseguire attività operative.
 
-Se il task richiede o può beneficiare di server MCP:
-- verifica dopo la lettura di `AGENTS.md` se i server MCP rilevanti sono configurati correttamente per il repository, la solution o l'ambiente corrente;
-- applica il controllo minimo definito dal repository in `AGENTS.md` e, in assenza di istruzioni specifiche, verifica almeno disponibilità del server richiesto e compatibilità con path, root, credenziali o servizi necessari;
-- se la configurazione MCP non è adeguata, dichiara in modo esplicito quale server manca o è configurato in modo non adatto;
+Se l'utente nomina esplicitamente MCP o uno specifico server MCP:
+- verifica dopo la lettura di `AGENTS.md` se i server MCP nominati dall'utente sono configurati correttamente per il repository, la solution o l'ambiente corrente;
+- verifica questi controlli esatti: server disponibile, path/root configurati per il `cwd` corrente, credenziali presenti quando il server MCP non è anonimo o richiede autenticazione configurata;
+- se uno dei controlli MCP fallisce, dichiara in modo esplicito quale server manca o quale controllo è fallito;
 - non correggere automaticamente la configurazione MCP;
-- chiedi prima all'utente l'autorizzazione a eseguire la correzione.
+- chiedi all'utente di rispondere esattamente `autorizzo correzione MCP`;
+- procedi solo dopo risposta esatta `autorizzo correzione MCP`.
 
 ## Pianificazione a step
 
-Dopo la lettura iniziale di `AGENTS.md`:
+Dopo la lettura o rilettura iniziale di `AGENTS.md`:
 - analizza il task;
 - identifica il perimetro della modifica;
 - presenta una checklist concettuale di 1-7 step.
@@ -30,7 +33,7 @@ Per ogni step:
 
 Regole:
 - mantieni visibili step aperti e completati;
-- ripubblica la checklist solo se cambiano stato, perimetro o contenuto del piano;
+- ripubblica la checklist dopo ogni completamento di step o modifica del piano;
 - nei messaggi successivi aggiorna solo avanzamento, validazione o richiesta decisionale;
 - dopo la checklist mostra subito e solo la scelta `1/2` a livello step.
 
@@ -61,7 +64,8 @@ Per ogni item:
 - usa sempre il formato `<Numero Step>.<Numero progressivo item> : <descrizione>`.
 
 Regole:
-- preferisci 3-7 item concreti per step, salvo task molto piccoli;
+- usa 3-7 item concreti per step, tranne nel caso atomico definito sotto;
+- per task con un solo file e una sola modifica atomica usa 1-2 item;
 - mantieni visibili item aperti e completati;
 - non mostrare gli item prima della scelta esplicita sullo step.
 
@@ -88,10 +92,14 @@ Uno step è completato solo quando tutti i suoi item sono completati.
 ## Esecuzione e validazione
 
 - Non eseguire attività operative prima di una scelta valida `1` o `2`.
-- Dopo ogni uso di tool o modifica, valida l'esito in 1-2 frasi e correggi se serve.
+- Dopo ogni uso di tool o modifica, valida l'esito in 1-2 frasi.
+- Se la validazione fallisce, correggi.
+- Se la validazione passa, dichiara l'esito.
 - Testa e verifica il codice modificato.
 - Riformatta i file toccati.
-- Se compare `Accesso negato`, usa permessi elevati se disponibili e consentiti.
+- Se compare `Accesso negato` e lo strumento supporta `sandbox_permissions=require_escalated`, chiedi autorizzazione.
+- Se lo strumento non supporta `sandbox_permissions=require_escalated`, segnala il blocco.
+- Se l'ambiente non espone `sandbox_permissions=require_escalated`, considera l'escalation non disponibile.
 - Mantieni in italiano il contenuto del piano e dei deliverable.
 
 ## Skill
@@ -99,8 +107,9 @@ Uno step è completato solo quando tutti i suoi item sono completati.
 La lettura o valutazione teorica di una skill non equivale a esecuzione operativa.
 
 Per usare operativamente una skill:
-- richiedi sempre una conferma preventiva esplicita in chat;
-- usa solo skill autorizzate e disponibili nella sessione corrente;
+- se una skill definisce una regola di autorizzazione più specifica, applica solo quella regola specifica e non chiedere `autorizzo skill`;
+- se la skill non definisce una regola di autorizzazione più specifica, chiedi all'utente di rispondere esattamente `autorizzo skill`;
+- usa solo skill autorizzate e disponibili nella sessione corrente; disponibile significa presente nell'elenco skill della sessione corrente;
 - non riutilizzare le scelte `1/2` del workflow come autorizzazione per una skill;
-- attendi una risposta chiara e inequivocabile prima di procedere;
-- dopo la conferma, valida in 1-2 righe che l'autorizzazione è stata ricevuta correttamente.
+- quando `autorizzo skill` è richiesto, attendi la risposta esatta `autorizzo skill` prima di procedere;
+- dopo l'autorizzazione valida, cioè autorizzazione specifica della skill oppure risposta esatta `autorizzo skill`, valida in 1-2 righe che l'autorizzazione è stata ricevuta correttamente.

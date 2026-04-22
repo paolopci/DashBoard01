@@ -2,12 +2,12 @@
 
 ## Obiettivo
 
-Queste regole coprono il minimo indispensabile di sicurezza applicativa e gestione configurazione da richiamare nei repository che le adottano.
+Queste regole definiscono i controlli obbligatori di sicurezza applicativa e gestione configurazione da richiamare nei repository che le adottano.
 
 ## Regole
 
 - Non committare segreti in file versionati come `appsettings*.json` o `launchSettings.json`.
-- Per credenziali e valori sensibili preferisci variabili d'ambiente, user secrets o strumenti equivalenti.
+- Per credenziali e valori sensibili usa variabili d'ambiente o user secrets.
 - Separa la configurazione locale, di sviluppo e di produzione.
 - Documenta i punti di configurazione sensibili senza esporre valori reali.
 - Valida gli input in ingresso nel boundary applicativo corretto.

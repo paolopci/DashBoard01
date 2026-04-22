@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 # Repository-local agent instructions
 AGENTS.md
 _shared/*.md
+
+# Repository-local agent instructions
+AGENTS.md
+shared/*.md
