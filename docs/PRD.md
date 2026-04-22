@@ -1,123 +1,88 @@
-# PRD - Immagini prodotto nel catalogo
+# PRD - Nuovo ordine multi-articolo
 
 ## 1. Obiettivo
 
-Aggiornare l'applicazione ASP.NET Core MVC `DashBoard01` per associare a ogni prodotto un URL immagine univoco e mostrarlo correttamente nel catalogo prodotti su desktop e mobile.
+Aggiornare la pagina `Home/NewOrder` per consentire a un cliente di creare un ordine con piu articoli selezionati per categoria e prodotto, mostrando i dettagli del prodotto selezionato, una tabella riepilogativa e il totale complessivo prima del salvataggio.
 
-## 2. Contesto
-
-Il progetto e un'applicazione esistente ASP.NET Core MVC su .NET 9 con Razor views, Tailwind CSS compilato e persistenza SQL Server tramite Entity Framework Core.
-
-La traiettoria prodotti esiste gia:
-
-- `Models/Product.cs` rappresenta il model usato da controller, service e view.
-- `Data/Entities/ProductEntity.cs` rappresenta la tabella `Products` e contiene gia la proprieta `ImageUrl`.
-- `Data/DashboardOrdersDbContext.cs` configura `ProductEntity.ImageUrl` con lunghezza massima 200.
-- `Services/DashboardOrdersDataService.cs` carica, crea, aggiorna e mappa i prodotti.
-- `Services/DashboardOrdersDatabaseSeeder.cs` popola i prodotti a partire da `MockDataService`.
-- `Views/Home/Products.cshtml` mostra l'elenco prodotti.
-- `Views/Home/_ProductForm.cshtml` gestisce creazione e modifica prodotto admin.
-
-Gap rilevato: il model `Product` non espone ancora il campo immagine e la mappatura non porta `ImageUrl` fino alla UI.
-
-## 3. Assessment iniziale
+## 2. Assessment iniziale
 
 - Tipo progetto: esistente.
-- Stack rilevato: .NET 9, ASP.NET Core MVC, Razor, EF Core, SQL Server, Identity, Tailwind CSS.
-- Architettura rilevata: monolite MVC con service applicativi e DbContext EF Core.
-- Flusso target: database + service + controller + Razor UI.
-- Livello di chiarezza: parzialmente chiaro.
+- Stack rilevato: .NET 9, ASP.NET Core MVC, Razor, EF Core, SQL Server, Tailwind CSS.
+- Architettura rilevata: monolite MVC con controller, model, Razor views e service applicativi.
+- Flusso target: Razor UI `Home/NewOrder` -> `HomeController.NewOrder` -> `IDashboardOrdersDataService` -> EF Core `Orders`, `OrderItems`, `Products`.
+- Livello di chiarezza: chiaro.
 - Assunzioni:
-  - Il campo funzionale richiesto come `image` viene implementato nel codice C# come URL immagine, preferibilmente `ImageUrl` dove coerente con `ProductEntity`.
-  - Le immagini devono essere URL remoti pubblici o asset statici locali referenziati via URL; non e richiesto upload file.
-  - Le immagini devono essere univoche per prodotto almeno a livello di URL associato.
-  - La normalizzazione dimensionale richiesta va gestita nel rendering con contenitori stabili, `object-fit: cover` o equivalente, e attributi `width`/`height` coerenti.
+  - La "figura 1" guida layout e comportamento, non richiede riproduzione pixel-perfect.
+  - "Salva" salva un ordine unico con tutte le righe presenti in tabella.
+  - "Database" indica la persistenza EF Core gia presente nel progetto.
+  - Il prodotto selezionato non deve piu essere visibile nella select finche resta nella tabella.
 
-## 4. Scope
+## 3. Scope
 
 Sono inclusi:
 
-- Aggiunta del campo immagine URL al model `Product`.
-- Propagazione del campo nei view model e nei form prodotto, se necessario.
-- Verifica e aggiornamento dello schema database per includere la colonna immagine dei prodotti.
-- Popolamento dei prodotti esistenti con immagini univoche coerenti con nome o categoria prodotto.
-- Ricerca internet di immagini adatte ai prodotti gia salvati nel database, con preferenza per fonti stabili e utilizzabili senza credenziali.
-- Aggiornamento seeder o script dati per mantenere le immagini dopo re-seed.
-- Rendering dell'immagine prodotto nel catalogo e, se utile, nei form admin.
-- Dimensionamento uniforme delle immagini su desktop e mobile.
-- Test automatici o verifiche mirate su mapping, persistenza e rendering.
+- Select `Category` con categorie disponibili.
+- Select `Products` filtrata dalla categoria selezionata.
+- Visibilita dei soli prodotti con stock `> 0`.
+- Rimozione dalla select dei prodotti gia aggiunti alla tabella.
+- Campo quantita obbligatorio e maggiore di zero.
+- Pulsante `Add Articolo` disabilitato se prodotto o quantita non sono validi.
+- Campi read-only per articolo, descrizione e prezzo.
+- Immagine prodotto selezionato, se disponibile.
+- Tabella righe ordine con `Articolo`, `Descrizione Articolo`, `Prezzo`, `Quantita acquistate`, `Totale`, `Task`.
+- Pulsanti riga `Edit` e `Delete Articolo`.
+- Totale complessivo in fondo alla tabella.
+- `Annullare Articolo` per pulire selezione e dettaglio prodotto.
+- `Annulla` per tornare a `Home/Orders`.
+- `Salva` per creare l'ordine con tutte le righe.
 
-## 5. Out of Scope
+## 4. Out of Scope
 
 Sono esclusi:
 
-- Upload immagini da parte dell'utente.
-- Storage binario immagini nel database.
-- Introduzione di CDN, blob storage o servizi esterni non gia presenti.
-- Redesign completo della pagina prodotti.
-- Sistema avanzato di gestione licenze asset.
-- Migrazione a Clean Architecture o nuove astrazioni repository.
+- Redesign globale del layout applicativo.
+- Introduzione di API JSON o framework frontend.
+- Gestione avanzata promozioni, tasse, sconti o spedizioni.
+- Modifiche allo schema database non necessarie.
+- Nuove astrazioni repository o riscrittura architetturale.
 
-## 6. Requisiti Funzionali
+## 5. Requisiti funzionali
 
-- Ogni `Product` deve esporre un campo URL immagine.
-- Ogni prodotto gia presente nel database deve avere un'immagine associata.
-- Ogni prodotto deve avere un URL immagine univoco.
-- L'immagine deve essere semanticamente coerente con il prodotto o, dove il nome e generico, con la categoria.
-- Esempi attesi:
-  - `Calcolatrice Core` deve mostrare una calcolatrice.
-  - `Cuffie Flex` deve mostrare cuffie.
-- La pagina prodotti deve visualizzare l'immagine accanto alle informazioni principali del prodotto.
-- Le immagini devono mantenere dimensioni visive uniformi in elenco, senza deformare il layout.
-- La UI deve restare leggibile e usabile su desktop e mobile.
-- L'admin deve poter creare o modificare l'URL immagine di un prodotto se il form prodotto viene esteso.
+- La pagina deve mostrare categorie e prodotti disponibili.
+- La select prodotti deve mostrare solo prodotti della categoria selezionata e con stock `> 0`.
+- Un prodotto gia aggiunto alla tabella non deve comparire nella select prodotti.
+- La quantita deve essere valorizzata e `> 0`.
+- `Add Articolo` deve restare disabilitato finche la selezione articolo o la quantita non sono valide.
+- Dopo l'aggiunta, la tabella deve mostrare prezzo unitario, quantita e totale riga.
+- Il totale ordine deve essere aggiornato a ogni add, edit o delete.
+- `Edit` deve riportare una riga nel form per modificarne la quantita.
+- `Delete Articolo` deve rimuovere la riga e rendere di nuovo selezionabile il prodotto.
+- `Salva` deve creare un ordine persistito con una riga `OrderItem` per ogni articolo.
+- Il salvataggio deve fallire se almeno un prodotto non esiste, non ha stock sufficiente o la quantita non e valida.
 
-## 7. Requisiti Tecnici
-
-- Mantenere la struttura MVC esistente.
-- Non introdurre nuove dipendenze se CSS, HTML e API .NET esistenti bastano.
-- Usare EF Core e SQL Server gia configurati.
-- Se la colonna `ImageUrl` esiste gia nel database, riusarla; se manca, aggiungerla con script o migrazione coerente con il progetto.
-- Mantenere compatibilita con `DashboardOrdersDatabaseSeeder`.
-- Validare l'URL immagine con vincoli ragionevoli su lunghezza e formato.
-- Gestire fallback UI per immagini mancanti o non caricabili.
-- Evitare segreti o token nei link immagine.
-- Non eseguire `dotnet build` e `dotnet test` in parallelo.
-
-## 8. Tracer Bullet
+## 6. Tracer Bullet
 
 La fase di implementazione principale richiede una tracer bullet obbligatoria.
 
-- Trigger: apertura pagina `Products`.
-- Input minimo: un prodotto persistito con `ImageUrl` valorizzato.
-- Percorso: SQL Server `Products.ImageUrl` -> `ProductEntity` -> `DashboardOrdersDataService.MapProduct` -> `ProductsPageViewModel` -> `Views/Home/Products.cshtml`.
-- Output: immagine visibile nella riga o card del prodotto.
-- Evidenza verificabile: pagina prodotti renderizzata con immagine a dimensioni uniformi e query/service che restituisce il valore immagine.
-- Rischio tecnico abbattuto: evitare che il campo venga aggiunto solo al database o solo al model senza attraversare il flusso reale fino alla UI.
+- Trigger: utente apre `GET /Home/NewOrder`, aggiunge una riga e invia `POST /Home/NewOrder`.
+- Input minimo: una riga ordine con prodotto disponibile e quantita `1`.
+- Percorso: prodotti disponibili da EF Core -> `GetAvailableProducts` -> `NewOrderViewModel` -> Razor/JavaScript -> hidden inputs `Items[i]` -> `HomeController.NewOrder` -> `CreateOrder` multi-riga -> `Orders` e `OrderItems`.
+- Output: ordine creato e reindirizzamento a `Home/Orders`.
+- Evidenza verificabile: test service/controller e build passano; la view contiene select categoria/prodotto, tabella e hidden inputs per le righe.
+- Rischio tecnico abbattuto: evitare una UI multi-riga che invia ancora un solo prodotto o un salvataggio che non crea le righe `OrderItems`.
 
-## 9. Acceptance Criteria
+## 7. Acceptance Criteria
 
-- `Models/Product.cs` contiene un campo URL immagine coerente con il resto del codice.
-- `ProductEntity.ImageUrl` viene mappato da e verso `Product`.
-- Creazione e modifica prodotto preservano l'URL immagine.
-- Il database contiene la colonna immagine per `Products`.
-- I prodotti esistenti hanno URL immagine valorizzati.
-- Gli URL immagine sono univoci tra i prodotti.
-- Almeno i prodotti generati da template come `Calcolatrice ...` e `Cuffie ...` ricevono immagini semanticamente coerenti.
-- La pagina `Products` mostra le immagini con altezza e larghezza uniformi.
-- Il layout non presenta overlap o distorsioni evidenti su desktop e mobile.
-- `dotnet build DashBoard01.sln` passa.
-- `dotnet test DashBoard01.sln` passa, se i test sono disponibili e compatibili.
-- `npm run build:css` passa se vengono modificate classi Tailwind o sorgenti CSS.
-
-## 10. Rischi
-
-- Alcuni URL remoti possono cambiare, scadere o bloccare hotlinking.
-- Popolare 200 prodotti con immagini realmente univoche puo richiedere fonti programmatiche affidabili o una strategia per keyword/categoria.
-- La richiesta parla di "database" ma il repository contiene anche generazione mock; bisogna mantenere coerenti seed, DB e model.
-- Il campo `ImageUrl` esiste gia nell'entity EF, quindi il rischio principale e la mancata propagazione nei layer applicativi.
-- L'uso di immagini remote puo impattare performance e stabilita visiva della pagina.
-
-## 11. Definition of Done
-
-Il lavoro e completo quando PRD e PLAN sono aggiornati, la tracer bullet DB -> UI e implementata e verificata, tutti i prodotti persistiti hanno un'immagine univoca, le immagini sono renderizzate con dimensioni uniformi su desktop e mobile, e le verifiche pertinenti risultano superate o motivate se bloccate.
+- `Home/NewOrder` contiene select categoria e prodotto separate.
+- La select prodotto e filtrabile per categoria e stock `> 0`.
+- I prodotti aggiunti non sono selezionabili una seconda volta.
+- I dettagli read-only del prodotto selezionato sono popolati.
+- `Add Articolo` e disabilitato con quantita mancante, zero o negativa.
+- La tabella ordine mostra le colonne richieste e il totale complessivo.
+- `Edit` e `Delete Articolo` funzionano lato pagina.
+- `Annullare Articolo` pulisce selezione e dettagli.
+- `Annulla` reindirizza a `Home/Orders`.
+- `Salva` crea un ordine persistito con tutte le righe.
+- `dotnet test DashBoard01.sln` passa o il blocco e documentato con verifica equivalente.
+- `dotnet build DashBoard01.sln` passa o il blocco e documentato con verifica equivalente.
+- `npm run build:css` passa se vengono modificate classi Tailwind/sorgenti CSS.

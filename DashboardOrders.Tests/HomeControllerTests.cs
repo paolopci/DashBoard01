@@ -198,6 +198,7 @@ public class HomeControllerTests
         // Assert
         var model = risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<NewOrderViewModel>().Subject;
         model.Products.Should().BeSameAs(prodotti);
+        model.Categories.Should().ContainSingle(category => category.Code == "CAT-001");
     }
 
     [Fact]
@@ -205,15 +206,50 @@ public class HomeControllerTests
     {
         // Arrange
         sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
-        var model = new NewOrderViewModel { ProductCode = "PRD-001", Quantity = 2 };
-        dataService.CreateOrder("mario.rossi@example.com", "PRD-001", 2).Returns(true);
+        var model = new NewOrderViewModel
+        {
+            Items =
+            [
+                new NewOrderItemViewModel { ProductCode = "PRD-001", Quantity = 2 },
+                new NewOrderItemViewModel { ProductCode = "PRD-002", Quantity = 1 }
+            ]
+        };
+        dataService.CreateOrder("mario.rossi@example.com", Arg.Is<IReadOnlyList<NewOrderItemViewModel>>(items =>
+            items.Count == 2 &&
+            items[0].ProductCode == "PRD-001" &&
+            items[0].Quantity == 2 &&
+            items[1].ProductCode == "PRD-002" &&
+            items[1].Quantity == 1)).Returns(true);
 
         // Act
         var risultato = sut.NewOrder(model);
 
         // Assert
         risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
-        dataService.Received(1).CreateOrder("mario.rossi@example.com", "PRD-001", 2);
+        dataService.Received(1).CreateOrder("mario.rossi@example.com", Arg.Is<IReadOnlyList<NewOrderItemViewModel>>(items =>
+            items.Count == 2 &&
+            items[0].ProductCode == "PRD-001" &&
+            items[0].Quantity == 2 &&
+            items[1].ProductCode == "PRD-002" &&
+            items[1].Quantity == 1));
+        dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public void NewOrder_Post_QuandoNessunArticolo_AlloraMostraErroreENonCreaOrdine()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        dataService.GetAvailableProducts().Returns([]);
+        var model = new NewOrderViewModel();
+
+        // Act
+        var risultato = sut.NewOrder(model);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        sut.ModelState.IsValid.Should().BeFalse();
+        dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<IReadOnlyList<NewOrderItemViewModel>>());
     }
 
     private static ClaimsPrincipal CreateUser(string email)

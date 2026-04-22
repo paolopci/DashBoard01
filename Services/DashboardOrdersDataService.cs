@@ -390,33 +390,78 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
     public bool CreateOrder(string? customerEmail, string productCode, int quantity)
     {
-        if (string.IsNullOrWhiteSpace(customerEmail) || string.IsNullOrWhiteSpace(productCode) || quantity <= 0)
+        return CreateOrder(customerEmail, [new NewOrderItemViewModel { ProductCode = productCode, Quantity = quantity }]);
+    }
+
+    public bool CreateOrder(string? customerEmail, IReadOnlyList<NewOrderItemViewModel> items)
+    {
+        if (string.IsNullOrWhiteSpace(customerEmail) || items.Count == 0)
         {
             return false;
         }
 
-        var product = dbContext.Products.FirstOrDefault(product => product.Code == NormalizeCode(productCode));
-        if (product is null || product.StockQuantity < quantity)
+        var requestedItems = items
+            .Select(item => new
+            {
+                ProductCode = NormalizeCode(item.ProductCode),
+                item.Quantity
+            })
+            .ToList();
+
+        if (requestedItems.Any(item => string.IsNullOrWhiteSpace(item.ProductCode) || item.Quantity <= 0))
         {
             return false;
+        }
+
+        if (requestedItems.Select(item => item.ProductCode).Distinct(StringComparer.OrdinalIgnoreCase).Count() != requestedItems.Count)
+        {
+            return false;
+        }
+
+        var requestedCodes = requestedItems.Select(item => item.ProductCode).ToList();
+        var products = dbContext.Products
+            .Where(product => requestedCodes.Contains(product.Code))
+            .ToList();
+
+        if (products.Count != requestedItems.Count)
+        {
+            return false;
+        }
+
+        foreach (var requestedItem in requestedItems)
+        {
+            var product = products.Single(product => product.Code == requestedItem.ProductCode);
+            if (product.StockQuantity <= 0 || product.StockQuantity < requestedItem.Quantity)
+            {
+                return false;
+            }
         }
 
         var customer = FindOrCreateCustomer(customerEmail);
-        product.StockQuantity -= quantity;
         var order = new OrderEntity
         {
             OrderNumber = CreateNextOrderNumber(),
             CustomerId = customer.Id,
-            TotalAmount = product.Price * quantity,
+            TotalAmount = requestedItems.Sum(item =>
+            {
+                var product = products.Single(product => product.Code == item.ProductCode);
+                return product.Price * item.Quantity;
+            }),
             Status = (int)OrderStatus.Pending,
             CreatedAt = DateTime.Now
         };
-        order.Items.Add(new OrderItemEntity
+
+        foreach (var requestedItem in requestedItems)
         {
-            ProductId = product.Id,
-            Quantity = quantity,
-            UnitPrice = product.Price
-        });
+            var product = products.Single(product => product.Code == requestedItem.ProductCode);
+            product.StockQuantity -= requestedItem.Quantity;
+            order.Items.Add(new OrderItemEntity
+            {
+                ProductId = product.Id,
+                Quantity = requestedItem.Quantity,
+                UnitPrice = product.Price
+            });
+        }
 
         dbContext.Orders.Add(order);
         dbContext.SaveChanges();

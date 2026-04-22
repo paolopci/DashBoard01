@@ -39,6 +39,41 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void CreateOrder_QuandoOrdineContienePiuProdotti_AlloraCreaRigheRiduceStockETotaleOrdine()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        SeedProduct(dbContext, code: "PRD-002", name: "Cuffie tracer", stockQuantity: 4, price: 15m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        var items = new List<NewOrderItemViewModel>
+        {
+            new() { ProductCode = "prd-001", Quantity = 2 },
+            new() { ProductCode = "prd-002", Quantity = 3 }
+        };
+
+        // Act
+        var risultato = sut.CreateOrder("nuovo.utente@example.com", items);
+        var ordine = dbContext.Orders.Include(order => order.Items).Single();
+        var paginaOrdini = sut.GetOrdersPageDataForCustomerEmail("nuovo.utente@example.com", pageSize: 0);
+
+        // Assert
+        risultato.Should().BeTrue();
+        ordine.TotalAmount.Should().Be(95m);
+        ordine.Items.Should().HaveCount(2);
+        ordine.Items.Should().Contain(item => item.ProductId == dbContext.Products.Single(product => product.Code == "PRD-001").Id && item.Quantity == 2 && item.UnitPrice == 25m);
+        ordine.Items.Should().Contain(item => item.ProductId == dbContext.Products.Single(product => product.Code == "PRD-002").Id && item.Quantity == 3 && item.UnitPrice == 15m);
+        dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(3);
+        dbContext.Products.Single(product => product.Code == "PRD-002").StockQuantity.Should().Be(1);
+        paginaOrdini.Orders.Should().ContainSingle(order =>
+            order.Customer.Email == "nuovo.utente@example.com" &&
+            order.TotalAmount == 95m &&
+            order.Items.Count == 2 &&
+            order.Items.Any(item => item.ProductName == "Laptop tracer" && item.Quantity == 2) &&
+            order.Items.Any(item => item.ProductName == "Cuffie tracer" && item.Quantity == 3));
+    }
+
+    [Fact]
     public void CreateOrder_QuandoStockInsufficiente_AlloraNonCreaOrdineENonRiduceStock()
     {
         // Arrange
@@ -54,6 +89,29 @@ public class DashboardOrdersDataServiceTests
         dbContext.Orders.Should().BeEmpty();
         dbContext.Customers.Should().BeEmpty();
         dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(1);
+    }
+
+    [Fact]
+    public void CreateOrder_QuandoOrdineContieneProdottiDuplicati_AlloraNonCreaOrdine()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        var items = new List<NewOrderItemViewModel>
+        {
+            new() { ProductCode = "PRD-001", Quantity = 1 },
+            new() { ProductCode = "prd-001", Quantity = 2 }
+        };
+
+        // Act
+        var risultato = sut.CreateOrder("nuovo.utente@example.com", items);
+
+        // Assert
+        risultato.Should().BeFalse();
+        dbContext.Orders.Should().BeEmpty();
+        dbContext.Customers.Should().BeEmpty();
+        dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(5);
     }
 
     [Fact]
@@ -251,11 +309,16 @@ public class DashboardOrdersDataServiceTests
 
     private static void SeedProduct(DashboardOrdersDbContext dbContext, int stockQuantity, decimal price)
     {
+        SeedProduct(dbContext, "PRD-001", "Laptop tracer", stockQuantity, price);
+    }
+
+    private static void SeedProduct(DashboardOrdersDbContext dbContext, string code, string name, int stockQuantity, decimal price)
+    {
         SeedCategory(dbContext);
         dbContext.Products.Add(new ProductEntity
         {
-            Code = "PRD-001",
-            Name = "Laptop tracer",
+            Code = code,
+            Name = name,
             Description = "Prodotto per tracer bullet",
             Price = price,
             StockQuantity = stockQuantity,

@@ -139,16 +139,21 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         }
 
         model ??= new NewOrderViewModel();
+        if (model.Items.Count == 0)
+        {
+            ModelState.AddModelError(string.Empty, "Aggiungi almeno un articolo all'ordine.");
+        }
+
         if (!ModelState.IsValid)
         {
-            model.Products = dataService.GetAvailableProducts();
+            PopulateNewOrderLookups(model);
             return View(model);
         }
 
-        if (!dataService.CreateOrder(GetCurrentEmail(), model.ProductCode, model.Quantity))
+        if (!dataService.CreateOrder(GetCurrentEmail(), model.Items))
         {
             ModelState.AddModelError(string.Empty, "Ordine non creato. Verifica prodotto e quantita disponibile.");
-            model.Products = dataService.GetAvailableProducts();
+            PopulateNewOrderLookups(model);
             return View(model);
         }
 
@@ -280,10 +285,20 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
 
     private NewOrderViewModel CreateNewOrderViewModel()
     {
-        return new NewOrderViewModel
-        {
-            Products = dataService.GetAvailableProducts()
-        };
+        var model = new NewOrderViewModel();
+        PopulateNewOrderLookups(model);
+        return model;
+    }
+
+    private void PopulateNewOrderLookups(NewOrderViewModel model)
+    {
+        model.Products = dataService.GetAvailableProducts();
+        model.Categories = model.Products
+            .Select(product => product.Category)
+            .GroupBy(category => category.Code, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(category => category.Name)
+            .ToList();
     }
 
     private ProductFormViewModel CreateProductFormViewModel()
