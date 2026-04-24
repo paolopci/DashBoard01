@@ -15,18 +15,21 @@
             <h3 class="text-lg font-semibold text-slate-800">Credenziali</h3>
         </div>
         <div class="p-6">
-            <form method="post" asp-action="Login" asp-route-returnUrl="@returnUrl" class="space-y-6">
+            <form method="post" asp-action="Login" asp-route-returnUrl="@returnUrl" class="space-y-6" autocomplete="off">
                 <div asp-validation-summary="ModelOnly" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+
+                <input type="text" name="fake-user" autocomplete="username" tabindex="-1" class="hidden" aria-hidden="true" />
+                <input type="password" name="fake-password" autocomplete="current-password" tabindex="-1" class="hidden" aria-hidden="true" />
 
                 <div>
                     <label asp-for="UserLogin" class="mb-2 block text-sm font-medium text-slate-700"></label>
-                    <input asp-for="UserLogin" autocomplete="email" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    <input asp-for="UserLogin" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
                     <span asp-validation-for="UserLogin" class="mt-1 block text-sm text-rose-600"></span>
                 </div>
 
                 <div>
                     <label asp-for="Password" class="mb-2 block text-sm font-medium text-slate-700"></label>
-                    <input asp-for="Password" autocomplete="current-password" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    <input asp-for="Password" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
                     <span asp-validation-for="Password" class="mt-1 block text-sm text-rose-600"></span>
                 </div>
 

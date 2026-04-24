@@ -78,6 +78,8 @@ public class AccountController : Controller
         if (!ModelState.IsValid)
         {
             SetErrorToast(GenericLoginErrorMessage);
+            ClearLoginFields(model);
+            ValidateLogin(model);
             return View(model);
         }
 
@@ -86,6 +88,7 @@ public class AccountController : Controller
         {
             AddOperationErrorsToModelState(result);
             SetErrorToast(result.Message);
+            ClearLoginFields(model);
             return View(model);
         }
 
@@ -213,6 +216,14 @@ public class AccountController : Controller
         {
             ModelState.AddModelError(nameof(Models.Login.Password), "La password è obbligatoria.");
         }
+    }
+
+    private void ClearLoginFields(Login model)
+    {
+        model.UserLogin = string.Empty;
+        model.Password = string.Empty;
+        ModelState.Remove(nameof(Models.Login.UserLogin));
+        ModelState.Remove(nameof(Models.Login.Password));
     }
 
     private static RegisterDto ToRegisterDto(Register model)
