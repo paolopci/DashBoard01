@@ -13,4 +13,5 @@ public class OrderEntity
 
     public CustomerEntity Customer { get; set; } = null!;
     public ICollection<OrderItemEntity> Items { get; set; } = new List<OrderItemEntity>();
+    public ICollection<OrderStatusHistoryEntity> StatusHistory { get; set; } = new List<OrderStatusHistoryEntity>();
 }

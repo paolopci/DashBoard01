@@ -11,6 +11,7 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<CustomerEntity> Customers => Set<CustomerEntity>();
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<OrderItemEntity> OrderItems => Set<OrderItemEntity>();
+    public DbSet<OrderStatusHistoryEntity> OrderStatusHistory => Set<OrderStatusHistoryEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -102,6 +103,24 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
                 .WithMany(product => product.OrderItems)
                 .HasForeignKey(item => item.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<OrderStatusHistoryEntity>(entity =>
+        {
+            entity.ToTable("OrderStatusHistory");
+            entity.HasKey(history => history.Id);
+            entity.HasIndex(history => history.OrderId);
+            entity.HasIndex(history => history.ChangedAt);
+            entity.Property(history => history.ChangedAt).IsRequired();
+            entity.Property(history => history.ChangedBy).HasMaxLength(256);
+            entity.Property(history => history.Reason).HasMaxLength(500);
+            entity.Property(history => history.CorrelationId).HasMaxLength(100);
+
+            entity
+                .HasOne(history => history.Order)
+                .WithMany(order => order.StatusHistory)
+                .HasForeignKey(history => history.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
