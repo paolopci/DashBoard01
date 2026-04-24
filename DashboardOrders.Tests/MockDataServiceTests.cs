@@ -77,6 +77,24 @@ public class MockDataServiceTests
     }
 
     [Fact]
+    public void GetDashboardData_QuandoInvocato_AlloraPendingOrdersERicaviUsanoClassificazioneCentrale()
+    {
+        // Arrange
+        var ordini = MockDataService.GetOrders();
+        var ricavoAtteso = ordini
+            .Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(order.Status))
+            .Sum(order => order.TotalAmount);
+        var attiviAttesi = ordini.Count(order => OrderStatusMetricsPolicy.IsOperationallyActive(order.Status));
+
+        // Act
+        var result = MockDataService.GetDashboardData(pageSize: 0);
+
+        // Assert
+        result.TotalRevenue.Should().Be(ricavoAtteso);
+        result.PendingOrders.Should().Be(attiviAttesi);
+    }
+
+    [Fact]
     public void GetOrdersPageData_QuandoClienteValido_AlloraRestituisceSoloOrdiniDelCliente()
     {
         // Arrange
@@ -171,6 +189,20 @@ public class MockDataServiceTests
         result.DateFrom.Should().BeEmpty();
         result.DateTo.Should().BeEmpty();
         result.TotalOrders.Should().Be(totalOrders);
+    }
+
+    [Fact]
+    public void GetOrdersPageData_QuandoInvocato_AlloraShippedOrdersUsaClassificazioneCentrale()
+    {
+        // Arrange
+        var ordini = MockDataService.GetOrders();
+        var evasiAttesi = ordini.Count(order => OrderStatusMetricsPolicy.IsFulfillmentCompleted(order.Status));
+
+        // Act
+        var result = MockDataService.GetOrdersPageData(pageSize: 0);
+
+        // Assert
+        result.ShippedOrders.Should().Be(evasiAttesi);
     }
 
     [Fact]

@@ -607,9 +607,9 @@ public static class MockDataService
         {
             Orders = pagedOrders.Items,
             TotalOrders = filteredOrders.Count,
-            TotalRevenue = filteredOrders.Where(order => order.Status != OrderStatus.Cancelled).Sum(order => order.TotalAmount),
-            PendingOrders = filteredOrders.Count(order => order.Status == OrderStatus.Pending || order.Status == OrderStatus.Processing),
-            ShippedOrders = filteredOrders.Count(order => order.Status == OrderStatus.Shipped || order.Status == OrderStatus.Delivered),
+            TotalRevenue = filteredOrders.Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(order.Status)).Sum(order => order.TotalAmount),
+            PendingOrders = filteredOrders.Count(order => OrderStatusMetricsPolicy.IsOperationallyActive(order.Status)),
+            ShippedOrders = filteredOrders.Count(order => OrderStatusMetricsPolicy.IsFulfillmentCompleted(order.Status)),
             SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
@@ -656,7 +656,7 @@ public static class MockDataService
                     Customer = customer,
                     OrdersCount = customerOrders.Count,
                     TotalOrdersAmount = customerOrders
-                        .Where(order => order.Status != OrderStatus.Cancelled)
+                        .Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(order.Status))
                         .Sum(order => order.TotalAmount)
                 };
             })
@@ -746,8 +746,8 @@ public static class MockDataService
         {
             RecentOrders    = pagedOrders.Items,
             TotalOrders     = sortedOrders.Count,
-            TotalRevenue    = sortedOrders.Where(o => o.Status != OrderStatus.Cancelled).Sum(o => o.TotalAmount),
-            PendingOrders   = sortedOrders.Count(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Processing),
+            TotalRevenue    = sortedOrders.Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(order.Status)).Sum(order => order.TotalAmount),
+            PendingOrders   = sortedOrders.Count(order => OrderStatusMetricsPolicy.IsOperationallyActive(order.Status)),
             DeliveredOrders = sortedOrders.Count(o => o.Status == OrderStatus.Delivered),
             ActiveCustomers = Customers.Count,
             SearchTerm = normalizedSearch,

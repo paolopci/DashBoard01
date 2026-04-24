@@ -214,6 +214,39 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void ChangeOrderStatus_QuandoStatoRichiedeReasonEMotivoManca_AlloraRestituisceFalse()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.CreateOrder("nuovo.utente@example.com", "PRD-001", 1).Should().BeTrue();
+        var orderId = dbContext.Orders.Single().Id;
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.Cancelled, "admin@example.com", string.Empty);
+
+        // Assert
+        risultato.Should().BeFalse();
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.Pending);
+        dbContext.OrderStatusHistory.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoOrdineNonEsiste_AlloraRestituisceFalse()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(999, OrderStatus.PaymentPending, "admin@example.com", "Tentativo");
+
+        // Assert
+        risultato.Should().BeFalse();
+    }
+
+    [Fact]
     public void GetOrders_QuandoPageNumeroNegativo_AlloraNormalizzaAPrimaPagina()
     {
         // Arrange
