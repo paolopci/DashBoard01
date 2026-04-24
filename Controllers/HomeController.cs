@@ -12,6 +12,7 @@ public class HomeController : Controller
 {
     private const string AdminRole = "Admin";
     private const string ToastSuccessKey = "Toast.Success";
+    private const string ToastErrorKey = "Toast.Error";
 
     private readonly IDashboardOrdersDataService dataService;
     private readonly DashboardOrdersDbContext dbContext;
@@ -79,6 +80,31 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         ViewData["DateFrom"] = model.DateFrom;
         ViewData["DateTo"] = model.DateTo;
         return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult ChangeOrderStatus(int orderId, OrderStatus newStatus, string? reason = null)
+    {
+        if (!IsAdmin())
+        {
+            return RedirectToAction("AccessDenied", "Account");
+        }
+
+        if (orderId <= 0 || !Enum.IsDefined(typeof(OrderStatus), newStatus))
+        {
+            TempData[ToastErrorKey] = "Cambio stato non valido.";
+            return RedirectToAction(nameof(Orders));
+        }
+
+        if (!dataService.ChangeOrderStatus(orderId, newStatus, GetCurrentEmail(), reason))
+        {
+            TempData[ToastErrorKey] = "Stato ordine non aggiornato. Verifica transizione e motivazione.";
+            return RedirectToAction(nameof(Orders));
+        }
+
+        TempData[ToastSuccessKey] = "Stato ordine aggiornato correttamente.";
+        return RedirectToAction(nameof(Orders));
     }
 
     /// <summary>

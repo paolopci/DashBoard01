@@ -1,9 +1,10 @@
 @model DashboardOrders.Models.OrdersPageViewModel
+@using DashboardOrders.Services
 @{
     ViewData["Title"] = "Ordini";
     var currentSortBy = Model.SortBy;
     var currentSortDirection = Model.SortDirection;
-    var isAdmin = string.Equals(User.Identity?.Name, "admin@micene.it", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = User.IsInRole("Admin");
 
     Dictionary<string, string> OrderRouteValues()
     {
@@ -30,6 +31,18 @@
             Alignment = alignment,
             ExtraRouteValues = OrderRouteValues()
         };
+    }
+
+    List<OrderStatus> NextStatuses(OrderStatus currentStatus)
+    {
+        return Enum.GetValues<OrderStatus>()
+            .Where(status => OrderStatusTransitionPolicy.CanTransition(currentStatus, status))
+            .ToList();
+    }
+
+    string StatusLabel(OrderStatus status)
+    {
+        return OrderStatusPresentation.FromStatus(status).Label;
     }
 }
 
@@ -135,6 +148,7 @@
         @foreach (var order in Model.Orders)
         {
             var statusPresentation = OrderStatusPresentation.FromStatus(order.Status);
+            var mobileNextStatuses = NextStatuses(order.Status);
             var detailCardId = $"order-mobile-detail-{order.Id}";
             var detailButtonId = $"order-mobile-detail-button-{order.Id}";
 
@@ -183,6 +197,43 @@
                                 Dettaglio
                             </button>
                         </div>
+
+                        @if (isAdmin)
+                        {
+                            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Avanza stato</p>
+                                @if (mobileNextStatuses.Count == 0)
+                                {
+                                    <p class="mt-2 text-sm text-slate-500">Nessuna transizione disponibile.</p>
+                                }
+                                else
+                                {
+                                    <div class="mt-3 space-y-2">
+                                        @foreach (var nextStatus in mobileNextStatuses)
+                                        {
+                                            var requiresReason = OrderStatusTransitionPolicy.RequiresReason(nextStatus);
+                                            <form method="post" asp-controller="Home" asp-action="ChangeOrderStatus" class="flex flex-col gap-2 rounded-lg border border-white bg-white p-2 shadow-sm">
+                                                <input type="hidden" name="orderId" value="@order.Id" />
+                                                <input type="hidden" name="newStatus" value="@((int)nextStatus)" />
+                                                @if (requiresReason)
+                                                {
+                                                    <input type="text"
+                                                           name="reason"
+                                                           required
+                                                           maxlength="500"
+                                                           placeholder="Motivazione obbligatoria"
+                                                           class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                                                }
+                                                <button type="submit"
+                                                        class="inline-flex items-center justify-center rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-900">
+                                                    Porta a @StatusLabel(nextStatus)
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -229,6 +280,7 @@
                 @foreach (var order in Model.Orders)
                 {
                     var statusPresentation = OrderStatusPresentation.FromStatus(order.Status);
+                    var desktopNextStatuses = NextStatuses(order.Status);
                     var detailRowId = $"order-detail-{order.Id}";
                     var detailButtonId = $"order-detail-button-{order.Id}";
 
@@ -273,6 +325,42 @@
                                         <p class="text-slate-500">Pezzi Totali: <span class="font-semibold text-slate-700">@order.Quantity</span></p>
                                         <p class="text-slate-500">Cliente: <span class="font-semibold text-slate-700">@order.Customer.Name</span></p>
                                     </div>
+                                    @if (isAdmin)
+                                    {
+                                        <div class="mt-4 rounded-xl border border-amber-200 bg-white/70 px-4 py-3">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Avanza stato ordine</p>
+                                            @if (desktopNextStatuses.Count == 0)
+                                            {
+                                                <p class="mt-2 text-sm text-slate-500">Nessuna transizione disponibile per lo stato corrente.</p>
+                                            }
+                                            else
+                                            {
+                                                <div class="mt-3 flex flex-wrap gap-3">
+                                                    @foreach (var nextStatus in desktopNextStatuses)
+                                                    {
+                                                        var requiresReason = OrderStatusTransitionPolicy.RequiresReason(nextStatus);
+                                                        <form method="post" asp-controller="Home" asp-action="ChangeOrderStatus" class="flex flex-wrap items-center gap-2 rounded-lg border border-amber-100 bg-white px-3 py-2 shadow-sm">
+                                                            <input type="hidden" name="orderId" value="@order.Id" />
+                                                            <input type="hidden" name="newStatus" value="@((int)nextStatus)" />
+                                                            @if (requiresReason)
+                                                            {
+                                                                <input type="text"
+                                                                       name="reason"
+                                                                       required
+                                                                       maxlength="500"
+                                                                       placeholder="Motivazione obbligatoria"
+                                                                       class="w-56 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                                                            }
+                                                            <button type="submit"
+                                                                    class="inline-flex items-center justify-center rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-900">
+                                                                Porta a @StatusLabel(nextStatus)
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                                 <div class="overflow-x-auto">
                                     <table class="w-full min-w-[640px]">

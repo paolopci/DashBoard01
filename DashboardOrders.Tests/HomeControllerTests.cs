@@ -205,6 +205,69 @@ public class HomeControllerTests
     }
 
     [Fact]
+    public void ChangeOrderStatus_QuandoAdminETransizioneValida_AlloraInvocaServizioEReindirizzaAOrders()
+    {
+        // Arrange
+        dataService.ChangeOrderStatus(12, OrderStatus.PaymentPending, "admin@micene.it", "Avvio pagamento", null)
+            .Returns(true);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(12, OrderStatus.PaymentPending, "Avvio pagamento");
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.Received(1).ChangeOrderStatus(12, OrderStatus.PaymentPending, "admin@micene.it", "Avvio pagamento", null);
+        sut.TempData["Toast.Success"].Should().Be("Stato ordine aggiornato correttamente.");
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoUtenteNonAdmin_AlloraReindirizzaAccessDeniedENonInvocaServizio()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(12, OrderStatus.PaymentPending, "Avvio pagamento");
+
+        // Assert
+        var redirect = risultato.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be("AccessDenied");
+        redirect.ControllerName.Should().Be("Account");
+        dataService.DidNotReceive().ChangeOrderStatus(Arg.Any<int>(), Arg.Any<OrderStatus>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [Theory]
+    [InlineData(0, OrderStatus.PaymentPending)]
+    [InlineData(-1, OrderStatus.PaymentPending)]
+    [InlineData(12, (OrderStatus)999)]
+    public void ChangeOrderStatus_QuandoInputNonValido_AlloraReindirizzaAOrdersENonInvocaServizio(int orderId, OrderStatus newStatus)
+    {
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, newStatus, "Motivo");
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.DidNotReceive().ChangeOrderStatus(Arg.Any<int>(), Arg.Any<OrderStatus>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+        sut.TempData["Toast.Error"].Should().Be("Cambio stato non valido.");
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoServizioFallisce_AlloraReindirizzaAOrdersConErrore()
+    {
+        // Arrange
+        dataService.ChangeOrderStatus(12, OrderStatus.Delivered, "admin@micene.it", "Salto non ammesso", null)
+            .Returns(false);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(12, OrderStatus.Delivered, "Salto non ammesso");
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.Received(1).ChangeOrderStatus(12, OrderStatus.Delivered, "admin@micene.it", "Salto non ammesso", null);
+        sut.TempData["Toast.Error"].Should().Be("Stato ordine non aggiornato. Verifica transizione e motivazione.");
+    }
+
+    [Fact]
     public void Customers_QuandoUtenteNonAdmin_AlloraReindirizzaAlProfilo()
     {
         // Arrange

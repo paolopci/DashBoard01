@@ -2,58 +2,62 @@
 
 ## Obiettivo
 
-Correggere la gestione dei ruoli e dell'azione `Edit` nella pagina `Home/NewOrder` in modo che il pulsante di modifica riga sia visibile solo agli utenti con ruolo `Admin`, mantenendo per tutti gli utenti la rimozione articolo tramite `Delete Articolo`, e allineare il database Identity con i ruoli `Admin` e `User`.
+Implementare la prima fase del ciclo di vita dell'ordine permettendo agli utenti `Admin` di avanzare lo stato di un ordine dalla pagina `Orders`, usando la policy di transizione e lo storico stati gia presenti nel progetto.
 
 ## Problema/Contesto
 
-La pagina `Views/Home/NewOrder.cshtml` mostra il pulsante `Edit` anche agli utenti normali e la modifica riga avviene riportando l'articolo nel form, comportamento che non deve essere disponibile ai non amministratori. Inoltre il database Identity contiene solo il ruolo `Admin`, mentre la richiesta richiede anche il ruolo `User` e l'assegnazione del ruolo `User` a tutti gli utenti diversi da `admin@micene.it`.
+Il dominio ordine contiene gia `OrderStatus`, `OrderStatusTransitionPolicy`, `OrderStatusHistoryEntity` e il metodo `DashboardOrdersDataService.ChangeOrderStatus`, ma il flusso non e ancora esposto dalla UI MVC. La pagina `Views/Home/Orders.cshtml` mostra gli ordini e il dettaglio righe, senza azioni per avanzare lo stato. Serve una vertical slice minima e verificabile per rendere operativo il ciclo di vita senza introdurre nuove tecnologie.
 
 ## Scope
 
-- Rendere visibile il pulsante `Edit` in `Home/NewOrder` solo per utenti con ruolo `Admin`.
-- Lasciare disponibile `Delete Articolo` per gli utenti che possono comporre l'ordine.
-- Introdurre il ruolo Identity `User` se mancante.
-- Allineare il seed Identity in modo che:
-  - `admin@micene.it` abbia ruolo `Admin`;
-  - tutti gli altri utenti presenti nel database abbiano ruolo `User`.
-- Assegnare automaticamente il ruolo `User` ai nuovi utenti registrati.
-- Aggiornare i test pertinenti.
+- Aggiungere un'azione MVC `POST` riservata agli `Admin` per cambiare lo stato ordine.
+- Esporre nella pagina `Orders` le sole transizioni consentite dalla policy corrente.
+- Riutilizzare `IDashboardOrdersDataService.ChangeOrderStatus` per validare transizioni, aggiornare `Orders.Status`, aggiornare `UpdatedAt` e registrare `OrderStatusHistory`.
+- Mostrare feedback utente tramite `TempData` dopo successo o fallimento.
+- Aggiornare test automatici per controller, servizio e policy coinvolti.
+- Procedere per fasi documentate in `docs/PLAN.md`.
 
 ## Out of scope
 
-- Ridisegno della pagina `NewOrder`.
-- Introduzione di nuove API o framework frontend.
-- Modifica del flusso di login oltre quanto necessario per l'allineamento ruoli.
-- Gestione di autorizzazioni granulari diverse dai ruoli `Admin` e `User`.
+- Rendere visibile lo storico stati nella prima fase.
+- Creare una pagina dettaglio ordine dedicata.
+- Permettere ai clienti di cambiare stato, annullare ordini o richiedere resi self-service.
+- Introdurre API REST, code di messaggistica, job background, notifiche email o nuove librerie.
+- Ridisegnare l'intera pagina `Orders`.
+- Modificare il modello dati oltre quanto gia presente per stato e storico.
 
 ## Requisiti funzionali
 
-- Un utente con ruolo diverso da `Admin` non deve vedere il pulsante `Edit` nella tabella articoli di `NewOrder`.
-- Un utente con ruolo `Admin` deve poter continuare a vedere il pulsante `Edit`.
-- Il click su `Delete Articolo` deve continuare a rimuovere l'articolo dall'ordine.
-- Il ruolo `User` deve esistere in Identity.
-- Ogni utente non admin deve risultare associato al ruolo `User`.
-- L'utente `admin@micene.it` deve risultare associato al ruolo `Admin`.
-- I nuovi utenti registrati dall'applicazione devono ricevere il ruolo `User`.
+- Solo utenti con ruolo `Admin` possono inviare un cambio stato ordine.
+- Gli utenti non admin non devono vedere azioni di avanzamento stato nella pagina `Orders`.
+- Un cambio stato deve essere accettato solo se consentito da `OrderStatusTransitionPolicy`.
+- Gli stati che richiedono motivazione devono essere rifiutati se la motivazione manca.
+- Ogni cambio stato riuscito deve registrare una riga in `OrderStatusHistory`.
+- Le transizioni verso `Cancelled` o `PaymentFailed` da stati pre-fulfillment devono ripristinare lo stock secondo la logica esistente.
+- Dopo un cambio stato riuscito l'utente deve tornare alla lista ordini con messaggio di successo.
+- Dopo un cambio stato fallito l'utente deve tornare alla lista ordini con messaggio di errore.
 
 ## Vincoli tecnici
 
-- Mantenere stack esistente: ASP.NET Core MVC, Razor, Identity, EF Core.
-- Non introdurre nuove librerie o pattern non presenti nel progetto.
-- Riutilizzare `UserManager<ApplicationUser>` e `RoleManager<IdentityRole>` di ASP.NET Core Identity.
-- Limitare le modifiche alla fase corrente e ai file necessari.
+- Mantenere stack esistente: ASP.NET Core MVC, Razor, EF Core, Identity e xUnit.
+- Non introdurre nuove librerie, framework frontend o pattern architetturali.
+- Usare il ruolo Identity `Admin` come unico attore autorizzato nella prima fase.
+- Riutilizzare `OrderStatusTransitionPolicy` come fonte unica delle transizioni consentite.
+- Riutilizzare `DashboardOrdersDataService.ChangeOrderStatus` per persistenza e storico.
+- Validare input mancanti, non validi o fuori formato nel boundary MVC.
+- Limitare ogni fase a un solo obiettivo verificabile.
 
 ## Acceptance criteria
 
-- `Views/Home/NewOrder.cshtml` rende `Edit` solo per utenti admin.
-- `Delete Articolo` continua a funzionare indipendentemente dalla visibilità di `Edit`.
-- Il seed crea i ruoli `Admin` e `User` se mancanti.
-- Dopo il seed, tutti gli utenti diversi da `admin@micene.it` appartengono al ruolo `User`.
-- Dopo il seed, `admin@micene.it` appartiene al ruolo `Admin`.
-- La registrazione di un nuovo utente assegna il ruolo `User`.
+- La pagina `Orders` mostra azioni di cambio stato solo agli utenti `Admin`.
+- Le azioni mostrate corrispondono alle transizioni consentite dallo stato corrente.
+- Il `POST` di cambio stato rifiuta utenti non admin.
+- Il `POST` di cambio stato rifiuta transizioni non valide o ordini inesistenti.
+- Un cambio stato valido aggiorna lo stato ordine, registra storico e mantiene la navigazione sulla lista ordini.
+- La prima fase non mostra ancora lo storico stati nella UI.
 - `dotnet test DashBoard01.sln` passa.
 - `dotnet build DashBoard01.sln` passa.
 
 ## Definizione di completamento
 
-La fase è completata quando codice, test e seed ruoli sono aggiornati, la view `NewOrder` applica la visibilità richiesta del pulsante `Edit`, i test pertinenti passano e il progetto compila correttamente.
+La prima fase e completata quando la vertical slice Admin per avanzare lo stato ordine e implementata in controller, servizio/view model se necessario, UI Razor e test; la documentazione `PRD`/`PLAN` e aggiornata; test e build della solution passano.
