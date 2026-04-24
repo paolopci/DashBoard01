@@ -420,11 +420,35 @@ public static class MockDataService
         return (search ?? string.Empty).Trim();
     }
 
+    private static string NormalizeDateFilter(string? date)
+    {
+        var normalizedDate = (date ?? string.Empty).Trim();
+        return DateTime.TryParse(normalizedDate, out var parsedDate)
+            ? parsedDate.ToString("yyyy-MM-dd")
+            : string.Empty;
+    }
+
     private static List<T> ApplySearch<T>(IEnumerable<T> items, string search, Func<T, bool> predicate)
     {
         return search.Length >= 3
             ? items.Where(predicate).ToList()
             : items.ToList();
+    }
+
+    private static List<Order> ApplyOrderDateFilter(IEnumerable<Order> orders, string dateFrom, string dateTo)
+    {
+        var hasDateFrom = DateTime.TryParse(dateFrom, out var from);
+        var hasDateTo = DateTime.TryParse(dateTo, out var to);
+
+        if (!hasDateFrom && !hasDateTo)
+        {
+            return orders.ToList();
+        }
+
+        return orders
+            .Where(order => !hasDateFrom || order.OrderDate.Date >= from.Date)
+            .Where(order => !hasDateTo || order.OrderDate.Date <= to.Date)
+            .ToList();
     }
 
     private static List<Order> SortOrders(IEnumerable<Order> orders, string sortBy, string sortDirection)
@@ -555,11 +579,13 @@ public static class MockDataService
         };
     }
 
-    public static OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    public static OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "", string dateFrom = "", string dateTo = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, OrdersSortColumns, "date");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
         var normalizedSearch = NormalizeSearch(search);
+        var normalizedDateFrom = NormalizeDateFilter(dateFrom);
+        var normalizedDateTo = NormalizeDateFilter(dateTo);
 
         var filteredOrders = customerId.HasValue
             ? Orders.Where(order => order.Customer.Id == customerId.Value).ToList()
@@ -573,6 +599,7 @@ public static class MockDataService
             order.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
             order.Items.Any(item => item.ProductName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
             OrderStatusPresentation.FromStatus(order.Status).Label.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
+        filteredOrders = ApplyOrderDateFilter(filteredOrders, normalizedDateFrom, normalizedDateTo);
         filteredOrders = SortOrders(filteredOrders, normalizedSortBy, normalizedSortDirection);
         var pagedOrders = ApplyPaging(filteredOrders, page, pageSize);
 
@@ -586,6 +613,8 @@ public static class MockDataService
             SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
+            DateFrom = normalizedDateFrom,
+            DateTo = normalizedDateTo,
             CurrentPage = pagedOrders.CurrentPage,
             PageSize = pagedOrders.PageSize,
             TotalPages = pagedOrders.TotalPages,

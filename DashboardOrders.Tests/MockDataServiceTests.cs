@@ -140,6 +140,40 @@ public class MockDataServiceTests
     }
 
     [Fact]
+    public void GetOrdersPageData_QuandoIntervalloDateValido_AlloraRestituisceSoloOrdiniInclusi()
+    {
+        // Arrange
+        var referenceDate = MockDataService.GetOrders().OrderBy(order => order.OrderDate).Skip(5).First().OrderDate.Date;
+        var dateFrom = referenceDate.ToString("yyyy-MM-dd");
+        var dateTo = referenceDate.AddDays(10).ToString("yyyy-MM-dd");
+
+        // Act
+        var result = MockDataService.GetOrdersPageData(pageSize: 0, dateFrom: dateFrom, dateTo: dateTo);
+
+        // Assert
+        result.DateFrom.Should().Be(dateFrom);
+        result.DateTo.Should().Be(dateTo);
+        result.Orders.Should().OnlyContain(order =>
+            order.OrderDate.Date >= referenceDate &&
+            order.OrderDate.Date <= referenceDate.AddDays(10));
+    }
+
+    [Fact]
+    public void GetOrdersPageData_QuandoDateNonValide_AlloraNonApplicaFiltroData()
+    {
+        // Arrange
+        var totalOrders = MockDataService.GetOrders().Count;
+
+        // Act
+        var result = MockDataService.GetOrdersPageData(pageSize: 0, dateFrom: "non-valida", dateTo: "non-valida");
+
+        // Assert
+        result.DateFrom.Should().BeEmpty();
+        result.DateTo.Should().BeEmpty();
+        result.TotalOrders.Should().Be(totalOrders);
+    }
+
+    [Fact]
     public void GetCustomersPageData_QuandoRicercaValida_AlloraRestituisceSoloClientiCoerenti()
     {
         // Arrange

@@ -10,7 +10,9 @@
         return new Dictionary<string, string>
         {
             ["customerId"] = Model.SelectedCustomerId?.ToString() ?? string.Empty,
-            ["search"] = Model.SearchTerm
+            ["search"] = Model.SearchTerm,
+            ["dateFrom"] = Model.DateFrom,
+            ["dateTo"] = Model.DateTo
         };
     }
 
@@ -55,9 +57,9 @@
                 <span>Visualizzazione filtrata sugli ordini del cliente <span class="font-semibold text-slate-700">@Model.SelectedCustomerName</span>.</span>
             }
         }
-        else if (Model.HasActiveSearch)
+        else if (Model.HasActiveSearch || Model.HasDateFilter)
         {
-            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
+            <span>Risultati filtrati per ricerca e intervallo date.</span>
         }
         else
         {

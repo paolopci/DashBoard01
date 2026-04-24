@@ -85,9 +85,11 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         };
     }
 
-        public OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+        public OrdersPageViewModel GetOrdersPageData(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "", string dateFrom = "", string dateTo = "")
     {
-        var paginationResult = GetOrders(customerId, page, pageSize, sortBy, sortDirection, search);
+        var normalizedDateFrom = NormalizeDateFilter(dateFrom);
+        var normalizedDateTo = NormalizeDateFilter(dateTo);
+        var paginationResult = GetOrders(customerId, page, pageSize, sortBy, sortDirection, search, normalizedDateFrom, normalizedDateTo);
         var selectedCustomer = customerId.HasValue
             ? dbContext.Customers.AsNoTracking().FirstOrDefault(customer => customer.Id == customerId.Value)
             : null;
@@ -102,6 +104,8 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             SearchTerm = search,
             SortBy = sortBy,
             SortDirection = sortDirection,
+            DateFrom = normalizedDateFrom,
+            DateTo = normalizedDateTo,
             CurrentPage = paginationResult.CurrentPage,
             PageSize = paginationResult.PageSize,
             TotalPages = paginationResult.TotalPages,
@@ -110,11 +114,13 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         };
     }
 
-    public PaginationResult<Order> GetOrders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    public PaginationResult<Order> GetOrders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "", string dateFrom = "", string dateTo = "")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, OrdersSortColumns, "date");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
         var normalizedSearch = NormalizeSearch(search);
+        var normalizedDateFrom = NormalizeDateFilter(dateFrom);
+        var normalizedDateTo = NormalizeDateFilter(dateTo);
         var orders = LoadOrders();
 
         var selectedCustomer = customerId.HasValue
@@ -131,6 +137,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             order.Customer.Email.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
             order.Items.Any(item => item.ProductName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)) ||
             OrderStatusPresentation.FromStatus(order.Status).Label.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
+        filteredOrders = ApplyOrderDateFilter(filteredOrders, normalizedDateFrom, normalizedDateTo);
 
         var totalCount = filteredOrders.Count;
         filteredOrders = SortOrders(filteredOrders, normalizedSortBy, normalizedSortDirection);
@@ -144,15 +151,15 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             pagedOrders.TotalPages);
     }
 
-    public OrdersPageViewModel GetOrdersPageDataForCustomerEmail(string? email, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    public OrdersPageViewModel GetOrdersPageDataForCustomerEmail(string? email, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "", string dateFrom = "", string dateTo = "")
     {
         var customer = GetCustomerByEmail(email);
         if (customer is null)
         {
-            return CreateEmptyOrdersPage(page, pageSize, sortBy, sortDirection, search);
+            return CreateEmptyOrdersPage(page, pageSize, sortBy, sortDirection, search, dateFrom, dateTo);
         }
 
-        return GetOrdersPageData(customer.Id, page, pageSize, sortBy, sortDirection, search);
+        return GetOrdersPageData(customer.Id, page, pageSize, sortBy, sortDirection, search, dateFrom, dateTo);
     }
 
         public CustomersPageViewModel GetCustomersPageData(int page = 1, int pageSize = 10, string sortBy = "totalAmount", string sortDirection = "desc", string search = "")
@@ -553,11 +560,13 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return true;
     }
 
-    private OrdersPageViewModel CreateEmptyOrdersPage(int page, int pageSize, string sortBy, string sortDirection, string search)
+    private OrdersPageViewModel CreateEmptyOrdersPage(int page, int pageSize, string sortBy, string sortDirection, string search, string dateFrom, string dateTo)
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, OrdersSortColumns, "date");
         var normalizedSortDirection = NormalizeSortDirection(sortDirection, "desc");
         var normalizedSearch = NormalizeSearch(search);
+        var normalizedDateFrom = NormalizeDateFilter(dateFrom);
+        var normalizedDateTo = NormalizeDateFilter(dateTo);
         var pagedOrders = ApplyPaging(Array.Empty<Order>(), page, pageSize);
 
         return new OrdersPageViewModel
@@ -567,6 +576,8 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             SearchTerm = normalizedSearch,
             SortBy = normalizedSortBy,
             SortDirection = normalizedSortDirection,
+            DateFrom = normalizedDateFrom,
+            DateTo = normalizedDateTo,
             CurrentPage = pagedOrders.CurrentPage,
             PageSize = pagedOrders.PageSize,
             TotalPages = pagedOrders.TotalPages
@@ -718,6 +729,14 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return (search ?? string.Empty).Trim();
     }
 
+    private static string NormalizeDateFilter(string? date)
+    {
+        var normalizedDate = (date ?? string.Empty).Trim();
+        return DateTime.TryParse(normalizedDate, out var parsedDate)
+            ? parsedDate.ToString("yyyy-MM-dd")
+            : string.Empty;
+    }
+
     private static string NormalizeCode(string? code)
     {
         return (code ?? string.Empty).Trim().ToUpperInvariant();
@@ -772,6 +791,22 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return search.Length >= 3
             ? items.Where(predicate).ToList()
             : items.ToList();
+    }
+
+    private static List<Order> ApplyOrderDateFilter(IEnumerable<Order> orders, string dateFrom, string dateTo)
+    {
+        var hasDateFrom = DateTime.TryParse(dateFrom, out var from);
+        var hasDateTo = DateTime.TryParse(dateTo, out var to);
+
+        if (!hasDateFrom && !hasDateTo)
+        {
+            return orders.ToList();
+        }
+
+        return orders
+            .Where(order => !hasDateFrom || order.OrderDate.Date >= from.Date)
+            .Where(order => !hasDateTo || order.OrderDate.Date <= to.Date)
+            .ToList();
     }
 
     private static OrderStatus ToOrderStatus(int status)

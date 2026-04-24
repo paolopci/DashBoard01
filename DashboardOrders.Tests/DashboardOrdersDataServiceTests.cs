@@ -217,6 +217,46 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void GetOrders_QuandoIntervalloDateValido_AlloraRestituisceSoloOrdiniInclusi()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        SeedOrder(dbContext, orderNumber: "ORD-001", createdAt: new DateTime(2026, 4, 1, 8, 0, 0, DateTimeKind.Utc));
+        SeedOrder(dbContext, orderNumber: "ORD-002", createdAt: new DateTime(2026, 4, 10, 12, 0, 0, DateTimeKind.Utc));
+        SeedOrder(dbContext, orderNumber: "ORD-003", createdAt: new DateTime(2026, 4, 20, 18, 0, 0, DateTimeKind.Utc));
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.GetOrders(pageSize: 0, dateFrom: "2026-04-10", dateTo: "2026-04-20");
+
+        // Assert
+        risultato.Items.Should().HaveCount(2);
+        risultato.Items.Should().OnlyContain(order =>
+            order.OrderDate.Date >= new DateTime(2026, 4, 10) &&
+            order.OrderDate.Date <= new DateTime(2026, 4, 20));
+        risultato.Items.Select(order => order.OrderNumber).Should().BeEquivalentTo(["ORD-002", "ORD-003"]);
+    }
+
+    [Fact]
+    public void GetOrdersPageData_QuandoDateNonValide_AlloraNormalizzaFiltriDataVuoti()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        SeedOrder(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.GetOrdersPageData(pageSize: 0, dateFrom: "non-valida", dateTo: "non-valida");
+
+        // Assert
+        risultato.DateFrom.Should().BeEmpty();
+        risultato.DateTo.Should().BeEmpty();
+        risultato.TotalOrders.Should().Be(1);
+    }
+
+    [Fact]
     public void GetProducts_QuandoRicercaBreve_AlloraNonFiltra()
     {
         // Arrange
@@ -345,7 +385,10 @@ public class DashboardOrdersDataServiceTests
         dbContext.SaveChanges();
     }
 
-    private static void SeedOrder(DashboardOrdersDbContext dbContext)
+    private static void SeedOrder(
+        DashboardOrdersDbContext dbContext,
+        string orderNumber = "ORD-001",
+        DateTime? createdAt = null)
     {
         var product = dbContext.Products.Single(product => product.Code == "PRD-001");
         var customer = new CustomerEntity
@@ -358,11 +401,11 @@ public class DashboardOrdersDataServiceTests
         };
         var order = new OrderEntity
         {
-            OrderNumber = "ORD-001",
+            OrderNumber = orderNumber,
             Customer = customer,
             TotalAmount = product.Price,
             Status = (int)OrderStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = createdAt ?? DateTime.UtcNow,
             Items =
             [
                 new OrderItemEntity

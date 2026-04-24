@@ -1,4 +1,18 @@
 @model object
+@{
+    var searchTerm = ViewData["SearchFormSearchTerm"] ?? ViewData["SearchTerm"] ?? string.Empty;
+    var extraRouteValues = ViewData["SearchFormExtraRouteValues"] as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var reservedRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "page",
+        "pageSize",
+        "sortBy",
+        "sortDirection",
+        "search",
+        "dateFrom",
+        "dateTo"
+    };
+}
 
 <!-- Generic for different view models -->
 
@@ -6,10 +20,18 @@
     <h3 class="text-lg font-semibold text-slate-800 mb-4">Filtri Avanzati</h3>
 
     <form method="get" asp-action="@ViewContext.RouteData.Values["Action"]" asp-controller="@ViewContext.RouteData.Values["Controller"]" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="pageSize" value="@(ViewData["SearchFormPageSize"] ?? 10)" />
+        <input type="hidden" name="sortBy" value="@(ViewData["SearchFormSortBy"] ?? "")" />
+        <input type="hidden" name="sortDirection" value="@(ViewData["SearchFormSortDirection"] ?? "")" />
+        @foreach (var routeValue in extraRouteValues.Where(routeValue => !reservedRouteKeys.Contains(routeValue.Key) && !string.IsNullOrWhiteSpace(routeValue.Value)))
+        {
+            <input type="hidden" name="@routeValue.Key" value="@routeValue.Value" />
+        }
         <!-- Common search -->
         <div>
             <label for="search" class="block text-sm font-medium text-slate-700 mb-1">Ricerca Testo</label>
-            <input type="text" id="search" name="search" value="@(ViewData["SearchTerm"] ?? "")" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cerca...">
+            <input type="text" id="search" name="search" value="@searchTerm" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cerca...">
         </div>
 
         <!-- Date range for orders -->

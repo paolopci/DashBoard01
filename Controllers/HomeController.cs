@@ -63,17 +63,21 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
     /// <param name="sortBy">Campo di ordinamento.</param>
     /// <param name="sortDirection">Direzione dell'ordinamento.</param>
     /// <param name="search">Termine di ricerca facoltativo.</param>
-    public IActionResult Orders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    public IActionResult Orders(int? customerId = null, int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "", string dateFrom = "", string dateTo = "")
     {
         var model = IsAdmin()
-            ? dataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection, search)
-            : dataService.GetOrdersPageDataForCustomerEmail(GetCurrentEmail(), page, pageSize, sortBy, sortDirection, search);
+            ? dataService.GetOrdersPageData(customerId, page, pageSize, sortBy, sortDirection, search, dateFrom, dateTo)
+            : dataService.GetOrdersPageDataForCustomerEmail(GetCurrentEmail(), page, pageSize, sortBy, sortDirection, search, dateFrom, dateTo);
         SearchFormViewModel
             .From(model, "Orders", sortBy, sortDirection, new Dictionary<string, string>
             {
-                ["customerId"] = IsAdmin() ? customerId?.ToString() ?? string.Empty : string.Empty
+                ["customerId"] = IsAdmin() ? customerId?.ToString() ?? string.Empty : string.Empty,
+                ["dateFrom"] = model.DateFrom,
+                ["dateTo"] = model.DateTo
             })
             .ApplyTo(ViewData);
+        ViewData["DateFrom"] = model.DateFrom;
+        ViewData["DateTo"] = model.DateTo;
         return View(model);
     }
 

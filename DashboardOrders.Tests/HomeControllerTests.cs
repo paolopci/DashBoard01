@@ -113,6 +113,31 @@ public class HomeControllerTests
     }
 
     [Fact]
+    public void Orders_QuandoFiltriDataIndicati_AlloraInvocaServizioConIntervalloDate()
+    {
+        // Arrange
+        const string dateFrom = "2026-04-01";
+        const string dateTo = "2026-04-20";
+        var modelloAtteso = new OrdersPageViewModel
+        {
+            SortBy = "date",
+            SortDirection = "desc",
+            DateFrom = dateFrom,
+            DateTo = dateTo
+        };
+        dataService.GetOrdersPageData(null, 1, 10, "date", "desc", string.Empty, dateFrom, dateTo).Returns(modelloAtteso);
+
+        // Act
+        var risultato = sut.Orders(dateFrom: dateFrom, dateTo: dateTo);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(modelloAtteso);
+        dataService.Received(1).GetOrdersPageData(null, 1, 10, "date", "desc", string.Empty, dateFrom, dateTo);
+        sut.ViewData["DateFrom"].Should().Be(dateFrom);
+        sut.ViewData["DateTo"].Should().Be(dateTo);
+    }
+
+    [Fact]
     public void Customers_QuandoRicercaNull_AlloraInvocaServizioConRicercaNull()
     {
         // Arrange
@@ -159,6 +184,24 @@ public class HomeControllerTests
         // Assert
         dataService.Received(1).GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty);
         dataService.DidNotReceive().GetOrdersPageData(Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public void Orders_QuandoUtenteNonAdminEFiltriDataIndicati_AlloraInvocaServizioClienteConIntervalloDate()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        const string dateFrom = "2026-04-01";
+        const string dateTo = "2026-04-20";
+        dataService.GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty, dateFrom, dateTo)
+            .Returns(new OrdersPageViewModel { DateFrom = dateFrom, DateTo = dateTo });
+
+        // Act
+        sut.Orders(dateFrom: dateFrom, dateTo: dateTo);
+
+        // Assert
+        dataService.Received(1).GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty, dateFrom, dateTo);
+        dataService.DidNotReceive().GetOrdersPageData(Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Fact]
