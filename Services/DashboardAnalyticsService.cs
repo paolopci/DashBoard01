@@ -12,7 +12,8 @@ public class DashboardAnalyticsService(DashboardOrdersDbContext dbContext) : IDa
 
         var totalOrders = dbContext.Orders.Count();
         var totalRevenue = dbContext.Orders
-            .Where(o => o.Status != (int)OrderStatus.Cancelled)
+            .AsEnumerable()
+            .Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant((OrderStatus)order.Status))
             .Sum(o => o.TotalAmount);
         var lowStockProducts = dbContext.Products.Count(p => p.StockQuantity < 10);
         var activeCustomers = dbContext.Customers.Count(c => c.Orders.Any());

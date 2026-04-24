@@ -72,8 +72,8 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         {
             RecentOrders = pagedOrders.Items,
             TotalOrders = sortedOrders.Count,
-            TotalRevenue = sortedOrders.Where(order => order.Status != OrderStatus.Cancelled).Sum(order => order.TotalAmount),
-            PendingOrders = sortedOrders.Count(order => order.Status is OrderStatus.Pending or OrderStatus.Processing),
+            TotalRevenue = sortedOrders.Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(order.Status)).Sum(order => order.TotalAmount),
+            PendingOrders = sortedOrders.Count(order => OrderStatusMetricsPolicy.IsOperationallyActive(order.Status)),
             DeliveredOrders = sortedOrders.Count(order => order.Status == OrderStatus.Delivered),
             ActiveCustomers = dbContext.Customers.AsNoTracking().Count(),
             SearchTerm = normalizedSearch,
@@ -98,9 +98,9 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         {
             Orders = paginationResult.Items,
             TotalOrders = paginationResult.TotalItems,
-            TotalRevenue = paginationResult.Items.Where(order => order.Status != OrderStatus.Cancelled).Sum(order => order.TotalAmount),
-            PendingOrders = paginationResult.Items.Count(order => order.Status is OrderStatus.Pending or OrderStatus.Processing),
-            ShippedOrders = paginationResult.Items.Count(order => order.Status is OrderStatus.Shipped or OrderStatus.Delivered),
+            TotalRevenue = paginationResult.Items.Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(order.Status)).Sum(order => order.TotalAmount),
+            PendingOrders = paginationResult.Items.Count(order => OrderStatusMetricsPolicy.IsOperationallyActive(order.Status)),
+            ShippedOrders = paginationResult.Items.Count(order => OrderStatusMetricsPolicy.IsFulfillmentCompleted(order.Status)),
             SearchTerm = search,
             SortBy = sortBy,
             SortDirection = sortDirection,
@@ -194,7 +194,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
                 Customer = MapCustomer(customer),
                 OrdersCount = customer.Orders.Count,
                 TotalOrdersAmount = customer.Orders
-                    .Where(order => ToOrderStatus(order.Status) != OrderStatus.Cancelled)
+                    .Where(order => OrderStatusMetricsPolicy.IsRevenueRelevant(ToOrderStatus(order.Status)))
                     .Sum(order => order.TotalAmount)
             })
             .ToList();
