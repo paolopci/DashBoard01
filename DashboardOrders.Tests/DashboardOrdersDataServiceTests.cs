@@ -214,6 +214,28 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void ChangeOrderStatus_QuandoPaymentFailedGiaRegistrato_AlloraNonRipristinaStockDueVolte()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.CreateOrder("nuovo.utente@example.com", "PRD-001", 2).Should().BeTrue();
+        var orderId = dbContext.Orders.Single().Id;
+        sut.ChangeOrderStatus(orderId, OrderStatus.PaymentPending, "admin@example.com", "Pagamento avviato").Should().BeTrue();
+        sut.ChangeOrderStatus(orderId, OrderStatus.PaymentFailed, "admin@example.com", "Pagamento rifiutato").Should().BeTrue();
+        sut.ChangeOrderStatus(orderId, OrderStatus.PaymentPending, "admin@example.com", "Retry pagamento").Should().BeTrue();
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.PaymentFailed, "admin@example.com", "Secondo rifiuto");
+
+        // Assert
+        risultato.Should().BeFalse();
+        dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(5);
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.PaymentPending);
+    }
+
+    [Fact]
     public void ChangeOrderStatus_QuandoStatoRichiedeReasonEMotivoManca_AlloraRestituisceFalse()
     {
         // Arrange
@@ -244,6 +266,27 @@ public class DashboardOrdersDataServiceTests
 
         // Assert
         risultato.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoOrdineInStatoTerminale_AlloraNonAggiornaStato()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        var orderId = SeedOrder(dbContext);
+        var ordine = dbContext.Orders.Single(order => order.Id == orderId);
+        ordine.Status = (int)OrderStatus.Cancelled;
+        SeedInitialStatusHistory(dbContext, orderId, OrderStatus.Cancelled);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.PaymentPending, "admin@example.com", "Riapertura");
+
+        // Assert
+        risultato.Should().BeFalse();
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.Cancelled);
+        dbContext.OrderStatusHistory.Should().HaveCount(1);
     }
 
     [Fact]

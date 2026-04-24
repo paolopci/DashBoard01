@@ -869,11 +869,11 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
     private static bool ShouldRestoreStock(OrderStatus currentStatus, OrderStatus newStatus)
     {
-        return newStatus is OrderStatus.Cancelled or OrderStatus.PaymentFailed
-            && currentStatus is OrderStatus.Pending
+        return (newStatus is OrderStatus.Cancelled or OrderStatus.PaymentFailed)
+            && (currentStatus is OrderStatus.Pending
                 or OrderStatus.PaymentPending
                 or OrderStatus.PaymentAuthorized
-                or OrderStatus.Confirmed;
+                or OrderStatus.Confirmed);
     }
 
     private static bool HasStockAlreadyRestored(OrderEntity order)
