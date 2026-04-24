@@ -31,7 +31,7 @@ public class HomeControllerTests
             {
                 HttpContext = new DefaultHttpContext
                 {
-                    User = CreateUser("admin@micene.it")
+                    User = CreateUser("admin@micene.it", "Admin")
                 }
             },
             TempData = new TempDataDictionary(new DefaultHttpContext(), Substitute.For<ITempDataProvider>())
@@ -295,10 +295,17 @@ public class HomeControllerTests
         dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<IReadOnlyList<NewOrderItemViewModel>>());
     }
 
-    private static ClaimsPrincipal CreateUser(string email)
+    private static ClaimsPrincipal CreateUser(string email, params string[] roles)
     {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, email)
+        };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
         return new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.Name, email)],
+            claims,
             authenticationType: "Test"));
     }
 }

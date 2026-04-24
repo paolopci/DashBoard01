@@ -6,8 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DashboardOrders.Services;
 
-public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, UserManager<ApplicationUser> userManager)
+public class DashboardOrdersDatabaseSeeder(
+    DashboardOrdersDbContext dbContext,
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager)
 {
+    private const string AdminEmail = "admin@micene.it";
+    private const string AdminRole = "Admin";
+    private const string UserRole = "User";
     private const string DefaultCustomerPassword = "Micene@65";
     private static readonly DateTime SeedCreatedAt = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -18,12 +24,20 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, U
         var customers = MockDataService.GetCustomers();
         var orders = MockDataService.GetOrders();
 
+        await EnsureRolesAsync();
         await SeedCategoriesAsync(categories, cancellationToken);
         await SeedProductsAsync(products, cancellationToken);
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
         await SeedCustomerUsersAsync(cancellationToken);
+        await SynchronizeUserRolesAsync(cancellationToken);
         var productIdsByName = await GetProductIdsByNameAsync(products, cancellationToken);
         await SeedOrdersAsync(orders, customerIdsByEmail, productIdsByName, cancellationToken);
+    }
+
+    private async Task EnsureRolesAsync()
+    {
+        await EnsureRoleExistsAsync(AdminRole);
+        await EnsureRoleExistsAsync(UserRole);
     }
 
     private async Task SeedCategoriesAsync(IEnumerable<Models.Category> categories, CancellationToken cancellationToken)
@@ -151,6 +165,27 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, U
         }
     }
 
+    private async Task SynchronizeUserRolesAsync(CancellationToken cancellationToken)
+    {
+        var users = await userManager.Users.ToListAsync(cancellationToken);
+
+        foreach (var user in users)
+        {
+            var normalizedEmail = user.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+            var isAdminUser = string.Equals(normalizedEmail, AdminEmail, StringComparison.OrdinalIgnoreCase);
+
+            if (isAdminUser)
+            {
+                await EnsureUserInRoleAsync(user, AdminRole);
+                await EnsureUserNotInRoleAsync(user, UserRole);
+                continue;
+            }
+
+            await EnsureUserInRoleAsync(user, UserRole);
+            await EnsureUserNotInRoleAsync(user, AdminRole);
+        }
+    }
+
     private static ApplicationUser CreateApplicationUser(CustomerEntity customer, string normalizedEmail)
     {
         var (firstName, lastName) = SplitCustomerName(customer.Name);
@@ -199,6 +234,40 @@ public class DashboardOrdersDatabaseSeeder(DashboardOrdersDbContext dbContext, U
 
         var errors = string.Join("; ", result.Errors.Select(error => error.Description));
         throw new InvalidOperationException($"{message} {errors}");
+    }
+
+    private async Task EnsureRoleExistsAsync(string roleName)
+    {
+        var role = await roleManager.FindByNameAsync(roleName);
+        if (role is not null)
+        {
+            return;
+        }
+
+        var createResult = await roleManager.CreateAsync(new IdentityRole(roleName));
+        EnsureIdentityResultSucceeded(createResult, $"Creazione ruolo {roleName} non completata.");
+    }
+
+    private async Task EnsureUserInRoleAsync(ApplicationUser user, string roleName)
+    {
+        if (await userManager.IsInRoleAsync(user, roleName))
+        {
+            return;
+        }
+
+        var addToRoleResult = await userManager.AddToRoleAsync(user, roleName);
+        EnsureIdentityResultSucceeded(addToRoleResult, $"Assegnazione ruolo {roleName} a {user.Email} non completata.");
+    }
+
+    private async Task EnsureUserNotInRoleAsync(ApplicationUser user, string roleName)
+    {
+        if (!await userManager.IsInRoleAsync(user, roleName))
+        {
+            return;
+        }
+
+        var removeFromRoleResult = await userManager.RemoveFromRoleAsync(user, roleName);
+        EnsureIdentityResultSucceeded(removeFromRoleResult, $"Rimozione ruolo {roleName} da {user.Email} non completata.");
     }
 
     private async Task<Dictionary<string, int>> GetProductIdsByNameAsync(IEnumerable<Models.Product> products, CancellationToken cancellationToken)

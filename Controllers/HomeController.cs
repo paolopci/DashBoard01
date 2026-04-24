@@ -10,7 +10,7 @@ namespace DashboardOrders.Controllers;
 [Authorize]
 public class HomeController : Controller
 {
-    private const string AdminEmail = "admin@micene.it";
+    private const string AdminRole = "Admin";
     private const string ToastSuccessKey = "Toast.Success";
 
     private readonly IDashboardOrdersDataService dataService;
@@ -344,7 +344,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
 
     private bool IsAdmin()
     {
-        return string.Equals(GetCurrentEmail(), AdminEmail, StringComparison.OrdinalIgnoreCase);
+        return User.IsInRole(AdminRole);
     }
 
     private string? GetCurrentEmail()

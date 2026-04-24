@@ -13,19 +13,23 @@ public class AccountService : IAccountService
 {
     private const string GenericRegistrationError = "Registrazione non completata.";
     private const string GenericLoginError = "Email o password non validi.";
+    private const string UserRole = "User";
 
     private readonly UserManager<ApplicationUser> userManager;
+    private readonly RoleManager<IdentityRole> roleManager;
     private readonly SignInManager<ApplicationUser> signInManager;
     private readonly IConfiguration configuration;
     private readonly IWebHostEnvironment environment;
 
     public AccountService(
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         SignInManager<ApplicationUser> signInManager,
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
         this.userManager = userManager;
+        this.roleManager = roleManager;
         this.signInManager = signInManager;
         this.configuration = configuration;
         this.environment = environment;
@@ -74,6 +78,24 @@ public class AccountService : IAccountService
             return AccountOperationResult.Failure(
                 GenericRegistrationError,
                 createResult.Errors.Select(error => error.Description));
+        }
+
+        var ensureRoleResult = await EnsureRoleExistsAsync(UserRole);
+        if (!ensureRoleResult.Succeeded)
+        {
+            await userManager.DeleteAsync(applicationUser);
+            return AccountOperationResult.Failure(
+                GenericRegistrationError,
+                ensureRoleResult.Errors.Select(error => error.Description));
+        }
+
+        var addToRoleResult = await userManager.AddToRoleAsync(applicationUser, UserRole);
+        if (!addToRoleResult.Succeeded)
+        {
+            await userManager.DeleteAsync(applicationUser);
+            return AccountOperationResult.Failure(
+                GenericRegistrationError,
+                addToRoleResult.Errors.Select(error => error.Description));
         }
 
         return AccountOperationResult.Success(
@@ -200,6 +222,17 @@ public class AccountService : IAccountService
         }
 
         return await userManager.FindByEmailAsync(NormalizeEmail(email));
+    }
+
+    private async Task<IdentityResult> EnsureRoleExistsAsync(string roleName)
+    {
+        var role = await roleManager.FindByNameAsync(roleName);
+        if (role is not null)
+        {
+            return IdentityResult.Success;
+        }
+
+        return await roleManager.CreateAsync(new IdentityRole(roleName));
     }
 
     private static string GenerateJwtToken(ApplicationUser user, JwtOptions jwtOptions, DateTimeOffset tokenExpiresAt)

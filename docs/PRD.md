@@ -1,88 +1,59 @@
-# PRD - Nuovo ordine multi-articolo
+# PRD
 
-## 1. Obiettivo
+## Obiettivo
 
-Aggiornare la pagina `Home/NewOrder` per consentire a un cliente di creare un ordine con piu articoli selezionati per categoria e prodotto, mostrando i dettagli del prodotto selezionato, una tabella riepilogativa e il totale complessivo prima del salvataggio.
+Correggere la gestione dei ruoli e dell'azione `Edit` nella pagina `Home/NewOrder` in modo che il pulsante di modifica riga sia visibile solo agli utenti con ruolo `Admin`, mantenendo per tutti gli utenti la rimozione articolo tramite `Delete Articolo`, e allineare il database Identity con i ruoli `Admin` e `User`.
 
-## 2. Assessment iniziale
+## Problema/Contesto
 
-- Tipo progetto: esistente.
-- Stack rilevato: .NET 9, ASP.NET Core MVC, Razor, EF Core, SQL Server, Tailwind CSS.
-- Architettura rilevata: monolite MVC con controller, model, Razor views e service applicativi.
-- Flusso target: Razor UI `Home/NewOrder` -> `HomeController.NewOrder` -> `IDashboardOrdersDataService` -> EF Core `Orders`, `OrderItems`, `Products`.
-- Livello di chiarezza: chiaro.
-- Assunzioni:
-  - La "figura 1" guida layout e comportamento, non richiede riproduzione pixel-perfect.
-  - "Salva" salva un ordine unico con tutte le righe presenti in tabella.
-  - "Database" indica la persistenza EF Core gia presente nel progetto.
-  - Il prodotto selezionato non deve piu essere visibile nella select finche resta nella tabella.
+La pagina `Views/Home/NewOrder.cshtml` mostra il pulsante `Edit` anche agli utenti normali e la modifica riga avviene riportando l'articolo nel form, comportamento che non deve essere disponibile ai non amministratori. Inoltre il database Identity contiene solo il ruolo `Admin`, mentre la richiesta richiede anche il ruolo `User` e l'assegnazione del ruolo `User` a tutti gli utenti diversi da `admin@micene.it`.
 
-## 3. Scope
+## Scope
 
-Sono inclusi:
+- Rendere visibile il pulsante `Edit` in `Home/NewOrder` solo per utenti con ruolo `Admin`.
+- Lasciare disponibile `Delete Articolo` per gli utenti che possono comporre l'ordine.
+- Introdurre il ruolo Identity `User` se mancante.
+- Allineare il seed Identity in modo che:
+  - `admin@micene.it` abbia ruolo `Admin`;
+  - tutti gli altri utenti presenti nel database abbiano ruolo `User`.
+- Assegnare automaticamente il ruolo `User` ai nuovi utenti registrati.
+- Aggiornare i test pertinenti.
 
-- Select `Category` con categorie disponibili.
-- Select `Products` filtrata dalla categoria selezionata.
-- Visibilita dei soli prodotti con stock `> 0`.
-- Rimozione dalla select dei prodotti gia aggiunti alla tabella.
-- Campo quantita obbligatorio e maggiore di zero.
-- Pulsante `Add Articolo` disabilitato se prodotto o quantita non sono validi.
-- Campi read-only per articolo, descrizione e prezzo.
-- Immagine prodotto selezionato, se disponibile.
-- Tabella righe ordine con `Articolo`, `Descrizione Articolo`, `Prezzo`, `Quantita acquistate`, `Totale`, `Task`.
-- Pulsanti riga `Edit` e `Delete Articolo`.
-- Totale complessivo in fondo alla tabella.
-- `Annullare Articolo` per pulire selezione e dettaglio prodotto.
-- `Annulla` per tornare a `Home/Orders`.
-- `Salva` per creare l'ordine con tutte le righe.
+## Out of scope
 
-## 4. Out of Scope
+- Ridisegno della pagina `NewOrder`.
+- Introduzione di nuove API o framework frontend.
+- Modifica del flusso di login oltre quanto necessario per l'allineamento ruoli.
+- Gestione di autorizzazioni granulari diverse dai ruoli `Admin` e `User`.
 
-Sono esclusi:
+## Requisiti funzionali
 
-- Redesign globale del layout applicativo.
-- Introduzione di API JSON o framework frontend.
-- Gestione avanzata promozioni, tasse, sconti o spedizioni.
-- Modifiche allo schema database non necessarie.
-- Nuove astrazioni repository o riscrittura architetturale.
+- Un utente con ruolo diverso da `Admin` non deve vedere il pulsante `Edit` nella tabella articoli di `NewOrder`.
+- Un utente con ruolo `Admin` deve poter continuare a vedere il pulsante `Edit`.
+- Il click su `Delete Articolo` deve continuare a rimuovere l'articolo dall'ordine.
+- Il ruolo `User` deve esistere in Identity.
+- Ogni utente non admin deve risultare associato al ruolo `User`.
+- L'utente `admin@micene.it` deve risultare associato al ruolo `Admin`.
+- I nuovi utenti registrati dall'applicazione devono ricevere il ruolo `User`.
 
-## 5. Requisiti funzionali
+## Vincoli tecnici
 
-- La pagina deve mostrare categorie e prodotti disponibili.
-- La select prodotti deve mostrare solo prodotti della categoria selezionata e con stock `> 0`.
-- Un prodotto gia aggiunto alla tabella non deve comparire nella select prodotti.
-- La quantita deve essere valorizzata e `> 0`.
-- `Add Articolo` deve restare disabilitato finche la selezione articolo o la quantita non sono valide.
-- Dopo l'aggiunta, la tabella deve mostrare prezzo unitario, quantita e totale riga.
-- Il totale ordine deve essere aggiornato a ogni add, edit o delete.
-- `Edit` deve riportare una riga nel form per modificarne la quantita.
-- `Delete Articolo` deve rimuovere la riga e rendere di nuovo selezionabile il prodotto.
-- `Salva` deve creare un ordine persistito con una riga `OrderItem` per ogni articolo.
-- Il salvataggio deve fallire se almeno un prodotto non esiste, non ha stock sufficiente o la quantita non e valida.
+- Mantenere stack esistente: ASP.NET Core MVC, Razor, Identity, EF Core.
+- Non introdurre nuove librerie o pattern non presenti nel progetto.
+- Riutilizzare `UserManager<ApplicationUser>` e `RoleManager<IdentityRole>` di ASP.NET Core Identity.
+- Limitare le modifiche alla fase corrente e ai file necessari.
 
-## 6. Tracer Bullet
+## Acceptance criteria
 
-La fase di implementazione principale richiede una tracer bullet obbligatoria.
+- `Views/Home/NewOrder.cshtml` rende `Edit` solo per utenti admin.
+- `Delete Articolo` continua a funzionare indipendentemente dalla visibilità di `Edit`.
+- Il seed crea i ruoli `Admin` e `User` se mancanti.
+- Dopo il seed, tutti gli utenti diversi da `admin@micene.it` appartengono al ruolo `User`.
+- Dopo il seed, `admin@micene.it` appartiene al ruolo `Admin`.
+- La registrazione di un nuovo utente assegna il ruolo `User`.
+- `dotnet test DashBoard01.sln` passa.
+- `dotnet build DashBoard01.sln` passa.
 
-- Trigger: utente apre `GET /Home/NewOrder`, aggiunge una riga e invia `POST /Home/NewOrder`.
-- Input minimo: una riga ordine con prodotto disponibile e quantita `1`.
-- Percorso: prodotti disponibili da EF Core -> `GetAvailableProducts` -> `NewOrderViewModel` -> Razor/JavaScript -> hidden inputs `Items[i]` -> `HomeController.NewOrder` -> `CreateOrder` multi-riga -> `Orders` e `OrderItems`.
-- Output: ordine creato e reindirizzamento a `Home/Orders`.
-- Evidenza verificabile: test service/controller e build passano; la view contiene select categoria/prodotto, tabella e hidden inputs per le righe.
-- Rischio tecnico abbattuto: evitare una UI multi-riga che invia ancora un solo prodotto o un salvataggio che non crea le righe `OrderItems`.
+## Definizione di completamento
 
-## 7. Acceptance Criteria
-
-- `Home/NewOrder` contiene select categoria e prodotto separate.
-- La select prodotto e filtrabile per categoria e stock `> 0`.
-- I prodotti aggiunti non sono selezionabili una seconda volta.
-- I dettagli read-only del prodotto selezionato sono popolati.
-- `Add Articolo` e disabilitato con quantita mancante, zero o negativa.
-- La tabella ordine mostra le colonne richieste e il totale complessivo.
-- `Edit` e `Delete Articolo` funzionano lato pagina.
-- `Annullare Articolo` pulisce selezione e dettagli.
-- `Annulla` reindirizza a `Home/Orders`.
-- `Salva` crea un ordine persistito con tutte le righe.
-- `dotnet test DashBoard01.sln` passa o il blocco e documentato con verifica equivalente.
-- `dotnet build DashBoard01.sln` passa o il blocco e documentato con verifica equivalente.
-- `npm run build:css` passa se vengono modificate classi Tailwind/sorgenti CSS.
+La fase è completata quando codice, test e seed ruoli sono aggiornati, la view `NewOrder` applica la visibilità richiesta del pulsante `Edit`, i test pertinenti passano e il progetto compila correttamente.

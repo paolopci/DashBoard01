@@ -17,6 +17,7 @@ namespace DashboardOrders.Tests;
 public class AccountServiceTests
 {
     private readonly UserManager<ApplicationUser> userManager;
+    private readonly RoleManager<IdentityRole> roleManager;
     private readonly SignInManager<ApplicationUser> signInManager;
     private readonly IConfiguration configuration;
     private readonly IWebHostEnvironment environment;
@@ -25,6 +26,7 @@ public class AccountServiceTests
     public AccountServiceTests()
     {
         userManager = CreateUserManager();
+        roleManager = CreateRoleManager();
         signInManager = CreateSignInManager(userManager);
         configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -37,7 +39,7 @@ public class AccountServiceTests
             .Build();
         environment = Substitute.For<IWebHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Development);
-        sut = new AccountService(userManager, signInManager, configuration, environment);
+        sut = new AccountService(userManager, roleManager, signInManager, configuration, environment);
     }
 
     [Fact]
@@ -47,12 +49,15 @@ public class AccountServiceTests
         var dto = CreateRegisterDto();
         userManager.FindByEmailAsync(dto.Email.ToLowerInvariant()).Returns((ApplicationUser?)null);
         userManager.CreateAsync(Arg.Any<ApplicationUser>(), dto.Password).Returns(IdentityResult.Success);
+        roleManager.FindByNameAsync("User").Returns((IdentityRole?)new IdentityRole("User"));
+        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "User").Returns(IdentityResult.Success);
 
         // Act
         var risultato = await sut.RegisterAsync(dto);
 
         // Assert
         risultato.Succeeded.Should().BeTrue();
+        await userManager.Received(1).AddToRoleAsync(Arg.Any<ApplicationUser>(), "User");
     }
 
     [Fact]
@@ -158,6 +163,17 @@ public class AccountServiceTests
             new IdentityErrorDescriber(),
             Substitute.For<IServiceProvider>(),
             Substitute.For<ILogger<UserManager<ApplicationUser>>>());
+    }
+
+    private static RoleManager<IdentityRole> CreateRoleManager()
+    {
+        var store = Substitute.For<IRoleStore<IdentityRole>>();
+        return Substitute.For<RoleManager<IdentityRole>>(
+            store,
+            Array.Empty<IRoleValidator<IdentityRole>>(),
+            new UpperInvariantLookupNormalizer(),
+            new IdentityErrorDescriber(),
+            Substitute.For<ILogger<RoleManager<IdentityRole>>>());
     }
 
     private static SignInManager<ApplicationUser> CreateSignInManager(UserManager<ApplicationUser> userManager)
