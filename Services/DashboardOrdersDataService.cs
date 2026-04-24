@@ -479,6 +479,49 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return true;
     }
 
+    public bool ChangeOrderStatus(int orderId, OrderStatus newStatus, string? changedBy = null, string? reason = null, string? correlationId = null)
+    {
+        var order = dbContext.Orders
+            .Include(existingOrder => existingOrder.Items)
+            .ThenInclude(item => item.Product)
+            .Include(existingOrder => existingOrder.StatusHistory)
+            .FirstOrDefault(existingOrder => existingOrder.Id == orderId);
+
+        if (order is null)
+        {
+            return false;
+        }
+
+        var currentStatus = ToOrderStatus(order.Status);
+        if (!OrderStatusTransitionPolicy.CanTransition(currentStatus, newStatus))
+        {
+            return false;
+        }
+
+        if (OrderStatusTransitionPolicy.RequiresReason(newStatus) && string.IsNullOrWhiteSpace(reason))
+        {
+            return false;
+        }
+
+        if (ShouldRestoreStock(currentStatus, newStatus) && HasStockAlreadyRestored(order))
+        {
+            return false;
+        }
+
+        if (ShouldRestoreStock(currentStatus, newStatus))
+        {
+            RestoreOrderStock(order);
+        }
+
+        var changedAt = GetCurrentTimestamp();
+        order.Status = (int)newStatus;
+        order.UpdatedAt = changedAt;
+        AppendStatusHistory(order, currentStatus, newStatus, changedBy, reason, correlationId, changedAt);
+        dbContext.SaveChanges();
+
+        return true;
+    }
+
     public CategoryPageViewModel GetCategoryPageData(string sortBy = "code", string sortDirection = "asc")
     {
         var normalizedSortBy = NormalizeSortBy(sortBy, CategorySortColumns, "code");
@@ -768,10 +811,64 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         });
     }
 
+    private static void AppendStatusHistory(
+        OrderEntity order,
+        OrderStatus fromStatus,
+        OrderStatus toStatus,
+        string? changedBy,
+        string? reason,
+        string? correlationId,
+        DateTime changedAt)
+    {
+        order.StatusHistory.Add(new OrderStatusHistoryEntity
+        {
+            FromStatus = (int)fromStatus,
+            ToStatus = (int)toStatus,
+            ChangedAt = changedAt,
+            ChangedBy = NormalizeChangedBy(changedBy),
+            Reason = NormalizeReason(reason),
+            CorrelationId = NormalizeCorrelationId(correlationId)
+        });
+    }
+
     private static string? NormalizeChangedBy(string? changedBy)
     {
         var normalized = (changedBy ?? string.Empty).Trim().ToLowerInvariant();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static string? NormalizeReason(string? reason)
+    {
+        var normalized = (reason ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static string? NormalizeCorrelationId(string? correlationId)
+    {
+        var normalized = (correlationId ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static bool ShouldRestoreStock(OrderStatus currentStatus, OrderStatus newStatus)
+    {
+        return newStatus is OrderStatus.Cancelled or OrderStatus.PaymentFailed
+            && currentStatus is OrderStatus.Pending
+                or OrderStatus.PaymentPending
+                or OrderStatus.PaymentAuthorized
+                or OrderStatus.Confirmed;
+    }
+
+    private static bool HasStockAlreadyRestored(OrderEntity order)
+    {
+        return order.StatusHistory.Any(history => history.ToStatus is (int)OrderStatus.Cancelled or (int)OrderStatus.PaymentFailed);
+    }
+
+    private static void RestoreOrderStock(OrderEntity order)
+    {
+        foreach (var item in order.Items)
+        {
+            item.Product.StockQuantity += item.Quantity;
+        }
     }
 
     private static PagedResult<T> ApplyPaging<T>(IReadOnlyList<T> items, int page, int pageSize)

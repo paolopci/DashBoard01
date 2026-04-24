@@ -124,6 +124,96 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void ChangeOrderStatus_QuandoTransizioneValida_AlloraAggiornaStatoEStorico()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        var orderId = SeedOrder(dbContext);
+        SeedInitialStatusHistory(dbContext, orderId, OrderStatus.Pending);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.PaymentPending, "admin@example.com", "Avvio pagamento", "corr-001");
+
+        // Assert
+        risultato.Should().BeTrue();
+        var ordine = dbContext.Orders.Include(order => order.StatusHistory).Single(order => order.Id == orderId);
+        ordine.Status.Should().Be((int)OrderStatus.PaymentPending);
+        ordine.UpdatedAt.Should().NotBeNull();
+        ordine.StatusHistory.Should().Contain(history =>
+            history.FromStatus == (int)OrderStatus.Pending &&
+            history.ToStatus == (int)OrderStatus.PaymentPending &&
+            history.ChangedBy == "admin@example.com" &&
+            history.Reason == "Avvio pagamento" &&
+            history.CorrelationId == "corr-001");
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoTransizioneNonValida_AlloraNonAggiornaStato()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        var orderId = SeedOrder(dbContext);
+        SeedInitialStatusHistory(dbContext, orderId, OrderStatus.Pending);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.Delivered, "admin@example.com", "Salto non ammesso");
+
+        // Assert
+        risultato.Should().BeFalse();
+        var ordine = dbContext.Orders.Include(order => order.StatusHistory).Single(order => order.Id == orderId);
+        ordine.Status.Should().Be((int)OrderStatus.Pending);
+        ordine.StatusHistory.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoAnnullaDaStatoPreFulfillment_AlloraRipristinaStockEAggiungeStorico()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.CreateOrder("nuovo.utente@example.com", "PRD-001", 2).Should().BeTrue();
+        var orderId = dbContext.Orders.Single().Id;
+        var stockPrima = dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity;
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.Cancelled, "admin@example.com", "Ordine annullato");
+
+        // Assert
+        risultato.Should().BeTrue();
+        stockPrima.Should().Be(3);
+        dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(5);
+        dbContext.OrderStatusHistory.Should().Contain(history =>
+            history.FromStatus == (int)OrderStatus.Pending &&
+            history.ToStatus == (int)OrderStatus.Cancelled &&
+            history.Reason == "Ordine annullato");
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoPaymentFailedDaPaymentPending_AlloraRipristinaStock()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.CreateOrder("nuovo.utente@example.com", "PRD-001", 2).Should().BeTrue();
+        var orderId = dbContext.Orders.Single().Id;
+        sut.ChangeOrderStatus(orderId, OrderStatus.PaymentPending, "admin@example.com", "Pagamento avviato").Should().BeTrue();
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, OrderStatus.PaymentFailed, "admin@example.com", "Pagamento rifiutato");
+
+        // Assert
+        risultato.Should().BeTrue();
+        dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(5);
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.PaymentFailed);
+    }
+
+    [Fact]
     public void GetOrders_QuandoPageNumeroNegativo_AlloraNormalizzaAPrimaPagina()
     {
         // Arrange
@@ -394,7 +484,7 @@ public class DashboardOrdersDataServiceTests
         dbContext.SaveChanges();
     }
 
-    private static void SeedOrder(
+    private static int SeedOrder(
         DashboardOrdersDbContext dbContext,
         string orderNumber = "ORD-001",
         DateTime? createdAt = null)
@@ -428,6 +518,21 @@ public class DashboardOrdersDataServiceTests
 
         dbContext.Customers.Add(customer);
         dbContext.Orders.Add(order);
+        dbContext.SaveChanges();
+        return order.Id;
+    }
+
+    private static void SeedInitialStatusHistory(DashboardOrdersDbContext dbContext, int orderId, OrderStatus status)
+    {
+        dbContext.OrderStatusHistory.Add(new OrderStatusHistoryEntity
+        {
+            OrderId = orderId,
+            FromStatus = null,
+            ToStatus = (int)status,
+            ChangedAt = DateTime.UtcNow,
+            ChangedBy = "seed@test.local",
+            Reason = "Seed initial state"
+        });
         dbContext.SaveChanges();
     }
 }

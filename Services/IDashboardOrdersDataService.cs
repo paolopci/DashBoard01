@@ -24,6 +24,7 @@ public interface IDashboardOrdersDataService
     bool UpdateProduct(Product product);
     bool CreateOrder(string? customerEmail, string productCode, int quantity);
     bool CreateOrder(string? customerEmail, IReadOnlyList<NewOrderItemViewModel> items);
+    bool ChangeOrderStatus(int orderId, OrderStatus newStatus, string? changedBy = null, string? reason = null, string? correlationId = null);
     CategoryPageViewModel GetCategoryPageData(string sortBy = "code", string sortDirection = "asc");
     Category? GetCategory(string code);
     bool CreateCategory(Category category);
