@@ -445,6 +445,8 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         }
 
         var customer = FindOrCreateCustomer(customerEmail);
+        var createdAt = GetCurrentTimestamp();
+        var initialStatus = OrderStatus.Pending;
         var order = new OrderEntity
         {
             OrderNumber = CreateNextOrderNumber(),
@@ -454,8 +456,8 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
                 var product = products.Single(product => product.Code == item.ProductCode);
                 return product.Price * item.Quantity;
             }),
-            Status = (int)OrderStatus.Pending,
-            CreatedAt = DateTime.Now
+            Status = (int)initialStatus,
+            CreatedAt = createdAt
         };
 
         foreach (var requestedItem in requestedItems)
@@ -470,6 +472,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             });
         }
 
+        AppendInitialStatusHistory(order, initialStatus, customerEmail, createdAt);
         dbContext.Orders.Add(order);
         dbContext.SaveChanges();
 
@@ -742,10 +745,33 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return (code ?? string.Empty).Trim().ToUpperInvariant();
     }
 
+    private static DateTime GetCurrentTimestamp()
+    {
+        return DateTime.UtcNow;
+    }
+
     private static string? NormalizeImageUrl(string? imageUrl)
     {
         var normalizedImageUrl = (imageUrl ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(normalizedImageUrl) ? null : normalizedImageUrl;
+    }
+
+    private static void AppendInitialStatusHistory(OrderEntity order, OrderStatus initialStatus, string changedBy, DateTime changedAt)
+    {
+        order.StatusHistory.Add(new OrderStatusHistoryEntity
+        {
+            FromStatus = null,
+            ToStatus = (int)initialStatus,
+            ChangedAt = changedAt,
+            ChangedBy = NormalizeChangedBy(changedBy),
+            Reason = "Order created"
+        });
+    }
+
+    private static string? NormalizeChangedBy(string? changedBy)
+    {
+        var normalized = (changedBy ?? string.Empty).Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
     private static PagedResult<T> ApplyPaging<T>(IReadOnlyList<T> items, int page, int pageSize)

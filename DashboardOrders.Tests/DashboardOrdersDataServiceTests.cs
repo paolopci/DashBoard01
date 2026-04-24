@@ -26,11 +26,16 @@ public class DashboardOrdersDataServiceTests
         risultato.Should().BeTrue();
         dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(3);
         dbContext.Customers.Single().Email.Should().Be("nuovo.utente@example.com");
-        dbContext.Orders.Include(order => order.Items).Single().Should().BeEquivalentTo(new
+        dbContext.Orders.Include(order => order.Items).Include(order => order.StatusHistory).Single().Should().BeEquivalentTo(new
         {
             TotalAmount = 50m,
             Status = (int)OrderStatus.Pending
         });
+        dbContext.OrderStatusHistory.Should().ContainSingle(history =>
+            history.FromStatus == null &&
+            history.ToStatus == (int)OrderStatus.Pending &&
+            history.ChangedBy == "nuovo.utente@example.com" &&
+            history.Reason == "Order created");
         paginaOrdini.Orders.Should().ContainSingle(order =>
             order.Customer.Email == "nuovo.utente@example.com" &&
             order.TotalAmount == 50m &&
@@ -54,13 +59,17 @@ public class DashboardOrdersDataServiceTests
 
         // Act
         var risultato = sut.CreateOrder("nuovo.utente@example.com", items);
-        var ordine = dbContext.Orders.Include(order => order.Items).Single();
+        var ordine = dbContext.Orders.Include(order => order.Items).Include(order => order.StatusHistory).Single();
         var paginaOrdini = sut.GetOrdersPageDataForCustomerEmail("nuovo.utente@example.com", pageSize: 0);
 
         // Assert
         risultato.Should().BeTrue();
         ordine.TotalAmount.Should().Be(95m);
         ordine.Items.Should().HaveCount(2);
+        ordine.StatusHistory.Should().ContainSingle(history =>
+            history.FromStatus == null &&
+            history.ToStatus == (int)OrderStatus.Pending &&
+            history.ChangedBy == "nuovo.utente@example.com");
         ordine.Items.Should().Contain(item => item.ProductId == dbContext.Products.Single(product => product.Code == "PRD-001").Id && item.Quantity == 2 && item.UnitPrice == 25m);
         ordine.Items.Should().Contain(item => item.ProductId == dbContext.Products.Single(product => product.Code == "PRD-002").Id && item.Quantity == 3 && item.UnitPrice == 15m);
         dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(3);
