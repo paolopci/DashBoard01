@@ -683,6 +683,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             .Include(order => order.Customer)
             .Include(order => order.Items)
             .ThenInclude(item => item.Product)
+            .Include(order => order.StatusHistory)
             .AsSplitQuery()
             .Select(MapOrder)
             .ToList();
@@ -701,6 +702,11 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             Items = entity.Items
                 .OrderBy(item => item.Id)
                 .Select(MapOrderItem)
+                .ToList(),
+            StatusHistory = entity.StatusHistory
+                .OrderByDescending(history => history.ChangedAt)
+                .ThenByDescending(history => history.Id)
+                .Select(MapOrderStatusHistory)
                 .ToList()
         };
     }
@@ -712,6 +718,18 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             ProductName = entity.Product.Name,
             Quantity = entity.Quantity,
             UnitPrice = entity.UnitPrice
+        };
+    }
+
+    private static OrderStatusHistory MapOrderStatusHistory(OrderStatusHistoryEntity entity)
+    {
+        return new OrderStatusHistory
+        {
+            FromStatus = entity.FromStatus.HasValue ? ToOrderStatus(entity.FromStatus.Value) : null,
+            ToStatus = ToOrderStatus(entity.ToStatus),
+            ChangedAt = entity.ChangedAt,
+            ChangedBy = entity.ChangedBy ?? string.Empty,
+            Reason = entity.Reason ?? string.Empty
         };
     }
 

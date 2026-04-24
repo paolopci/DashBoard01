@@ -57,7 +57,7 @@ Prossimo passo:
 Fase 2 - Visualizzazione storico stati ordine.
 
 ## Fase 2 - Visualizzazione storico stati ordine
-Stato: pending
+Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
@@ -76,12 +76,37 @@ Frontend impact: si
 Dipendenze:
 Fase 1 completed
 Validazioni:
-da eseguire dopo la Fase 1
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step2-build\`: superato, 0 warning, 0 errori.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step3-build\`: superato, 0 warning, 0 errori.
+- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~DashboardOrdersDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step4-test\`: superato, 23 test passati.
+- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-final-test\`: superato, 124 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-final-build\`: superato, 0 warning, 0 errori.
 Definition of done:
 Lo storico stati registrato e visibile per ogni ordine senza permettere modifiche fuori policy.
 Tracer Bullet: obbligatoria
 Note:
-Da eseguire solo dopo completamento della vertical slice di cambio stato.
+Trigger:
+Utente apre `Orders` ed espande il dettaglio di un ordine.
+Input minimo:
+Ordine con o senza righe in `OrderStatusHistory`.
+Percorso:
+`DashboardOrdersDataService.LoadOrders` -> mapping `Order.StatusHistory` -> Razor `Orders` mobile/desktop.
+Output:
+Timeline dello storico stati visibile nel dettaglio ordine oppure messaggio neutro se lo storico e vuoto.
+Evidenza verificabile:
+Test data service sul mapping dello storico, test completi e build solution.
+Rischio tecnico abbattuto:
+Lo storico persistito viene letto, ordinato e reso disponibile alla UI senza nuovo endpoint o nuova pagina.
+Out of scope dichiarato:
+Modifica dello storico dalla UI, pagina dettaglio dedicata e nuove azioni cliente.
+Esito fase:
+- aggiunto modello UI `OrderStatusHistory` e proprieta `Order.StatusHistory`;
+- esteso `DashboardOrdersDataService.LoadOrders` per includere e mappare `OrderStatusHistory`;
+- aggiornata `Views/Home/Orders.cshtml` con timeline storico in mobile e desktop;
+- aggiunto test data service per mapping e ordinamento dello storico;
+- test e build della solution superati.
+Prossimo passo:
+Fase 3 - Hardening ciclo vita ordine.
 
 ## Fase 3 - Hardening ciclo vita ordine
 Stato: pending

@@ -389,6 +389,59 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void GetOrders_QuandoOrdineHaStoricoStati_AlloraMappaStoricoOrdinatoPerDataDecrescente()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        var orderId = SeedOrder(dbContext);
+        dbContext.OrderStatusHistory.AddRange(
+            new OrderStatusHistoryEntity
+            {
+                OrderId = orderId,
+                FromStatus = null,
+                ToStatus = (int)OrderStatus.Pending,
+                ChangedAt = new DateTime(2026, 4, 1, 9, 0, 0, DateTimeKind.Utc),
+                ChangedBy = "cliente@example.com",
+                Reason = "Order created"
+            },
+            new OrderStatusHistoryEntity
+            {
+                OrderId = orderId,
+                FromStatus = (int)OrderStatus.Pending,
+                ToStatus = (int)OrderStatus.PaymentPending,
+                ChangedAt = new DateTime(2026, 4, 2, 10, 30, 0, DateTimeKind.Utc),
+                ChangedBy = "admin@micene.it",
+                Reason = "Avvio pagamento"
+            });
+        dbContext.SaveChanges();
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.GetOrders(pageSize: 0);
+
+        // Assert
+        var storico = risultato.Items.Single().StatusHistory;
+        storico.Should().HaveCount(2);
+        storico[0].Should().BeEquivalentTo(new
+        {
+            FromStatus = (OrderStatus?)OrderStatus.Pending,
+            ToStatus = OrderStatus.PaymentPending,
+            ChangedAt = new DateTime(2026, 4, 2, 10, 30, 0, DateTimeKind.Utc),
+            ChangedBy = "admin@micene.it",
+            Reason = "Avvio pagamento"
+        });
+        storico[1].Should().BeEquivalentTo(new
+        {
+            FromStatus = (OrderStatus?)null,
+            ToStatus = OrderStatus.Pending,
+            ChangedAt = new DateTime(2026, 4, 1, 9, 0, 0, DateTimeKind.Utc),
+            ChangedBy = "cliente@example.com",
+            Reason = "Order created"
+        });
+    }
+
+    [Fact]
     public void GetProducts_QuandoRicercaBreve_AlloraNonFiltra()
     {
         // Arrange
