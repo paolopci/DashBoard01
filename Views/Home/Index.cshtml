@@ -1,12 +1,47 @@
 @model DashboardOrders.Models.DashboardViewModel
 @{
     ViewData["Title"] = "Panoramica";
+    var currentSortBy = Model.SortBy;
+    var currentSortDirection = Model.SortDirection;
+
+    Dictionary<string, string> DashboardRouteValues()
+    {
+        return new Dictionary<string, string>
+        {
+            ["search"] = Model.SearchTerm
+        };
+    }
+
+    SortableHeaderViewModel DashboardHeader(string column, string label, string alignment = "left")
+    {
+        return new SortableHeaderViewModel
+        {
+            ActionName = "Index",
+            ControllerName = "Home",
+            Column = column,
+            Label = label,
+            CurrentSortBy = currentSortBy,
+            CurrentSortDirection = currentSortDirection,
+            PageSize = Model.PageSize,
+            Alignment = alignment,
+            ExtraRouteValues = DashboardRouteValues()
+        };
+    }
 }
 
 <!-- Page Header -->
 <div class="mb-8">
     <h2 class="text-2xl font-bold text-slate-800">Panoramica</h2>
-    <p class="text-slate-500 mt-1">Benvenuto! Ecco il riepilogo degli ordini aggiornato al @DateTime.Now.ToString("dd MMMM yyyy").</p>
+    <p class="text-slate-500 mt-1">
+        @if (Model.HasActiveSearch)
+        {
+            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
+        }
+        else
+        {
+            <span>Benvenuto! Ecco il riepilogo degli ordini aggiornato al @DateTime.Now.ToString("dd MMMM yyyy").</span>
+        }
+    </p>
 </div>
 
 <!-- KPI Cards -->
@@ -30,7 +65,7 @@
         </div>
         <div>
             <p class="text-sm font-medium text-slate-500">Fatturato</p>
-            <p class="text-3xl font-bold text-slate-800">€@Model.TotalRevenue.ToString("N0")</p>
+            <p class="text-3xl font-bold text-slate-800">@FormatEuro(Model.TotalRevenue, "N0")</p>
         </div>
     </div>
 
@@ -61,18 +96,52 @@
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
     <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-lg font-semibold text-slate-800">Ordini Recenti</h3>
-        <span class="text-sm text-slate-500">Ultimi @Model.RecentOrders.Count ordini</span>
+        <span class="text-sm text-slate-500">Totale: @Model.TotalOrders ordini</span>
+    </div>
+    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <partial name="_PageSizeSelector" model="@(new PageSizeSelectorViewModel
+        {
+            ActionName = "Index",
+            ControllerName = "Home",
+            PageSize = Model.PageSize,
+            SortBy = Model.SortBy,
+            SortDirection = Model.SortDirection,
+            ExtraRouteValues = DashboardRouteValues()
+        })" />
+
+        <div class="text-sm text-slate-500">
+            @if (Model.ShowAll)
+            {
+                <span>Tutti gli ordini in una sola pagina</span>
+            }
+            else
+            {
+                <span>Pagina @Model.CurrentPage di @Model.TotalPages</span>
+            }
+        </div>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full">
             <thead>
                 <tr class="bg-slate-50 border-b border-slate-100">
-                    <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">N° Ordine</th>
-                    <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Cliente</th>
-                    <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Articoli</th>
-                    <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Data</th>
-                    <th class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Importo</th>
-                    <th class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Stato</th>
+                    <th class="px-6 py-3 text-left">
+                        <partial name="_SortableHeader" model='@DashboardHeader("orderNumber", "N° Ordine")' />
+                    </th>
+                    <th class="px-6 py-3 text-left">
+                        <partial name="_SortableHeader" model='@DashboardHeader("customer", "Cliente")' />
+                    </th>
+                    <th class="px-6 py-3 text-left">
+                        <partial name="_SortableHeader" model='@DashboardHeader("items", "Articoli")' />
+                    </th>
+                    <th class="px-6 py-3 text-left">
+                        <partial name="_SortableHeader" model='@DashboardHeader("date", "Data")' />
+                    </th>
+                    <th class="px-6 py-3 text-right">
+                        <partial name="_SortableHeader" model='@DashboardHeader("amount", "Importo", "right")' />
+                    </th>
+                    <th class="px-6 py-3 text-center">
+                        <partial name="_SortableHeader" model='@DashboardHeader("status", "Stato", "center")' />
+                    </th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
@@ -105,22 +174,14 @@
                             </p>
                         </td>
                         <td class="px-6 py-4 text-sm text-slate-500">@order.OrderDate.ToString("dd/MM/yyyy")</td>
-                        <td class="px-6 py-4 text-sm font-semibold text-slate-800 text-right">€@order.TotalAmount.ToString("N2")</td>
+                        <td class="px-6 py-4 text-sm font-semibold text-slate-800 text-right">@FormatEuro(order.TotalAmount)</td>
                         <td class="px-6 py-4 text-center">
                             @{
-                                var (bgColor, color, label) = order.Status switch
-                                {
-                                    DashboardOrders.Models.OrderStatus.Delivered  => ("#d1fae5", "#065f46", "Consegnato"),
-                                    DashboardOrders.Models.OrderStatus.Shipped    => ("#dbeafe", "#1e40af", "Spedito"),
-                                    DashboardOrders.Models.OrderStatus.Processing => ("#e0e7ff", "#3730a3", "Elaborazione"),
-                                    DashboardOrders.Models.OrderStatus.Pending    => ("#fef3c7", "#92400e", "In Attesa"),
-                                    DashboardOrders.Models.OrderStatus.Cancelled  => ("#fee2e2", "#991b1b", "Annullato"),
-                                    _                                              => ("#f1f5f9", "#475569", "Sconosciuto")
-                                };
+                                var statusPresentation = OrderStatusPresentation.FromStatus(order.Status);
                             }
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
-                                  style="background-color: @bgColor; color: @color;">
-                                @label
+                                  style="background-color: @statusPresentation.BackgroundColor; color: @statusPresentation.ForegroundColor;">
+                                @statusPresentation.Label
                             </span>
                         </td>
                     </tr>
@@ -128,4 +189,18 @@
             </tbody>
         </table>
     </div>
+    <partial name="_Pagination" model="@(new PaginationViewModel
+    {
+        ActionName = "Index",
+        ControllerName = "Home",
+        EntityLabel = "ordini",
+        CurrentPage = Model.CurrentPage,
+        PageSize = Model.PageSize,
+        TotalPages = Model.TotalPages,
+        TotalItems = Model.TotalOrders,
+        DisplayedItems = Model.RecentOrders.Count,
+        SortBy = Model.SortBy,
+        SortDirection = Model.SortDirection,
+        ExtraRouteValues = DashboardRouteValues()
+    })" />
 </div>

@@ -1,0 +1,51 @@
+@model Login
+@{
+    ViewData["Title"] = "Login";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="mx-auto max-w-xl">
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-slate-800">Accedi</h2>
+        <p class="mt-1 text-slate-500">Usa la tua email per entrare nella dashboard.</p>
+    </div>
+
+    <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div class="border-b border-slate-100 px-6 py-5">
+            <h3 class="text-lg font-semibold text-slate-800">Credenziali</h3>
+        </div>
+        <div class="p-6">
+            <form method="post" asp-action="Login" asp-route-returnUrl="@returnUrl" class="space-y-6" autocomplete="off">
+                <div asp-validation-summary="ModelOnly" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+
+                <input type="text" name="fake-user" autocomplete="username" tabindex="-1" class="hidden" aria-hidden="true" />
+                <input type="password" name="fake-password" autocomplete="current-password" tabindex="-1" class="hidden" aria-hidden="true" />
+
+                <div>
+                    <label asp-for="UserLogin" class="mb-2 block text-sm font-medium text-slate-700"></label>
+                    <input asp-for="UserLogin" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    <span asp-validation-for="UserLogin" class="mt-1 block text-sm text-rose-600"></span>
+                </div>
+
+                <div>
+                    <label asp-for="Password" class="mb-2 block text-sm font-medium text-slate-700"></label>
+                    <input asp-for="Password" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    <span asp-validation-for="Password" class="mt-1 block text-sm text-rose-600"></span>
+                </div>
+
+                <div class="flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center">
+                    <button type="submit" class="inline-flex justify-center rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
+                        Accedi
+                    </button>
+                    <a asp-action="Register" class="inline-flex justify-center rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600">
+                        Registrati
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

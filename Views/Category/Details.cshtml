@@ -1,0 +1,100 @@
+@using DashboardOrders.Models
+@model Category
+@{
+    ViewData["Title"] = "Dettagli Categoria";
+}
+
+<div class="mb-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800">Dettagli Categoria</h2>
+            <p class="text-slate-500 mt-1">Informazioni complete sulla categoria.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a asp-action="Index" class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Indietro
+            </a>
+            <a asp-action="Edit" asp-route-code="@Model.Code" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+               Modifica
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
+        <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div class="px-6 py-5 border-b border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800">Informazioni Principali</h3>
+            </div>
+            <div class="p-6">
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <dt class="text-sm font-medium text-slate-500">Codice Categoria</dt>
+                        <dd class="mt-1 text-lg font-semibold text-slate-800">@Model.Code</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-slate-500">Nome Categoria</dt>
+                        <dd class="mt-1 text-lg font-semibold text-slate-800">@Model.Name</dd>
+                    </div>
+                    <div class="md:col-span-2">
+                        <dt class="text-sm font-medium text-slate-500">Descrizione</dt>
+                        <dd class="mt-1 text-slate-700">@Model.Description</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm mt-6">
+            <div class="px-6 py-5 border-b border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800">Azioni</h3>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center gap-3">
+                    <a asp-action="Edit" asp-route-code="@Model.Code" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Modifica Categoria
+                    </a>
+                    <a asp-action="Delete" asp-route-code="@Model.Code" class="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-100 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Elimina Categoria
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lg:col-span-1">
+        <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div class="px-6 py-5 border-b border-slate-100">
+                <h3 class="text-lg font-semibold text-slate-800">Panoramica</h3>
+            </div>
+            <div class="p-6">
+                <div class="flex flex-col gap-4">
+                    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                        <dt class="text-sm font-medium text-emerald-700">Prodotto nella Categorie</dt>
+                        <dd class="mt-1 text-emerald-800 font-medium">Attiva</dd>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <dt class="text-sm font-medium text-slate-500">Codice</dt>
+                        <dd class="mt-1 text-slate-700 font-mono">@Model.Code</dd>
+                    </div>
+                    <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-200">
+                        <dt class="text-sm font-medium text-indigo-700">Gestione</dt>
+                        <dd class="mt-1 text-indigo-800">Prodotti associati</dd>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

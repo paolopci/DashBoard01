@@ -1,3 +1,53 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var searchForm = SearchFormViewModel.FromViewData(ViewData);
+    var searchActionName = string.IsNullOrWhiteSpace(searchForm.ActionName)
+        ? currentAction ?? "Index"
+        : searchForm.ActionName;
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var userName = User.Identity?.Name ?? "Utente";
+    var isAdmin = string.Equals(userName, "admin@micene.it", StringComparison.OrdinalIgnoreCase);
+    var navigationItems = isAdmin
+        ? new[]
+        {
+            (ControllerName: "Home", ActionName: "Index", Label: "Panoramica", IconPath: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"),
+            (ControllerName: "Home", ActionName: "Orders", Label: "Ordini", IconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"),
+            (ControllerName: "Home", ActionName: "Customers", Label: "Clienti", IconPath: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"),
+            (ControllerName: "Home", ActionName: "Products", Label: "Prodotti", IconPath: "M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0l-2.293 2.293a1 1 0 00-.293.707V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a1 1 0 00-.293-.707L4 13m16 0H4m5 4h6")
+        }
+        : new[]
+        {
+            (ControllerName: "Account", ActionName: "Profile", Label: "Profilo", IconPath: "M5.121 17.804A8.966 8.966 0 0112 15c2.21 0 4.236.8 5.802 2.129M15 11a3 3 0 10-6 0 3 3 0 006 0z"),
+            (ControllerName: "Home", ActionName: "Orders", Label: "I miei ordini", IconPath: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"),
+            (ControllerName: "Home", ActionName: "NewOrder", Label: "Nuovo ordine", IconPath: "M12 4v16m8-8H4")
+        };
+
+    bool IsCurrentAction(string controllerName, string actionName) =>
+        string.Equals(currentController, controllerName, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, actionName, StringComparison.OrdinalIgnoreCase);
+
+    string SidebarLinkClass(string controllerName, string actionName) => IsCurrentAction(controllerName, actionName)
+        ? "sidebar-link flex items-center px-4 py-3 bg-indigo-600 rounded-lg text-white font-medium shadow-md shadow-indigo-600/30 transition-all"
+        : "sidebar-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg font-medium transition-colors";
+
+    string MobileNavLinkClass(string controllerName, string actionName) => IsCurrentAction(controllerName, actionName)
+        ? "inline-flex min-w-max items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30"
+        : "inline-flex min-w-max items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600";
+
+    var userInitials = string.Join(
+        string.Empty,
+        userName
+            .Split('@')[0]
+            .Split(['.', '-', '_', ' '], StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(part => part[0].ToString().ToUpperInvariant()));
+
+    if (string.IsNullOrWhiteSpace(userInitials))
+    {
+        userInitials = "UT";
+    }
+}
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -5,133 +55,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Gestione Ordini</title>
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
-    <!-- Google Fonts for modern look -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-@{
-    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
-    var isCustomersPage = string.Equals(currentController, "Home", StringComparison.OrdinalIgnoreCase)
-        && string.Equals(currentAction, "Customers", StringComparison.OrdinalIgnoreCase);
-    var customerSearchTerm = ViewData["CustomerSearchTerm"]?.ToString() ?? string.Empty;
-    var customerPageSize = ViewData["CustomerPageSize"]?.ToString() ?? "10";
-    var customerSortBy = ViewData["CustomerSortBy"]?.ToString() ?? "totalAmount";
-    var customerSortDirection = ViewData["CustomerSortDirection"]?.ToString() ?? "desc";
-}
 <body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
-    
-    <!-- Sidebar nav -->
-    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl hidden md:flex shrink-0">
-        <div class="h-16 flex items-center justify-center border-b border-slate-800">
+    <partial name="_ToastMessages" />
+
+    <aside class="hidden w-64 shrink-0 flex-col bg-slate-900 text-white shadow-xl md:flex">
+        <div class="flex h-16 items-center justify-center border-b border-slate-800">
             <h1 class="text-xl font-bold tracking-wider text-indigo-400">DASHBOARD</h1>
         </div>
-        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto" id="sidebar-nav">
-            <a asp-action="Index" asp-controller="Home" class="sidebar-link flex items-center px-4 py-3 bg-indigo-600 rounded-lg text-white font-medium shadow-md shadow-indigo-600/30 transition-all">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                Panoramica
-            </a>
-            <a asp-action="Orders" asp-controller="Home" class="sidebar-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg font-medium transition-colors">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                Ordini
-            </a>
-            <a asp-action="Customers" asp-controller="Home" class="sidebar-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg font-medium transition-colors">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                Clienti
-            </a>
+        <nav class="flex-1 space-y-2 overflow-y-auto px-4 py-6" id="sidebar-nav">
+            @foreach (var item in navigationItems)
+            {
+                <a asp-action="@item.ActionName" asp-controller="@item.ControllerName" class="@SidebarLinkClass(item.ControllerName, item.ActionName)">
+                    <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="@item.IconPath"></path></svg>
+                    @item.Label
+                </a>
+            }
         </nav>
     </aside>
 
-    <!-- Main Workspace -->
-    <div class="flex-1 flex flex-col h-screen overflow-hidden">
-        
-        <!-- Top header -->
-        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 shrink-0">
+    <div class="flex h-screen flex-1 flex-col overflow-hidden">
+        <header class="z-10 flex h-16 shrink-0 items-center justify-between bg-white px-4 shadow-sm sm:px-6">
             <div class="flex items-center">
                 <div class="relative hidden sm:block">
-                    <form id="customer-search-form"
+                    <form id="page-search-form"
                           method="get"
-                          asp-action="Customers"
-                          asp-controller="Home"
+                          asp-action="@searchActionName"
+                          asp-controller="@searchForm.ControllerName"
                           class="relative"
-                          data-search-enabled="@(isCustomersPage ? "true" : "false")"
-                          data-current-search="@customerSearchTerm">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                          data-search-enabled="@(searchForm.IsEnabled ? "true" : "false")"
+                          data-current-search="@searchForm.SearchTerm">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </span>
-                        <input id="customer-search-input"
+                        <input id="page-search-input"
                                type="text"
                                name="search"
-                               value="@customerSearchTerm"
-                               class="w-64 pl-10 pr-4 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm"
+                               value="@searchForm.SearchTerm"
+                               class="w-64 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                placeholder="Cerca..."
                                autocomplete="off">
                         <input type="hidden" name="page" value="1" />
-                        <input type="hidden" name="pageSize" value="@customerPageSize" />
-                        <input type="hidden" name="sortBy" value="@customerSortBy" />
-                        <input type="hidden" name="sortDirection" value="@customerSortDirection" />
+                        <input type="hidden" name="pageSize" value="@searchForm.PageSize" />
+                        <input type="hidden" name="sortBy" value="@searchForm.SortBy" />
+                        <input type="hidden" name="sortDirection" value="@searchForm.SortDirection" />
+                        @foreach (var routeValue in searchForm.ExtraRouteValues.Where(routeValue => !string.IsNullOrWhiteSpace(routeValue.Value)))
+                        {
+                            <input type="hidden" name="@routeValue.Key" value="@routeValue.Value" />
+                        }
                     </form>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <button class="text-slate-400 hover:text-indigo-600 transition-colors">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                </button>
-                <div class="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold shadow-sm cursor-pointer">
-                    PA
-                </div>
+            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+                @if (isAuthenticated)
+                {
+                    <div class="relative" data-user-menu>
+                        <button type="button"
+                                class="inline-flex min-h-10 max-w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-700"
+                                data-user-menu-button
+                                aria-expanded="false"
+                                aria-haspopup="true">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-sm font-bold text-white shadow-sm">
+                                @userInitials
+                            </span>
+                            <span class="hidden max-w-44 truncate sm:inline">@userName</span>
+                            <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute right-0 z-20 mt-2 hidden w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-2 shadow-lg"
+                             data-user-menu-panel>
+                            <a asp-controller="Account" asp-action="Profile" class="block px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-indigo-700">Profilo</a>
+                            <a asp-controller="Account" asp-action="EditProfile" class="block px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-indigo-700">Edit Profilo</a>
+                            <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
+                                <button type="submit" class="block w-full px-4 py-2 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50">
+                                    Log out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 sm:px-4">
+                        Login
+                    </a>
+                    <a asp-controller="Account" asp-action="Register" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:px-4">
+                        Registrati
+                    </a>
+                }
             </div>
         </header>
 
-        <!-- Content Area -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6">
-            <div class="max-w-7xl mx-auto">
+        <div class="border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+            <nav class="flex gap-2 overflow-x-auto pb-1" aria-label="Navigazione mobile">
+                @foreach (var item in navigationItems)
+                {
+                    <a asp-action="@item.ActionName" asp-controller="@item.ControllerName" class="@MobileNavLinkClass(item.ControllerName, item.ActionName)">@item.Label</a>
+                }
+            </nav>
+        </div>
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6">
+            <div class="mx-auto max-w-7xl">
                 @RenderBody()
             </div>
         </main>
-        
     </div>
 
-    <!-- Scripts -->
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarLinks = document.querySelectorAll('.sidebar-link');
-            const currentPath = window.location.pathname.toLowerCase();
-
-            // Sincronizza lo stato attivo iniziale basato sull'URL
-            sidebarLinks.forEach(link => {
-                const linkHref = link.getAttribute('href')?.toLowerCase();
-                if (linkHref && (currentPath === linkHref || (currentPath === '/' && linkHref === '/'))) {
-                    setActive(link);
-                } else if (linkHref && currentPath.includes(linkHref) && linkHref !== '/') {
-                     setActive(link);
-                }
-            });
-            
-            function setActive(activeLink) {
-                sidebarLinks.forEach(l => {
-                    l.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-                    l.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
-                });
-                activeLink.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-                activeLink.classList.remove('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
-            }
-
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    const href = this.getAttribute('href');
-                    if (href === '#') {
-                        e.preventDefault();
-                    }
-
-                    setActive(this);
-                });
-            });
-        });
-    </script>
+    <script src="~/js/pagination.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -1,0 +1,108 @@
+@model PaginationViewModel
+
+<div class="flex flex-col gap-4 border-t border-slate-100 bg-white px-6 py-4">
+    <div class="text-sm text-slate-500">
+        @if (Model.ShowAll)
+        {
+            <span>Visualizzati @Model.TotalItems di @Model.TotalItems @Model.EntityLabel</span>
+        }
+        else
+        {
+            <span>Visualizzati @Model.DisplayedItems @Model.EntityLabel su @Model.TotalItems</span>
+        }
+    </div>
+
+    @if (!Model.ShowAll)
+    {
+        <div class="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 shadow-sm">
+            <div class="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+                <div class="hidden lg:block"></div>
+
+                <nav class="flex flex-wrap items-center justify-center gap-3" aria-label="Paginazione @Model.EntityLabel">
+                    <a asp-action="@Model.ActionName"
+                       asp-controller="@Model.ControllerName"
+                       asp-all-route-data="@Model.RouteValuesForPage(1)"
+                       class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                        &lt;&lt;
+                    </a>
+                    <a asp-action="@Model.ActionName"
+                       asp-controller="@Model.ControllerName"
+                       asp-all-route-data="@Model.RouteValuesForPage(Model.PreviousPage)"
+                       class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasPreviousPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                        &lt;
+                    </a>
+
+                    @{
+                        int? previousRenderedPage = null;
+                    }
+
+                    @foreach (var pageNumber in Model.VisiblePages)
+                    {
+                        if (previousRenderedPage.HasValue && pageNumber - previousRenderedPage.Value > 1)
+                        {
+                            <span class="inline-flex h-11 min-w-11 items-center justify-center px-2 text-base font-semibold text-slate-400">...</span>
+                        }
+
+                        if (pageNumber == Model.CurrentPage)
+                        {
+                            <span class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl bg-indigo-500 px-4 text-base font-semibold text-white shadow-md shadow-indigo-500/30">
+                                @pageNumber
+                            </span>
+                        }
+                        else
+                        {
+                            <a asp-action="@Model.ActionName"
+                               asp-controller="@Model.ControllerName"
+                               asp-all-route-data="@Model.RouteValuesForPage(pageNumber)"
+                               class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600">
+                                @pageNumber
+                            </a>
+                        }
+
+                        previousRenderedPage = pageNumber;
+                    }
+
+                    <a asp-action="@Model.ActionName"
+                       asp-controller="@Model.ControllerName"
+                       asp-all-route-data="@Model.RouteValuesForPage(Model.NextPage)"
+                       class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                        &gt;
+                    </a>
+                    <a asp-action="@Model.ActionName"
+                       asp-controller="@Model.ControllerName"
+                       asp-all-route-data="@Model.RouteValuesForPage(Model.TotalPages)"
+                       class="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border bg-white px-4 text-base font-semibold shadow-sm transition-colors @(Model.HasNextPage ? "border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600" : "border-slate-100 text-slate-300 pointer-events-none")">
+                        &gt;&gt;
+                    </a>
+                </nav>
+
+                <div class="flex items-center justify-center gap-3 text-sm text-slate-500 lg:justify-end">
+                    <span class="text-lg font-medium text-slate-600">Pagina</span>
+                    <form method="get" asp-action="@Model.ActionName" asp-controller="@Model.ControllerName" class="flex items-center gap-2">
+                        @foreach (var routeValue in Model.PageSelectorRouteValues())
+                        {
+                            <input type="hidden" name="@routeValue.Key" value="@routeValue.Value" />
+                        }
+                        <select id="page-@Model.ActionName"
+                                name="page"
+                                onchange="this.form.submit()"
+                                class="h-11 min-w-20 rounded-xl border border-slate-200 bg-white px-4 text-base font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                            @for (var pageNumberOption = 1; pageNumberOption <= Model.TotalPages; pageNumberOption++)
+                            {
+                                if (pageNumberOption == Model.CurrentPage)
+                                {
+                                    <option value="@pageNumberOption" selected>@pageNumberOption</option>
+                                }
+                                else
+                                {
+                                    <option value="@pageNumberOption">@pageNumberOption</option>
+                                }
+                            }
+                        </select>
+                    </form>
+                    <span class="text-lg">di @Model.TotalPages</span>
+                </div>
+            </div>
+        </div>
+    }
+</div>

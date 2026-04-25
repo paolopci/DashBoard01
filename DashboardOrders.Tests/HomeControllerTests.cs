@@ -1,0 +1,374 @@
+using DashboardOrders.Controllers;
+using DashboardOrders.Data;
+using DashboardOrders.Models;
+using DashboardOrders.Services;
+using FluentAssertions;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
+using NSubstitute;
+using Xunit;
+
+namespace DashboardOrders.Tests;
+
+public class HomeControllerTests
+{
+    private readonly IDashboardOrdersDataService dataService;
+    private readonly HomeController sut;
+    private readonly DashboardOrdersDbContext dbContext;
+
+    public HomeControllerTests()
+    {
+        dataService = Substitute.For<IDashboardOrdersDataService>();
+        dbContext = new DashboardOrdersDbContext(new DbContextOptionsBuilder<DashboardOrdersDbContext>()
+            .UseInMemoryDatabase($"HomeControllerTests-{Guid.NewGuid()}")
+            .Options);
+        sut = new HomeController(dataService, dbContext)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = CreateUser("admin@micene.it", "Admin")
+                }
+            },
+            TempData = new TempDataDictionary(new DefaultHttpContext(), Substitute.For<ITempDataProvider>())
+        };
+    }
+
+    [Fact]
+    public void Index_QuandoServizioRestituisceDashboard_AlloraRestituisceVistaConModello()
+    {
+        // Arrange
+        var modelloAtteso = new DashboardViewModel { SortBy = "date", SortDirection = "desc" };
+        dataService.GetDashboardData(1, 10, "date", "desc", string.Empty).Returns(modelloAtteso);
+
+        // Act
+        var risultato = sut.Index();
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(modelloAtteso);
+    }
+
+    [Fact]
+    public void Index_QuandoRichiesto_AlloraInvocaServizioUnaVolta()
+    {
+        // Arrange
+        dataService.GetDashboardData(1, 10, "date", "desc", string.Empty).Returns(new DashboardViewModel());
+
+        // Act
+        sut.Index();
+
+        // Assert
+        dataService.Received(1).GetDashboardData(1, 10, "date", "desc", string.Empty);
+    }
+
+    [Fact]
+    public void Index_QuandoUtenteNonAdmin_AlloraReindirizzaAOrders()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("giulia.lombardi65@example.com");
+
+        // Act
+        var risultato = sut.Index();
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.DidNotReceive().GetDashboardData(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public void Index_QuandoUtenteAdmin_AlloraMostraDashboard()
+    {
+        // Arrange
+        var modelloAtteso = new DashboardViewModel { SortBy = "date", SortDirection = "desc" };
+        dataService.GetDashboardData(1, 10, "date", "desc", string.Empty).Returns(modelloAtteso);
+
+        // Act
+        var risultato = sut.Index();
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(modelloAtteso);
+    }
+
+    [Fact]
+    public void Orders_QuandoClienteSelezionato_AlloraRestituisceVistaConModello()
+    {
+        // Arrange
+        var modelloAtteso = new OrdersPageViewModel
+        {
+            SortBy = "date",
+            SortDirection = "desc",
+            SelectedCustomerId = 7
+        };
+        dataService.GetOrdersPageData(7, 1, 10, "date", "desc", string.Empty).Returns(modelloAtteso);
+
+        // Act
+        var risultato = sut.Orders(customerId: 7);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(modelloAtteso);
+    }
+
+    [Fact]
+    public void Orders_QuandoFiltriDataIndicati_AlloraInvocaServizioConIntervalloDate()
+    {
+        // Arrange
+        const string dateFrom = "2026-04-01";
+        const string dateTo = "2026-04-20";
+        var modelloAtteso = new OrdersPageViewModel
+        {
+            SortBy = "date",
+            SortDirection = "desc",
+            DateFrom = dateFrom,
+            DateTo = dateTo
+        };
+        dataService.GetOrdersPageData(null, 1, 10, "date", "desc", string.Empty, dateFrom, dateTo).Returns(modelloAtteso);
+
+        // Act
+        var risultato = sut.Orders(dateFrom: dateFrom, dateTo: dateTo);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(modelloAtteso);
+        dataService.Received(1).GetOrdersPageData(null, 1, 10, "date", "desc", string.Empty, dateFrom, dateTo);
+        sut.ViewData["DateFrom"].Should().Be(dateFrom);
+        sut.ViewData["DateTo"].Should().Be(dateTo);
+    }
+
+    [Fact]
+    public void Customers_QuandoRicercaNull_AlloraInvocaServizioConRicercaNull()
+    {
+        // Arrange
+        string search = null!;
+        dataService.GetCustomersPageData(1, 10, "totalAmount", "desc", search).Returns(new CustomersPageViewModel());
+
+        // Act
+        sut.Customers(search: search);
+
+        // Assert
+        dataService.Received(1).GetCustomersPageData(1, 10, "totalAmount", "desc", search);
+    }
+
+    [Fact]
+    public void Products_QuandoCategoriaIndicata_AlloraRestituisceVistaConModello()
+    {
+        // Arrange
+        var modelloAtteso = new ProductsPageViewModel
+        {
+            SortBy = "code",
+            SortDirection = "asc",
+            SelectedCategoryCode = "CAT-001"
+        };
+        dataService.GetProductsPageData(1, 10, "code", "asc", "CAT-001", string.Empty).Returns(modelloAtteso);
+
+        // Act
+        var risultato = sut.Products(categoryCode: "CAT-001");
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(modelloAtteso);
+    }
+
+    [Fact]
+    public void Orders_QuandoUtenteNonAdmin_AlloraInvocaServizioConEmailUtente()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        dataService.GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty)
+            .Returns(new OrdersPageViewModel());
+
+        // Act
+        sut.Orders();
+
+        // Assert
+        dataService.Received(1).GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty);
+        dataService.DidNotReceive().GetOrdersPageData(Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public void Orders_QuandoUtenteNonAdminEFiltriDataIndicati_AlloraInvocaServizioClienteConIntervalloDate()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        const string dateFrom = "2026-04-01";
+        const string dateTo = "2026-04-20";
+        dataService.GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty, dateFrom, dateTo)
+            .Returns(new OrdersPageViewModel { DateFrom = dateFrom, DateTo = dateTo });
+
+        // Act
+        sut.Orders(dateFrom: dateFrom, dateTo: dateTo);
+
+        // Assert
+        dataService.Received(1).GetOrdersPageDataForCustomerEmail("mario.rossi@example.com", 1, 10, "date", "desc", string.Empty, dateFrom, dateTo);
+        dataService.DidNotReceive().GetOrdersPageData(Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoAdminETransizioneValida_AlloraInvocaServizioEReindirizzaAOrders()
+    {
+        // Arrange
+        dataService.ChangeOrderStatus(12, OrderStatus.PaymentPending, "admin@micene.it", "Avvio pagamento", null)
+            .Returns(true);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(12, OrderStatus.PaymentPending, "Avvio pagamento");
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.Received(1).ChangeOrderStatus(12, OrderStatus.PaymentPending, "admin@micene.it", "Avvio pagamento", null);
+        sut.TempData["Toast.Success"].Should().Be("Stato ordine aggiornato correttamente.");
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoUtenteNonAdmin_AlloraReindirizzaAccessDeniedENonInvocaServizio()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(12, OrderStatus.PaymentPending, "Avvio pagamento");
+
+        // Assert
+        var redirect = risultato.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be("AccessDenied");
+        redirect.ControllerName.Should().Be("Account");
+        dataService.DidNotReceive().ChangeOrderStatus(Arg.Any<int>(), Arg.Any<OrderStatus>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [Theory]
+    [InlineData(0, OrderStatus.PaymentPending)]
+    [InlineData(-1, OrderStatus.PaymentPending)]
+    [InlineData(12, (OrderStatus)999)]
+    public void ChangeOrderStatus_QuandoInputNonValido_AlloraReindirizzaAOrdersENonInvocaServizio(int orderId, OrderStatus newStatus)
+    {
+        // Act
+        var risultato = sut.ChangeOrderStatus(orderId, newStatus, "Motivo");
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.DidNotReceive().ChangeOrderStatus(Arg.Any<int>(), Arg.Any<OrderStatus>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+        sut.TempData["Toast.Error"].Should().Be("Cambio stato non valido.");
+    }
+
+    [Fact]
+    public void ChangeOrderStatus_QuandoServizioFallisce_AlloraReindirizzaAOrdersConErrore()
+    {
+        // Arrange
+        dataService.ChangeOrderStatus(12, OrderStatus.Delivered, "admin@micene.it", "Salto non ammesso", null)
+            .Returns(false);
+
+        // Act
+        var risultato = sut.ChangeOrderStatus(12, OrderStatus.Delivered, "Salto non ammesso");
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.Received(1).ChangeOrderStatus(12, OrderStatus.Delivered, "admin@micene.it", "Salto non ammesso", null);
+        sut.TempData["Toast.Error"].Should().Be("Stato ordine non aggiornato. Verifica transizione e motivazione.");
+    }
+
+    [Fact]
+    public void Customers_QuandoUtenteNonAdmin_AlloraReindirizzaAlProfilo()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+
+        // Act
+        var risultato = sut.Customers();
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Profile");
+    }
+
+    [Fact]
+    public void NewOrder_Get_QuandoUtenteNonAdmin_AlloraMostraProdottiDisponibili()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        var prodotti = new List<Product>
+        {
+            new()
+            {
+                Code = "PRD-001",
+                Name = "Laptop tracer",
+                Category = new Category { Code = "CAT-001", Name = "Informatica" },
+                UnitCost = 25m,
+                Stock = 5
+            }
+        };
+        dataService.GetAvailableProducts().Returns(prodotti);
+
+        // Act
+        var risultato = sut.NewOrder();
+
+        // Assert
+        var model = risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<NewOrderViewModel>().Subject;
+        model.Products.Should().BeSameAs(prodotti);
+        model.Categories.Should().ContainSingle(category => category.Code == "CAT-001");
+    }
+
+    [Fact]
+    public void NewOrder_Post_QuandoUtenteNonAdminEOrdineValido_AlloraCreaOrdineEReindirizzaAOrders()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        var model = new NewOrderViewModel
+        {
+            Items =
+            [
+                new NewOrderItemViewModel { ProductCode = "PRD-001", Quantity = 2 },
+                new NewOrderItemViewModel { ProductCode = "PRD-002", Quantity = 1 }
+            ]
+        };
+        dataService.CreateOrder("mario.rossi@example.com", Arg.Is<IReadOnlyList<NewOrderItemViewModel>>(items =>
+            items.Count == 2 &&
+            items[0].ProductCode == "PRD-001" &&
+            items[0].Quantity == 2 &&
+            items[1].ProductCode == "PRD-002" &&
+            items[1].Quantity == 1)).Returns(true);
+
+        // Act
+        var risultato = sut.NewOrder(model);
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
+        dataService.Received(1).CreateOrder("mario.rossi@example.com", Arg.Is<IReadOnlyList<NewOrderItemViewModel>>(items =>
+            items.Count == 2 &&
+            items[0].ProductCode == "PRD-001" &&
+            items[0].Quantity == 2 &&
+            items[1].ProductCode == "PRD-002" &&
+            items[1].Quantity == 1));
+        dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public void NewOrder_Post_QuandoNessunArticolo_AlloraMostraErroreENonCreaOrdine()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        dataService.GetAvailableProducts().Returns([]);
+        var model = new NewOrderViewModel();
+
+        // Act
+        var risultato = sut.NewOrder(model);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        sut.ModelState.IsValid.Should().BeFalse();
+        dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<IReadOnlyList<NewOrderItemViewModel>>());
+    }
+
+    private static ClaimsPrincipal CreateUser(string email, params string[] roles)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, email)
+        };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        return new ClaimsPrincipal(new ClaimsIdentity(
+            claims,
+            authenticationType: "Test"));
+    }
+}

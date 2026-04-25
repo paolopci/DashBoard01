@@ -1,0 +1,71 @@
+@using DashboardOrders.Models
+@model Category
+@{
+    ViewData["Title"] = "Elimina Categoria";
+}
+
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-slate-800">Elimina Categoria</h2>
+    <p class="text-slate-500 mt-1">Conferma l'eliminazione della categoria selezionata.</p>
+</div>
+
+<div class="max-w-lg">
+    <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div class="px-6 py-5 border-b border-slate-100 bg-rose-50">
+            <h3 class="text-lg font-semibold text-rose-800 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                Conferma Eliminazione
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="mb-6">
+                <p class="text-slate-700 mb-4">Stai per eliminare la categoria con le seguenti informazioni:</p>
+                <dl class="grid grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-50">
+                        <dt class="text-sm font-medium text-slate-500">Codice Categoria</dt>
+                        <dd class="mt-1 text-lg font-semibold text-indigo-600 font-mono">@Model.Code</dd>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50">
+                        <dt class="text-sm font-medium text-slate-500">Nome Categoria</dt>
+                        <dd class="mt-1 text-lg font-semibold text-slate-800">@Model.Name</dd>
+                    </div>
+                    <div class="col-span-2 p-4 rounded-xl bg-slate-50">
+                        <dt class="text-sm font-medium text-slate-500">Descrizione</dt>
+                        <dd class="mt-1 text-slate-700">@Model.Description</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 mb-6">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <div class="text-sm text-amber-800">
+                        <p class="font-semibold">Attenzione</p>
+                        <p>L'eliminazione della categoria è irreversibile. Assicurati che non ci siano prodotti associati.</p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post" asp-action="Delete" asp-route-code="@Model.Code">
+                <div class="flex items-center gap-3">
+                    <button type="submit" class="inline-flex items-center rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Conferma Eliminazione
+                    </button>
+                    <a asp-action="Index" class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Annulla
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

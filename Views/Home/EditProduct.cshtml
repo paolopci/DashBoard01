@@ -1,0 +1,15 @@
+@model DashboardOrders.Models.ProductFormViewModel
+@{
+    ViewData["Title"] = "Modifica prodotto";
+}
+
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-slate-800">Modifica prodotto</h2>
+    <p class="mt-1 text-slate-500">Aggiorna il prodotto o mettilo esaurito impostando stock a 0.</p>
+</div>
+
+<partial name="_ProductForm" model="Model" />
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,253 @@
+@model DashboardOrders.Models.ProductsPageViewModel
+@{
+    ViewData["Title"] = "Prodotti";
+    var currentSortBy = Model.SortBy;
+    var currentSortDirection = Model.SortDirection;
+    var isAdmin = string.Equals(User.Identity?.Name, "admin@micene.it", StringComparison.OrdinalIgnoreCase);
+
+    Dictionary<string, string> ProductRouteValues()
+    {
+        return new Dictionary<string, string>
+        {
+            ["categoryCode"] = Model.SelectedCategoryCode,
+            ["search"] = Model.SearchTerm
+        };
+    }
+
+    SortableHeaderViewModel ProductHeader(string column, string label, string alignment = "left")
+    {
+        return new SortableHeaderViewModel
+        {
+            ActionName = "Products",
+            ControllerName = "Home",
+            Column = column,
+            Label = label,
+            CurrentSortBy = currentSortBy,
+            CurrentSortDirection = currentSortDirection,
+            PageSize = Model.PageSize,
+            Alignment = alignment,
+            ExtraRouteValues = ProductRouteValues()
+        };
+    }
+}
+
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-slate-800">Prodotti</h2>
+    <p class="mt-1 text-slate-500">
+        @if (Model.HasActiveSearch)
+        {
+            <span>Risultati filtro per <span class="font-semibold text-slate-700">"@Model.SearchTerm"</span>.</span>
+        }
+        else
+        {
+            <span>Catalogo completo con 200 prodotti, categorie dedicate, disponibilita di magazzino e costi unitari coerenti con gli ordini esistenti.</span>
+        }
+    </p>
+</div>
+
+<partial name="_FilterPanel" />
+<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[0.9fr_0.9fr_0.9fr_1.35fr]">
+    <div class="flex items-center space-x-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-indigo-100">
+            <svg class="h-7 w-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3V3H9v2H6a2 2 0 00-2 2v6m16 0l-2.293 2.293a1 1 0 00-.293.707V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a1 1 0 00-.293-.707L4 13m16 0H4"></path></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-center text-sm font-medium text-slate-500">Prodotti Totali</p>
+            <p class="whitespace-nowrap text-right text-3xl font-bold text-slate-800 tabular-nums">@FormatNumber(Model.TotalProducts)</p>
+        </div>
+    </div>
+
+    <div class="flex items-center space-x-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+            <svg class="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-6 5h10M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-center text-sm font-medium text-slate-500">Categorie</p>
+            <p class="whitespace-nowrap text-right text-3xl font-bold text-slate-800 tabular-nums">@FormatNumber(Model.TotalCategories)</p>
+        </div>
+    </div>
+
+    <div class="flex items-center space-x-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+            <svg class="h-7 w-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-center text-sm font-medium text-slate-500">Stock Totale</p>
+            <p class="whitespace-nowrap text-right text-3xl font-bold text-slate-800 tabular-nums">@FormatNumber(Model.TotalStock)</p>
+        </div>
+    </div>
+
+    <div class="flex flex-col items-start gap-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-center">
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-purple-100">
+            <span class="text-3xl font-bold leading-none text-purple-600">€</span>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-center text-sm font-medium text-slate-500">Valore Magazzino</p>
+            <p class="whitespace-nowrap text-right text-3xl font-bold text-slate-800 tabular-nums">@FormatEuro(Model.InventoryValue, "N0")</p>
+        </div>
+    </div>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <h3 class="text-lg font-semibold text-slate-800">Elenco Prodotti</h3>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <span class="text-sm text-slate-500">Totale: @Model.TotalProducts prodotti</span>
+            @if (isAdmin)
+            {
+                <a asp-controller="Home"
+                   asp-action="CreateProduct"
+                   class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700">
+                    Nuovo prodotto
+                </a>
+            }
+        </div>
+    </div>
+    <div class="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <form method="get" asp-action="Products" asp-controller="Home" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="flex items-center gap-3">
+                <label for="categoryCode" class="text-sm font-medium text-slate-600">Categoria</label>
+                <select id="categoryCode"
+                        name="categoryCode"
+                        onchange="this.form.submit()"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    @if (string.IsNullOrEmpty(Model.SelectedCategoryCode))
+                    {
+                        <option value="" selected>Tutti i prodotti</option>
+                    }
+                    else
+                    {
+                        <option value="">Tutti i prodotti</option>
+                    }
+
+                    @foreach (var category in Model.Categories)
+                    {
+                        if (category.Code == Model.SelectedCategoryCode)
+                        {
+                            <option value="@category.Code" selected>@category.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@category.Code">@category.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+            <input type="hidden" name="sortBy" value="@Model.SortBy" />
+            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+            <input type="hidden" name="search" value="@Model.SearchTerm" />
+        </form>
+
+        <partial name="_PaginationControls" model="Model" />
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[1100px]">
+            <thead>
+                <tr class="border-b border-slate-100 bg-slate-50">
+                    <th class="px-6 py-4 text-left">
+                        <partial name="_SortableHeader" model='@ProductHeader("code", "Codice Prodotto")' />
+                    </th>
+                    <th class="px-6 py-4 text-left">
+                        <partial name="_SortableHeader" model='@ProductHeader("name", "Prodotto")' />
+                    </th>
+                    <th class="px-6 py-4 text-left">
+                        <partial name="_SortableHeader" model='@ProductHeader("category", "Categoria")' />
+                    </th>
+                    <th class="px-6 py-4 text-left">
+                        <partial name="_SortableHeader" model='@ProductHeader("description", "Descrizione")' />
+                    </th>
+                    <th class="px-6 py-4 text-right">
+                        <partial name="_SortableHeader" model='@ProductHeader("unitCost", "Costo Unitario", "right")' />
+                    </th>
+                    <th class="px-6 py-4 text-right">
+                        <partial name="_SortableHeader" model='@ProductHeader("stock", "Stock", "right")' />
+                    </th>
+                    @if (isAdmin)
+                    {
+                        <th class="px-6 py-4 text-center">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Azioni</span>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                @foreach (var product in Model.Products)
+                {
+                    <tr class="transition-colors hover:bg-slate-50">
+                        <td class="px-6 py-4">
+                            <div>
+                                <p class="text-sm font-semibold text-indigo-600">@product.Code</p>
+                                <p class="text-xs text-slate-400">@product.Category.Code</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex min-w-[16rem] items-center gap-3">
+                                <div class="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-100">
+                                    @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+                                    {
+                                        <img src="@product.ImageUrl"
+                                             alt="Immagine prodotto @product.Name"
+                                             width="80"
+                                             height="64"
+                                             loading="lazy"
+                                             decoding="async"
+                                             class="h-16 w-20 object-cover"
+                                             onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');" />
+                                        <span class="hidden h-16 w-20 items-center justify-center text-xs font-semibold text-slate-400">IMG</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="flex h-16 w-20 items-center justify-center text-xs font-semibold text-slate-400">IMG</span>
+                                    }
+                                </div>
+                                <span class="text-sm font-medium text-slate-800">@product.Name</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-700">@product.Category.Name</p>
+                                <p class="text-xs text-slate-400">@product.Category.Description</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-600">@product.Description</td>
+                        <td class="px-6 py-4 text-right text-sm font-semibold text-slate-800">@FormatEuro(product.UnitCost)</td>
+                        <td class="px-6 py-4 text-right">
+                            <span class="inline-flex min-w-16 items-center justify-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                                @product.Stock
+                            </span>
+                        </td>
+                        @if (isAdmin)
+                        {
+                            <td class="px-6 py-4 text-center">
+                                <a asp-controller="Home"
+                                   asp-action="EditProduct"
+                                   asp-route-code="@product.Code"
+                                   class="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 transition-colors hover:border-indigo-300 hover:bg-indigo-100">
+                                    Modifica
+                                </a>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pagination" model="@(new PaginationViewModel
+    {
+        ActionName = "Products",
+        ControllerName = "Home",
+        EntityLabel = "prodotti",
+        CurrentPage = Model.CurrentPage,
+        PageSize = Model.PageSize,
+        TotalPages = Model.TotalPages,
+        TotalItems = Model.TotalProducts,
+        DisplayedItems = Model.Products.Count,
+        SortBy = Model.SortBy,
+        SortDirection = Model.SortDirection,
+        ExtraRouteValues = ProductRouteValues()
+    })" />
+</div>

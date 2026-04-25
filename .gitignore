@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+secret.json
 
 # User-specific files
 *.rsuser
@@ -480,3 +481,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Repository-local agent instructions
+AGENTS.md
+shared/*.md
