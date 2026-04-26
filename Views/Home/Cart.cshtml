@@ -1,0 +1,143 @@
+@model DashboardOrders.Models.CartViewModel
+@{
+    ViewData["Title"] = "Carrello";
+}
+
+<div class="mb-6">
+    <h2 class="text-3xl font-bold text-slate-900">Carrello</h2>
+    @if (Model.Items.Count > 0)
+    {
+        <p class="mt-1 text-sm text-indigo-700">Totale articoli nel carrello: @Model.TotalItems</p>
+    }
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="rounded-2xl border border-slate-100 bg-white px-6 py-10 text-center shadow-sm">
+        <h3 class="text-xl font-semibold text-slate-800">Il carrello e vuoto</h3>
+        <p class="mx-auto mt-2 max-w-xl text-sm text-slate-500">Aggiungi un articolo da Nuovo ordine per ritrovarlo qui anche al prossimo accesso.</p>
+        <a asp-controller="Home"
+           asp-action="NewOrder"
+           class="mt-6 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700">
+            Aggiungi articoli
+        </a>
+    </div>
+}
+else
+{
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section class="rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div class="border-b border-slate-100 px-5 py-4">
+                <div class="flex items-end justify-between gap-4">
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-900">Articoli nel carrello</h3>
+                        <p class="mt-1 text-sm text-slate-500">Controlla quantita e disponibilita prima di procedere.</p>
+                    </div>
+                    <span class="hidden text-sm text-slate-500 sm:block">Prezzo</span>
+                </div>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+                @foreach (var item in Model.Items)
+                {
+                    <article class="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-[160px_minmax(0,1fr)_140px]">
+                        <div class="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                            {
+                                <img src="@item.ImageUrl" alt="@item.ProductName" class="h-36 w-full rounded-lg object-cover" />
+                            }
+                            else
+                            {
+                                <span class="text-center text-sm font-semibold text-slate-400">Image Product</span>
+                            }
+                        </div>
+
+                        <div class="min-w-0">
+                            <h4 class="text-lg font-semibold leading-snug text-slate-900">@item.ProductName</h4>
+                            <p class="mt-2 text-sm text-slate-600">@item.Description</p>
+                            @if (item.IsAvailable)
+                            {
+                                <p class="mt-2 text-sm font-semibold text-emerald-700">Disponibilita immediata</p>
+                            }
+                            else
+                            {
+                                <p class="mt-2 text-sm font-semibold text-rose-600">Quantita non disponibile. Stock attuale: @item.Stock</p>
+                            }
+
+                            <div class="mt-4 flex flex-wrap items-center gap-3">
+                                <div class="inline-flex h-9 items-center overflow-hidden rounded-full border-2 border-amber-400 bg-white">
+                                    <form method="post" asp-controller="Home" asp-action="RemoveCartItem" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="productCode" value="@item.ProductCode" />
+                                        <button type="submit" class="inline-flex h-9 w-10 items-center justify-center text-slate-800 transition-colors hover:bg-amber-50" aria-label="Rimuovi @item.ProductName">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12m-9 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 4v6m4-6v6M8 7l1 13h6l1-13"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                    <form method="post" asp-controller="Home" asp-action="DecrementCartItem" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="productCode" value="@item.ProductCode" />
+                                        <button type="submit" class="inline-flex h-9 w-8 items-center justify-center text-lg font-semibold text-slate-800 transition-colors hover:bg-amber-50" aria-label="Diminuisci quantita @item.ProductName">-</button>
+                                    </form>
+                                    <form method="post" asp-controller="Home" asp-action="UpdateCartItemQuantity" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="productCode" value="@item.ProductCode" />
+                                        <input name="quantity"
+                                               value="@item.Quantity"
+                                               min="1"
+                                               max="@item.Stock"
+                                               type="number"
+                                               class="h-9 w-12 border-x border-amber-200 text-center text-sm font-bold text-slate-900 focus:outline-none" />
+                                    </form>
+                                    <form method="post" asp-controller="Home" asp-action="IncrementCartItem" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="productCode" value="@item.ProductCode" />
+                                        <button type="submit" class="inline-flex h-9 w-8 items-center justify-center text-lg font-semibold text-slate-800 transition-colors hover:bg-amber-50" aria-label="Aumenta quantita @item.ProductName">+</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-left md:text-right">
+                            <p class="text-sm text-slate-500">Prezzo</p>
+                            <p class="mt-1 text-lg font-bold text-slate-900">@FormatEuro(item.UnitPrice)</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-700">@FormatEuro(item.LineTotal)</p>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <aside class="h-max rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div class="flex items-start gap-3 text-sm text-emerald-700">
+                <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">✓</span>
+                <p><span class="font-bold">Spedizione GRATUITA</span> disponibile per il tuo ordine. Le opzioni finali saranno confermate in fase di ordine.</p>
+            </div>
+
+            <div class="mt-6 border-t border-slate-100 pt-5">
+                <p class="text-xl text-slate-900">
+                    Totale provvisorio (@Model.TotalItems articoli):
+                    <span class="font-bold">@FormatEuro(Model.TotalAmount)</span>
+                </p>
+                <label class="mt-4 flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    Questo ordine contiene un regalo
+                </label>
+                <form method="post" asp-controller="Home" asp-action="CheckoutCart" class="mt-5">
+                    @Html.AntiForgeryToken()
+                    <button type="submit"
+                            class="inline-flex w-full items-center justify-center rounded-full bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 shadow-sm transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                            disabled="@Model.HasUnavailableItems">
+                        Procedi all'ordine
+                    </button>
+                </form>
+            </div>
+
+            <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-sm font-semibold text-slate-800">Consegne veloci</p>
+                <p class="mt-1 text-sm text-slate-500">Il carrello resta disponibile per 30 giorni dall'ultimo aggiornamento.</p>
+            </div>
+        </aside>
+    </div>
+}
