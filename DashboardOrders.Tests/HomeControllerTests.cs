@@ -308,7 +308,7 @@ public class HomeControllerTests
     }
 
     [Fact]
-    public void NewOrder_Post_QuandoUtenteNonAdminEArticoloValido_AlloraAggiungeAlCarrelloEReindirizzaACart()
+    public void NewOrder_Post_QuandoUtenteNonAdminEArticoloValido_AlloraAggiungeAlCarrelloEReindirizzaANewOrder()
     {
         // Arrange
         sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
@@ -323,7 +323,7 @@ public class HomeControllerTests
         var risultato = sut.NewOrder(model);
 
         // Assert
-        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Cart");
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("NewOrder");
         dataService.Received(1).AddOrUpdateCartItem("mario.rossi@example.com", "PRD-001", 2);
         dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<IReadOnlyList<NewOrderItemViewModel>>());
         sut.TempData["Toast.Success"].Should().Be("Articolo aggiunto al carrello.");

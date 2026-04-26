@@ -5,6 +5,11 @@
 
 <div class="mb-6">
     <h2 class="text-3xl font-bold text-slate-900">Carrello</h2>
+    <a asp-controller="Home"
+       asp-action="NewOrder"
+       class="mt-1 inline-flex text-sm font-semibold text-indigo-700 transition-colors hover:text-indigo-900">
+        Continua gli acquisti
+    </a>
     @if (Model.Items.Count > 0)
     {
         <p class="mt-1 text-sm text-indigo-700">Totale articoli nel carrello: @Model.TotalItems</p>

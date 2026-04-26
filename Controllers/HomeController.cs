@@ -193,7 +193,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         }
 
         TempData[ToastSuccessKey] = "Articolo aggiunto al carrello.";
-        return RedirectToAction(nameof(Cart));
+        return RedirectToAction(nameof(NewOrder));
     }
 
     [HttpGet]
