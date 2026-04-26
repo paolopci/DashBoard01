@@ -20,12 +20,6 @@ public interface IDashboardOrdersDataService
     bool UpdateCustomer(Customer customer);
     Product? GetProduct(string code);
     List<Product> GetAvailableProducts();
-    CartViewModel GetCart(string? customerEmail);
-    int GetCartItemsCount(string? customerEmail);
-    bool AddOrUpdateCartItem(string? customerEmail, string productCode, int quantity);
-    bool UpdateCartItemQuantity(string? customerEmail, string productCode, int quantity);
-    bool RemoveCartItem(string? customerEmail, string productCode);
-    bool ClearCart(string? customerEmail);
     bool CreateProduct(Product product);
     bool UpdateProduct(Product product);
     bool CreateOrder(string? customerEmail, string productCode, int quantity);

@@ -2,72 +2,62 @@
 
 ## Obiettivo
 
-Realizzare un carrello acquisti persistente per i clienti autenticati, separando la composizione del carrello dalla creazione effettiva dell'ordine.
+Implementare la prima fase del ciclo di vita dell'ordine permettendo agli utenti `Admin` di avanzare lo stato di un ordine dalla pagina `Orders`, usando la policy di transizione e lo storico stati gia presenti nel progetto.
 
 ## Problema/Contesto
 
-La pagina `Home/NewOrder` oggi costruisce un ordine temporaneo nella UI e lo salva direttamente come ordine. Il cliente invece deve poter aggiungere articoli a un carrello persistente, ritrovarli dopo una nuova login, gestire quantita e rimozione da una pagina `Cart`, poi confermare l'ordine solo dalla pagina carrello.
+Il dominio ordine contiene gia `OrderStatus`, `OrderStatusTransitionPolicy`, `OrderStatusHistoryEntity` e il metodo `DashboardOrdersDataService.ChangeOrderStatus`, ma il flusso non e ancora esposto dalla UI MVC. La pagina `Views/Home/Orders.cshtml` mostra gli ordini e il dettaglio righe, senza azioni per avanzare lo stato. Serve una vertical slice minima e verificabile per rendere operativo il ciclo di vita senza introdurre nuove tecnologie.
 
 ## Scope
 
-- Aggiungere un link/icona carrello nell'header, a sinistra del menu utente autenticato, con badge numero articoli.
-- Rimuovere da `NewOrder` il blocco tabellare con righe ordine, totale e pulsanti finali visto in figura 2.
-- Trasformare `NewOrder` in pagina di selezione articolo/quantita con azione di aggiunta al carrello.
-- Creare la pagina `Home/Cart` ispirata ad Amazon: elenco articoli a sinistra, riepilogo ordine a destra, CTA `Procedi all'ordine`.
-- Rendere il carrello persistente lato database per cliente autenticato.
-- Consentire modifica quantita e cancellazione articolo con controllo stile figura 4: cestino, decremento, quantita, incremento.
-- Alla conferma carrello, creare l'ordine usando la logica esistente e svuotare il carrello solo se l'ordine viene creato correttamente.
-- Aggiungere test automatici backend/controller pertinenti ed eseguire build, test e build CSS.
+- Aggiungere un'azione MVC `POST` riservata agli `Admin` per cambiare lo stato ordine.
+- Esporre nella pagina `Orders` le sole transizioni consentite dalla policy corrente.
+- Riutilizzare `IDashboardOrdersDataService.ChangeOrderStatus` per validare transizioni, aggiornare `Orders.Status`, aggiornare `UpdatedAt` e registrare `OrderStatusHistory`.
+- Mostrare feedback utente tramite `TempData` dopo successo o fallimento.
+- Aggiornare test automatici per controller, servizio e policy coinvolti.
+- Procedere per fasi documentate in `docs/PLAN.md`.
 
 ## Out of scope
 
-- Selezione parziale degli articoli del carrello per checkout v1: tutti gli articoli validi del carrello vengono inclusi nell'ordine.
-- Wishlist, `salva per dopo`, codici sconto, Prime, regalo, spedizione reale o calcolo costi spedizione.
-- Pagamenti online o integrazioni esterne.
-- Persistenza per utenti anonimi.
-- Nuove librerie UI o framework frontend.
-- Riscrittura completa del layout esistente.
+- Rendere visibile lo storico stati nella prima fase.
+- Creare una pagina dettaglio ordine dedicata.
+- Permettere ai clienti di cambiare stato, annullare ordini o richiedere resi self-service.
+- Introdurre API REST, code di messaggistica, job background, notifiche email o nuove librerie.
+- Ridisegnare l'intera pagina `Orders`.
+- Modificare il modello dati oltre quanto gia presente per stato e storico.
 
 ## Requisiti funzionali
 
-- Il carrello e associato all'email dell'utente autenticato non admin.
-- Il carrello persiste oltre la sessione browser e viene ricaricato al login successivo.
-- La durata proposta del carrello e 30 giorni dall'ultimo aggiornamento; ogni aggiunta/modifica rinnova la scadenza.
-- Un carrello scaduto viene ignorato e cancellato in modo lazy alla prima lettura o modifica.
-- L'icona carrello mostra il numero totale di pezzi presenti nel carrello del cliente.
-- Da `NewOrder`, il cliente puo scegliere categoria, prodotto e quantita e aggiungere l'articolo al carrello.
-- Se un prodotto e gia nel carrello, l'aggiunta aggiorna la quantita senza creare duplicati.
-- La quantita non puo essere minore di 1 o maggiore dello stock disponibile.
-- La pagina `Cart` mostra immagine, nome, descrizione, prezzo unitario, quantita, totale riga e totale provvisorio.
-- Il controllo quantita in `Cart` permette decremento, incremento e rimozione articolo.
-- Se lo stock diventa insufficiente prima del checkout, il checkout fallisce con messaggio utente e il carrello resta invariato.
-- Alla conferma valida, viene creato un ordine con gli articoli del carrello e il carrello viene svuotato.
-- Admin continua a essere escluso dal flusso cliente `NewOrder`/`Cart`.
+- Solo utenti con ruolo `Admin` possono inviare un cambio stato ordine.
+- Gli utenti non admin non devono vedere azioni di avanzamento stato nella pagina `Orders`.
+- Un cambio stato deve essere accettato solo se consentito da `OrderStatusTransitionPolicy`.
+- Gli stati che richiedono motivazione devono essere rifiutati se la motivazione manca.
+- Ogni cambio stato riuscito deve registrare una riga in `OrderStatusHistory`.
+- Le transizioni verso `Cancelled` o `PaymentFailed` da stati pre-fulfillment devono ripristinare lo stock secondo la logica esistente.
+- Dopo un cambio stato riuscito l'utente deve tornare alla lista ordini con messaggio di successo.
+- Dopo un cambio stato fallito l'utente deve tornare alla lista ordini con messaggio di errore.
 
 ## Vincoli tecnici
 
-- Mantenere lo stack esistente: ASP.NET Core MVC, Razor, EF Core, Identity, Tailwind, xUnit, FluentAssertions, NSubstitute.
-- Non introdurre nuove librerie.
-- Usare Tailwind gia presente e ricompilare `wwwroot/css/app.css` tramite `npm run build:css`.
-- Usare persistenza database, non `localStorage`, per garantire ritrovamento al login successivo.
-- Aggiungere entita EF coerenti con `Data/Entities` e mapping in `DashboardOrdersDbContext`.
-- Aggiungere uno script SQL idempotente in `scripts/` per creare le tabelle carrello nel database reale.
-- Riutilizzare `DashboardOrdersDataService.CreateOrder` per confermare l'ordine, cosi stock e storico ordine restano gestiti dalla logica esistente.
+- Mantenere stack esistente: ASP.NET Core MVC, Razor, EF Core, Identity e xUnit.
+- Non introdurre nuove librerie, framework frontend o pattern architetturali.
+- Usare il ruolo Identity `Admin` come unico attore autorizzato nella prima fase.
+- Riutilizzare `OrderStatusTransitionPolicy` come fonte unica delle transizioni consentite.
+- Riutilizzare `DashboardOrdersDataService.ChangeOrderStatus` per persistenza e storico.
+- Validare input mancanti, non validi o fuori formato nel boundary MVC.
+- Limitare ogni fase a un solo obiettivo verificabile.
 
 ## Acceptance criteria
 
-- In header, per cliente autenticato, compare il carrello a sinistra del menu utente con badge quantita.
-- `Home/NewOrder` non mostra piu la tabella ordine/totale/pulsanti finali di figura 2.
-- Aggiungendo un articolo da `NewOrder`, l'articolo viene salvato nel carrello persistente.
-- Chiudendo la sessione e rifacendo login entro 30 giorni, il carrello viene ritrovato.
-- `Home/Cart` mostra layout responsive ispirato ad Amazon con elenco articoli e riepilogo laterale.
-- Il controllo quantita stile figura 4 aggiorna o rimuove l'articolo.
-- `Procedi all'ordine` crea l'ordine e svuota il carrello solo in caso di successo.
-- Carrello vuoto e carrello scaduto mostrano stato vuoto comprensibile.
+- La pagina `Orders` mostra azioni di cambio stato solo agli utenti `Admin`.
+- Le azioni mostrate corrispondono alle transizioni consentite dallo stato corrente.
+- Il `POST` di cambio stato rifiuta utenti non admin.
+- Il `POST` di cambio stato rifiuta transizioni non valide o ordini inesistenti.
+- Un cambio stato valido aggiorna lo stato ordine, registra storico e mantiene la navigazione sulla lista ordini.
+- La prima fase non mostra ancora lo storico stati nella UI.
 - `dotnet test DashBoard01.sln` passa.
 - `dotnet build DashBoard01.sln` passa.
-- `npm run build:css` passa.
 
 ## Definizione di completamento
 
-Il lavoro e completato quando il flusso cliente `NewOrder -> Cart persistente -> Checkout -> Orders` e implementato, verificato con test automatici e build, con `docs/PRD.md` e `docs/PLAN.md` aggiornati e nessuna fase `Scope finale: in` rimasta pending o blocked.
+La prima fase e completata quando la vertical slice Admin per avanzare lo stato ordine e implementata in controller, servizio/view model se necessario, UI Razor e test; la documentazione `PRD`/`PLAN` e aggiornata; test e build della solution passano.

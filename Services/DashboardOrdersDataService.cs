@@ -7,8 +7,6 @@ namespace DashboardOrders.Services;
 
 public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : IDashboardOrdersDataService
 {
-    private const int CartRetentionDays = 30;
-
     private sealed record PagedResult<T>(List<T> Items, int CurrentPage, int PageSize, int TotalPages);
 
     private static readonly IReadOnlyDictionary<string, string> OrdersSortColumns = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -346,131 +344,6 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             .ToList();
     }
 
-    public CartViewModel GetCart(string? customerEmail)
-    {
-        var cart = GetActiveCart(customerEmail, trackChanges: false);
-        return cart is null ? new CartViewModel() : MapCart(cart);
-    }
-
-    public int GetCartItemsCount(string? customerEmail)
-    {
-        return GetCart(customerEmail).TotalItems;
-    }
-
-    public bool AddOrUpdateCartItem(string? customerEmail, string productCode, int quantity)
-    {
-        if (quantity <= 0)
-        {
-            return false;
-        }
-
-        var normalizedEmail = NormalizeEmail(customerEmail);
-        var normalizedProductCode = NormalizeCode(productCode);
-        if (string.IsNullOrWhiteSpace(normalizedEmail) || string.IsNullOrWhiteSpace(normalizedProductCode))
-        {
-            return false;
-        }
-
-        var product = dbContext.Products.FirstOrDefault(existing => existing.Code == normalizedProductCode);
-        if (product is null || product.StockQuantity <= 0)
-        {
-            return false;
-        }
-
-        var now = GetCurrentTimestamp();
-        var cart = GetOrCreateActiveCart(normalizedEmail, now);
-        var item = cart.Items.FirstOrDefault(existing => existing.ProductId == product.Id);
-        var newQuantity = (item?.Quantity ?? 0) + quantity;
-
-        if (newQuantity > product.StockQuantity)
-        {
-            return false;
-        }
-
-        if (item is null)
-        {
-            cart.Items.Add(new CartItemEntity
-            {
-                ProductId = product.Id,
-                Quantity = quantity,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-        }
-        else
-        {
-            item.Quantity = newQuantity;
-            item.UpdatedAt = now;
-        }
-
-        TouchCart(cart, now);
-        dbContext.SaveChanges();
-        return true;
-    }
-
-    public bool UpdateCartItemQuantity(string? customerEmail, string productCode, int quantity)
-    {
-        if (quantity <= 0)
-        {
-            return false;
-        }
-
-        var normalizedProductCode = NormalizeCode(productCode);
-        var cart = GetActiveCart(customerEmail, trackChanges: true);
-        if (cart is null || string.IsNullOrWhiteSpace(normalizedProductCode))
-        {
-            return false;
-        }
-
-        var item = cart.Items.FirstOrDefault(existing => existing.Product.Code == normalizedProductCode);
-        if (item is null || quantity > item.Product.StockQuantity)
-        {
-            return false;
-        }
-
-        var now = GetCurrentTimestamp();
-        item.Quantity = quantity;
-        item.UpdatedAt = now;
-        TouchCart(cart, now);
-        dbContext.SaveChanges();
-        return true;
-    }
-
-    public bool RemoveCartItem(string? customerEmail, string productCode)
-    {
-        var normalizedProductCode = NormalizeCode(productCode);
-        var cart = GetActiveCart(customerEmail, trackChanges: true);
-        if (cart is null || string.IsNullOrWhiteSpace(normalizedProductCode))
-        {
-            return false;
-        }
-
-        var item = cart.Items.FirstOrDefault(existing => existing.Product.Code == normalizedProductCode);
-        if (item is null)
-        {
-            return false;
-        }
-
-        dbContext.CartItems.Remove(item);
-        TouchCart(cart, GetCurrentTimestamp());
-        dbContext.SaveChanges();
-        return true;
-    }
-
-    public bool ClearCart(string? customerEmail)
-    {
-        var cart = GetActiveCart(customerEmail, trackChanges: true);
-        if (cart is null)
-        {
-            return false;
-        }
-
-        dbContext.CartItems.RemoveRange(cart.Items);
-        TouchCart(cart, GetCurrentTimestamp());
-        dbContext.SaveChanges();
-        return true;
-    }
-
     public bool CreateProduct(Product product)
     {
         var normalizedCode = NormalizeCode(product.Code);
@@ -757,109 +630,6 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         };
     }
 
-    private CartEntity? GetActiveCart(string? customerEmail, bool trackChanges)
-    {
-        var normalizedEmail = NormalizeEmail(customerEmail);
-        if (string.IsNullOrWhiteSpace(normalizedEmail))
-        {
-            return null;
-        }
-
-        var query = dbContext.Carts
-            .Include(cart => cart.Items)
-            .ThenInclude(item => item.Product)
-            .Where(cart => cart.CustomerEmail == normalizedEmail);
-
-        var cart = trackChanges
-            ? query.FirstOrDefault()
-            : query.AsNoTracking().FirstOrDefault();
-
-        if (cart is null)
-        {
-            return null;
-        }
-
-        if (cart.ExpiresAt > GetCurrentTimestamp())
-        {
-            return cart;
-        }
-
-        DeleteExpiredCart(normalizedEmail);
-        return null;
-    }
-
-    private CartEntity GetOrCreateActiveCart(string normalizedEmail, DateTime now)
-    {
-        var cart = GetActiveCart(normalizedEmail, trackChanges: true);
-        if (cart is not null)
-        {
-            return cart;
-        }
-
-        cart = new CartEntity
-        {
-            CustomerEmail = normalizedEmail,
-            CreatedAt = now,
-            UpdatedAt = now,
-            ExpiresAt = CreateCartExpiration(now)
-        };
-        dbContext.Carts.Add(cart);
-        return cart;
-    }
-
-    private void DeleteExpiredCart(string normalizedEmail)
-    {
-        var expiredCart = dbContext.Carts
-            .Include(cart => cart.Items)
-            .FirstOrDefault(cart => cart.CustomerEmail == normalizedEmail);
-
-        if (expiredCart is null || expiredCart.ExpiresAt > GetCurrentTimestamp())
-        {
-            return;
-        }
-
-        dbContext.Carts.Remove(expiredCart);
-        dbContext.SaveChanges();
-    }
-
-    private static CartViewModel MapCart(CartEntity entity)
-    {
-        return new CartViewModel
-        {
-            UpdatedAt = entity.UpdatedAt,
-            ExpiresAt = entity.ExpiresAt,
-            Items = entity.Items
-                .OrderBy(item => item.Id)
-                .Select(MapCartItem)
-                .ToList()
-        };
-    }
-
-    private static CartItemViewModel MapCartItem(CartItemEntity entity)
-    {
-        return new CartItemViewModel
-        {
-            ProductCode = entity.Product.Code,
-            ProductName = entity.Product.Name,
-            Description = entity.Product.Description ?? string.Empty,
-            ImageUrl = entity.Product.ImageUrl ?? string.Empty,
-            UnitPrice = entity.Product.Price,
-            Quantity = entity.Quantity,
-            Stock = entity.Product.StockQuantity
-        };
-    }
-
-    private static void TouchCart(CartEntity cart, DateTime updatedAt)
-    {
-        cart.UpdatedAt = updatedAt;
-        cart.ExpiresAt = CreateCartExpiration(updatedAt);
-    }
-
-    private static DateTime CreateCartExpiration(DateTime updatedAt)
-    {
-        return updatedAt.AddDays(CartRetentionDays);
-    }
-
     private CustomerEntity FindOrCreateCustomer(string email)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -1034,11 +804,6 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
     private static string NormalizeCode(string? code)
     {
         return (code ?? string.Empty).Trim().ToUpperInvariant();
-    }
-
-    private static string NormalizeEmail(string? email)
-    {
-        return (email ?? string.Empty).Trim().ToLowerInvariant();
     }
 
     private static DateTime GetCurrentTimestamp()
