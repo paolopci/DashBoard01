@@ -12,8 +12,6 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<OrderItemEntity> OrderItems => Set<OrderItemEntity>();
     public DbSet<OrderStatusHistoryEntity> OrderStatusHistory => Set<OrderStatusHistoryEntity>();
-    public DbSet<CartEntity> Carts => Set<CartEntity>();
-    public DbSet<CartItemEntity> CartItems => Set<CartItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -123,41 +121,6 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
                 .WithMany(order => order.StatusHistory)
                 .HasForeignKey(history => history.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<CartEntity>(entity =>
-        {
-            entity.ToTable("Carts");
-            entity.HasKey(cart => cart.Id);
-            entity.HasIndex(cart => cart.CustomerEmail).IsUnique();
-            entity.HasIndex(cart => cart.ExpiresAt);
-            entity.Property(cart => cart.CustomerEmail).HasMaxLength(256).IsRequired();
-            entity.Property(cart => cart.CreatedAt).IsRequired();
-            entity.Property(cart => cart.UpdatedAt).IsRequired();
-            entity.Property(cart => cart.ExpiresAt).IsRequired();
-        });
-
-        modelBuilder.Entity<CartItemEntity>(entity =>
-        {
-            entity.ToTable("CartItems");
-            entity.HasKey(item => item.Id);
-            entity.HasIndex(item => item.CartId);
-            entity.HasIndex(item => new { item.CartId, item.ProductId }).IsUnique();
-            entity.Property(item => item.Quantity).IsRequired();
-            entity.Property(item => item.CreatedAt).IsRequired();
-            entity.Property(item => item.UpdatedAt).IsRequired();
-
-            entity
-                .HasOne(item => item.Cart)
-                .WithMany(cart => cart.Items)
-                .HasForeignKey(item => item.CartId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity
-                .HasOne(item => item.Product)
-                .WithMany()
-                .HasForeignKey(item => item.ProductId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

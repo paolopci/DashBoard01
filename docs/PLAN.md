@@ -1,238 +1,146 @@
 # PLAN
 
-## Fase 1 - Aggiornamento documentale carrello
+## Fase 1 - Vertical slice avanzamento stato ordine Admin
 Stato: completed
 Scope finale: in
-Tipo fase: analisi
+Tipo fase: implementazione
 Obiettivo:
-Aggiornare `docs/PRD.md` e `docs/PLAN.md` con il nuovo flusso carrello persistente.
+Permettere agli utenti `Admin` di avanzare lo stato di un ordine dalla pagina `Orders`, riusando la policy di transizione e lo storico stati gia presenti.
 Attivita:
-- sostituire il PRD precedente con il PRD carrello;
-- sostituire il PLAN precedente con queste fasi conformi al template della skill;
-- mantenere una sola fase eseguibile per volta.
+- aggiornare `docs/PRD.md` al ciclo di vita ordine;
+- sostituire il piano precedente con fasi conformi al template della skill;
+- aggiungere un endpoint MVC `POST` riservato agli `Admin` per cambio stato;
+- rendere disponibili alla UI le transizioni consentite per ogni ordine;
+- aggiornare `Views/Home/Orders.cshtml` con azioni stato solo per `Admin`;
+- aggiungere o aggiornare test automatici pertinenti;
+- eseguire `dotnet test DashBoard01.sln` e `dotnet build DashBoard01.sln`.
 File o aree coinvolte:
 - `docs/PRD.md`
 - `docs/PLAN.md`
-Backend impact: no
-Frontend impact: no
+- `Controllers/HomeController.cs`
+- `Models/`
+- `Services/`
+- `Views/Home/Orders.cshtml`
+- `DashboardOrders.Tests/`
+Backend impact: si
+Frontend impact: si
 Dipendenze:
-approvazione del piano
+nessuna
 Validazioni:
-- ispezione statica dei documenti: superata, `docs/PRD.md` rispetta il template minimo obbligatorio e `docs/PLAN.md` contiene fasi conformi al template della skill.
+- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~HomeControllerTests|FullyQualifiedName~DashboardOrdersDataServiceTests|FullyQualifiedName~OrderStatusTransitionPolicyTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\step4-test\`: superato, 66 test passati.
+- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\final-test\`: superato, 123 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\final-build\`: superato, 0 warning, 0 errori.
 Definition of done:
-PRD e PLAN del carrello sono salvati nei documenti del repository.
-Tracer Bullet: vietata
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
+Un utente `Admin` puo cambiare lo stato di un ordine usando solo transizioni consentite, il cambio viene persistito con storico, utenti non admin non vedono ne possono inviare azioni stato, test e build passano.
+Tracer Bullet: obbligatoria
 Note:
-AGENTS.md non e presente nel repository; applicate le regole disponibili in `shared/workflow-operativo.md`. Prossimo passo: Fase 2 - Persistenza backend del carrello.
+Trigger:
+Admin autenticato apre `Orders` e invia il cambio stato per un ordine.
+Input minimo:
+`orderId`, `newStatus` e, solo quando richiesto dalla policy, `reason`.
+Percorso:
+Razor `Orders` -> `HomeController` POST -> `IDashboardOrdersDataService.ChangeOrderStatus` -> `Orders` e `OrderStatusHistory`.
+Output:
+Redirect a `Orders` con messaggio `TempData` e ordine aggiornato.
+Evidenza verificabile:
+Test controller/service e verifica build solution.
+Rischio tecnico abbattuto:
+Wiring reale UI-controller-servizio-persistenza dello stato ordine.
+Out of scope dichiarato:
+Storico visibile in UI, azioni cliente, pagina dettaglio ordine dedicata, notifiche e nuove tecnologie.
+Esito fase:
+- aggiunto `HomeController.ChangeOrderStatus` con autorizzazione `Admin`, validazione input, chiamata a `IDashboardOrdersDataService.ChangeOrderStatus`, toast di successo/errore e redirect a `Orders`;
+- aggiornata `Views/Home/Orders.cshtml` per mostrare solo agli `Admin` le transizioni consentite da `OrderStatusTransitionPolicy`, con form POST anti-forgery e motivazione obbligatoria quando richiesta;
+- aggiunti test controller per successo Admin, blocco non Admin, input non valido e fallimento servizio;
+- confermata copertura service esistente per storico, transizioni, motivo obbligatorio e ripristino stock.
+Prossimo passo:
+Fase 2 - Visualizzazione storico stati ordine.
 
-## Fase 2 - Persistenza backend del carrello
+## Fase 2 - Visualizzazione storico stati ordine
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Creare il modello persistente del carrello e le operazioni service necessarie a leggere, aggiungere, aggiornare, rimuovere e svuotare articoli.
+Mostrare lo storico degli stati ordine nella UI dopo che il cambio stato Admin e operativo.
 Attivita:
-- aggiungere entita `CartEntity` e `CartItemEntity`;
-- aggiungere `DbSet` e mapping EF in `DashboardOrdersDbContext`;
-- aggiungere script SQL idempotente `scripts/2026-04-26-add-shopping-cart.sql`;
-- estendere `IDashboardOrdersDataService` con metodi carrello;
-- implementare in `DashboardOrdersDataService` lettura carrello, add/upsert item, update quantity, remove item, clear cart, count badge e scadenza lazy a 30 giorni;
-- aggiungere model/view model carrello per UI e controller.
+- estendere il modello letto dalla pagina ordini o introdurre un dettaglio ordine coerente con la struttura MVC esistente;
+- mostrare timeline o elenco storico con stato precedente, stato nuovo, data, utente e motivazione;
+- aggiornare test e validazioni UI pertinenti.
 File o aree coinvolte:
-- `Data/Entities/`
-- `Data/DashboardOrdersDbContext.cs`
-- `Services/IDashboardOrdersDataService.cs`
-- `Services/DashboardOrdersDataService.cs`
 - `Models/`
-- `scripts/`
+- `Services/`
+- `Views/Home/Orders.cshtml`
 - `DashboardOrders.Tests/`
 Backend impact: si
-Frontend impact: no
+Frontend impact: si
 Dipendenze:
 Fase 1 completed
 Validazioni:
-- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~ShoppingCartDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step2-test\`: superato, 8 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step2-build\`: superato, 0 warning, 0 errori.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step2-build\`: superato, 0 warning, 0 errori.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step3-build\`: superato, 0 warning, 0 errori.
+- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~DashboardOrdersDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step4-test\`: superato, 23 test passati.
+- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-final-test\`: superato, 124 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-final-build\`: superato, 0 warning, 0 errori.
 Definition of done:
-Il service gestisce un carrello persistente per email cliente, con scadenza 30 giorni, quantita valide e svuotamento carrello.
+Lo storico stati registrato e visibile per ogni ordine senza permettere modifiche fuori policy.
 Tracer Bullet: obbligatoria
-Sub-agent: ammesso
-Sub-task delegabili:
-- creare lo script SQL idempotente in `scripts/` mentre il lavoro locale implementa entita/service;
-- aggiungere test service carrello in file test dedicato o esistente, dopo aver congelato i contratti service.
 Note:
+Trigger:
+Utente apre `Orders` ed espande il dettaglio di un ordine.
+Input minimo:
+Ordine con o senza righe in `OrderStatusHistory`.
+Percorso:
+`DashboardOrdersDataService.LoadOrders` -> mapping `Order.StatusHistory` -> Razor `Orders` mobile/desktop.
+Output:
+Timeline dello storico stati visibile nel dettaglio ordine oppure messaggio neutro se lo storico e vuoto.
+Evidenza verificabile:
+Test data service sul mapping dello storico, test completi e build solution.
+Rischio tecnico abbattuto:
+Lo storico persistito viene letto, ordinato e reso disponibile alla UI senza nuovo endpoint o nuova pagina.
+Out of scope dichiarato:
+Modifica dello storico dalla UI, pagina dettaglio dedicata e nuove azioni cliente.
 Esito fase:
-- aggiunte entita persistenti `CartEntity` e `CartItemEntity` con mapping EF, indici e relazioni;
-- aggiunto `CartViewModel` con righe, totale pezzi, totale importo e flag articoli non disponibili;
-- esteso `IDashboardOrdersDataService` e implementati lettura carrello, conteggio badge, add/upsert, update quantita, remove, clear e scadenza lazy a 30 giorni;
-- aggiunto script SQL idempotente `scripts/2026-04-26-add-shopping-cart.sql`;
-- aggiunta copertura test service su creazione, upsert, limiti stock, update, rimozione, clear e scadenza.
+- aggiunto modello UI `OrderStatusHistory` e proprieta `Order.StatusHistory`;
+- esteso `DashboardOrdersDataService.LoadOrders` per includere e mappare `OrderStatusHistory`;
+- aggiornata `Views/Home/Orders.cshtml` con timeline storico in mobile e desktop;
+- aggiunto test data service per mapping e ordinamento dello storico;
+- test e build della solution superati.
 Prossimo passo:
-Fase 3 - Wiring MVC e checkout.
+Fase 3 - Hardening ciclo vita ordine.
 
-## Fase 3 - Wiring MVC e checkout
-Stato: completed
-Scope finale: in
-Tipo fase: implementazione
-Obiettivo:
-Esporre il carrello persistente tramite azioni MVC reali e convertire il carrello in ordine confermato.
-Attivita:
-- aggiungere `GET Home/Cart`;
-- aggiungere POST per aggiunta da `NewOrder`;
-- aggiungere POST per incremento, decremento, set quantita e rimozione articolo;
-- aggiungere POST `CheckoutCart` che chiama la logica esistente di creazione ordine e svuota il carrello solo a successo;
-- aggiungere un ViewComponent o meccanismo equivalente per il badge carrello nell'header senza duplicare `ViewData` in ogni action;
-- aggiornare test controller per accesso, add, update, remove e checkout.
-File o aree coinvolte:
-- `Controllers/HomeController.cs`
-- `Services/IDashboardOrdersDataService.cs`
-- `Models/`
-- `Views/Shared/`
-- `DashboardOrders.Tests/HomeControllerTests.cs`
-Backend impact: si
-Frontend impact: si
-Dipendenze:
-Fase 2 completed
-Validazioni:
-- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step3-controller-test\`: superato, 29 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step3-build\`: superato, 0 warning, 0 errori.
-Definition of done:
-Le route MVC del carrello funzionano sul service persistente e il checkout crea un ordine reale senza perdere il carrello in caso di errore.
-Tracer Bullet: obbligatoria
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-Esito fase:
-- trasformato `HomeController.NewOrder` POST in aggiunta articolo al carrello persistente;
-- aggiunti `GET Cart`, update quantita, incremento, decremento, rimozione articolo e checkout carrello;
-- il checkout crea l'ordine con `CreateOrder` e svuota il carrello con `ClearCart` solo se la creazione riesce;
-- aggiunto `CartBadgeViewComponent` con modello dedicato per il badge carrello riusabile dall'header;
-- aggiornati test controller per nuovo flusso carrello e checkout.
-Prossimo passo:
-Fase 4 - UI NewOrder, Cart e icona header.
-
-## Fase 4 - UI NewOrder, Cart e icona header
-Stato: completed
-Scope finale: in
-Tipo fase: implementazione
-Obiettivo:
-Realizzare l'esperienza utente richiesta per aggiunta articolo, pagina carrello e badge header.
-Attivita:
-- rimuovere da `Views/Home/NewOrder.cshtml` tabella righe ordine, totale ordine e pulsanti finali;
-- mantenere selezione categoria/prodotto/quantita e trasformare `Add Articolo` in submit verso aggiunta carrello;
-- creare `Views/Home/Cart.cshtml` con layout responsive ispirato ad Amazon: lista articoli, riepilogo laterale, totale provvisorio, CTA checkout;
-- implementare controllo quantita stile figura 4 con cestino, meno, valore quantita e piu;
-- aggiornare `_Layout.cshtml` per mostrare il carrello a sinistra del menu utente;
-- ricompilare CSS Tailwind.
-File o aree coinvolte:
-- `Views/Home/NewOrder.cshtml`
-- `Views/Home/Cart.cshtml`
-- `Views/Shared/_Layout.cshtml`
-- eventuale partial/view component badge carrello
-- `wwwroot/css/app.css`
-Backend impact: no
-Frontend impact: si
-Dipendenze:
-Fase 3 completed
-Validazioni:
-- `npm run build:css`: superato; presente solo avviso informativo Browserslist outdated.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step4-build\`: superato, 0 warning, 0 errori.
-- ispezione statica Razor: `NewOrder` non contiene piu tabella/totale ordine, `Cart` contiene controlli quantita e checkout, `_Layout` invoca `CartBadge`.
-Definition of done:
-Le view mostrano il flusso richiesto, sono responsive e coerenti con Tailwind/layout esistente.
-Tracer Bullet: vietata
-Sub-agent: ammesso
-Sub-task delegabili:
-- aggiornare solo `Views/Home/NewOrder.cshtml`;
-- creare solo `Views/Home/Cart.cshtml`;
-- aggiornare solo header/badge in `_Layout.cshtml` e view component associato.
-Note:
-Esito fase:
-- rimossa da `NewOrder` la tabella righe ordine con totale e pulsanti finali;
-- `NewOrder` ora invia `ProductCode` e `Quantity` al POST esistente per aggiunta al carrello;
-- creata `Cart.cshtml` con elenco articoli, immagine, disponibilita, prezzo, totale provvisorio, checkout e controlli quantita stile figura 4;
-- collegato il badge carrello nell'header a sinistra del menu utente;
-- ricompilato `wwwroot/css/app.css` con Tailwind.
-Prossimo passo:
-Fase 5 - Verifica end-to-end e hardening.
-
-## Fase 5 - Verifica end-to-end e hardening
-Stato: completed
-Scope finale: in
-Tipo fase: verifica
-Obiettivo:
-Verificare il flusso completo e chiudere regressioni o casi limite emersi.
-Attivita:
-- eseguire test mirati carrello/controller/service;
-- eseguire `dotnet test DashBoard01.sln`;
-- eseguire `dotnet build DashBoard01.sln`;
-- eseguire `npm run build:css`;
-- verificare manualmente o con browser locale il percorso `NewOrder -> Cart -> Checkout -> Orders`;
-- aggiornare `docs/PLAN.md` con esito e validazioni.
-File o aree coinvolte:
-- solution completa
-- `docs/PLAN.md`
-Backend impact: si
-Frontend impact: si
-Dipendenze:
-Fase 4 completed
-Validazioni:
-- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~ShoppingCartDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step5-targeted-test\`: superato, 37 test passati.
-- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step5-full-test\`: superato, 143 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step5-build\`: superato, 0 warning, 0 errori.
-- `npm run build:css`: superato; presente solo avviso informativo Browserslist outdated.
-- script SQL `scripts/2026-04-26-add-shopping-cart.sql` applicato al database locale `DashboardAppDb`; tabelle `Carts` e `CartItems` verificate.
-- verifica HTTP autenticata su server locale `http://localhost:5032`: login seed riuscito, `NewOrder` 200 senza tabella rimossa, `Cart` 200, add prodotto `LEGACY-PRD-1` riuscito, checkout redirect a `/Home/Orders`, `Orders` 200.
-Definition of done:
-Tutti i controlli pertinenti passano oppure eventuali blocchi sono marcati con causa precisa.
-Tracer Bullet: obbligatoria
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-Esito fase:
-- completate verifiche automatiche mirate e complete;
-- completata build CSS e build .NET;
-- completata tracer bullet reale `NewOrder -> Cart -> Checkout -> Orders` su database locale dopo applicazione dello script carrello autorizzata dall'utente;
-- arrestato il server locale usato per la verifica.
-Prossimo passo:
-Fase 6 - Archiviazione documentale.
-
-## Fase 6 - Archiviazione documentale
+## Fase 3 - Hardening ciclo vita ordine
 Stato: completed
 Scope finale: in
 Tipo fase: hardening
 Obiettivo:
-Archiviare PRD e PLAN a sviluppo completato secondo la skill.
+Rafforzare messaggi, casi limite e copertura test del ciclo vita ordine dopo le prime due fasi.
 Attivita:
-- verificare che tutte le fasi `Scope finale: in` siano completed;
-- copiare `docs/PRD.md` e `docs/PLAN.md` in `docs/History` con timestamp `dd_MM_yyyy_HHmmss`;
-- non sovrascrivere archivi esistenti.
+- verificare messaggi utente per errori di transizione, ordini inesistenti e motivazione mancante;
+- completare test su stati terminali e ripristino stock;
+- rifinire eventuali duplicazioni emerse nella UI o nei test.
 File o aree coinvolte:
-- `docs/PRD.md`
-- `docs/PLAN.md`
-- `docs/History/`
-Backend impact: no
-Frontend impact: no
+- `Controllers/HomeController.cs`
+- `Services/`
+- `Views/Home/Orders.cshtml`
+- `DashboardOrders.Tests/`
+Backend impact: si
+Frontend impact: si
 Dipendenze:
-Fase 5 completed
+Fase 1 completed, Fase 2 completed
 Validazioni:
-- tutte le fasi `Scope finale: in` risultano `completed`.
-- archivi documentali creati con timestamp `26_04_2026_104743`.
-- presenza file `docs/History/PRD-26_04_2026_104743.md` e `docs/History/PLAN-26_04_2026_104743.md` verificata.
+- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~DashboardOrdersDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-step3-test\`: superato, 25 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-step3-build\`: superato, 0 warning, 0 errori.
+- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-final-test\`: superato, 126 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-final-build\`: superato, 0 warning, 0 errori.
 Definition of done:
-PRD e PLAN finali sono archiviati con lo stesso timestamp.
+Il ciclo vita ordine ha copertura sui principali casi di errore e non presenta regressioni su ordini, stock, storico e UI.
 Tracer Bullet: vietata
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
 Note:
+Nessuna nuova tecnologia introdotta.
 Esito fase:
-- archiviati PRD e PLAN finali in `docs/History` con lo stesso timestamp;
-- nessuna fase `Scope finale: in` resta pending o blocked.
+- resa esplicita la precedenza logica nella condizione di ripristino stock;
+- aggiunto test per impedire doppio ripristino stock quando `PaymentFailed` era gia stato registrato;
+- aggiunto test per bloccare avanzamenti da stato terminale;
+- confermata assenza di regressioni con test e build completi.
 Prossimo passo:
-Nessuno, piano completato.
+Archiviazione `docs/PRD.md` e `docs/PLAN.md` in `docs/History`.

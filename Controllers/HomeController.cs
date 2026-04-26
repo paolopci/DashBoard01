@@ -169,14 +169,9 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         }
 
         model ??= new NewOrderViewModel();
-        var productCode = string.IsNullOrWhiteSpace(model.ProductCode)
-            ? model.Items.FirstOrDefault()?.ProductCode ?? string.Empty
-            : model.ProductCode;
-        var quantity = model.Quantity ?? model.Items.FirstOrDefault()?.Quantity ?? 0;
-
-        if (string.IsNullOrWhiteSpace(productCode) || quantity <= 0)
+        if (model.Items.Count == 0)
         {
-            ModelState.AddModelError(string.Empty, "Seleziona un articolo e indica una quantita valida.");
+            ModelState.AddModelError(string.Empty, "Aggiungi almeno un articolo all'ordine.");
         }
 
         if (!ModelState.IsValid)
@@ -185,147 +180,13 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             return View(model);
         }
 
-        if (!dataService.AddOrUpdateCartItem(GetCurrentEmail(), productCode, quantity))
+        if (!dataService.CreateOrder(GetCurrentEmail(), model.Items))
         {
-            ModelState.AddModelError(string.Empty, "Articolo non aggiunto al carrello. Verifica prodotto e quantita disponibile.");
+            ModelState.AddModelError(string.Empty, "Ordine non creato. Verifica prodotto e quantita disponibile.");
             PopulateNewOrderLookups(model);
             return View(model);
         }
 
-        TempData[ToastSuccessKey] = "Articolo aggiunto al carrello.";
-        return RedirectToAction(nameof(Cart));
-    }
-
-    [HttpGet]
-    public IActionResult Cart()
-    {
-        if (IsAdmin())
-        {
-            return RedirectToAction(nameof(Orders));
-        }
-
-        return View(dataService.GetCart(GetCurrentEmail()));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult UpdateCartItemQuantity(string productCode, int quantity)
-    {
-        if (IsAdmin())
-        {
-            return RedirectToAction(nameof(Orders));
-        }
-
-        if (!dataService.UpdateCartItemQuantity(GetCurrentEmail(), productCode, quantity))
-        {
-            TempData[ToastErrorKey] = "Quantita non aggiornata. Verifica disponibilita articolo.";
-        }
-
-        return RedirectToAction(nameof(Cart));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult IncrementCartItem(string productCode)
-    {
-        if (IsAdmin())
-        {
-            return RedirectToAction(nameof(Orders));
-        }
-
-        var item = dataService.GetCart(GetCurrentEmail()).Items.FirstOrDefault(existing => string.Equals(existing.ProductCode, productCode, StringComparison.OrdinalIgnoreCase));
-        if (item is null || !dataService.UpdateCartItemQuantity(GetCurrentEmail(), productCode, item.Quantity + 1))
-        {
-            TempData[ToastErrorKey] = "Quantita non aggiornata. Verifica disponibilita articolo.";
-        }
-
-        return RedirectToAction(nameof(Cart));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult DecrementCartItem(string productCode)
-    {
-        if (IsAdmin())
-        {
-            return RedirectToAction(nameof(Orders));
-        }
-
-        var item = dataService.GetCart(GetCurrentEmail()).Items.FirstOrDefault(existing => string.Equals(existing.ProductCode, productCode, StringComparison.OrdinalIgnoreCase));
-        if (item is null)
-        {
-            TempData[ToastErrorKey] = "Articolo non trovato nel carrello.";
-            return RedirectToAction(nameof(Cart));
-        }
-
-        if (item.Quantity <= 1)
-        {
-            dataService.RemoveCartItem(GetCurrentEmail(), productCode);
-            return RedirectToAction(nameof(Cart));
-        }
-
-        if (!dataService.UpdateCartItemQuantity(GetCurrentEmail(), productCode, item.Quantity - 1))
-        {
-            TempData[ToastErrorKey] = "Quantita non aggiornata. Verifica disponibilita articolo.";
-        }
-
-        return RedirectToAction(nameof(Cart));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult RemoveCartItem(string productCode)
-    {
-        if (IsAdmin())
-        {
-            return RedirectToAction(nameof(Orders));
-        }
-
-        if (!dataService.RemoveCartItem(GetCurrentEmail(), productCode))
-        {
-            TempData[ToastErrorKey] = "Articolo non rimosso dal carrello.";
-        }
-
-        return RedirectToAction(nameof(Cart));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public IActionResult CheckoutCart()
-    {
-        if (IsAdmin())
-        {
-            return RedirectToAction(nameof(Orders));
-        }
-
-        var cart = dataService.GetCart(GetCurrentEmail());
-        if (cart.Items.Count == 0)
-        {
-            TempData[ToastErrorKey] = "Il carrello e vuoto.";
-            return RedirectToAction(nameof(Cart));
-        }
-
-        if (cart.HasUnavailableItems)
-        {
-            TempData[ToastErrorKey] = "Verifica le quantita: uno o piu articoli non sono disponibili.";
-            return RedirectToAction(nameof(Cart));
-        }
-
-        var items = cart.Items
-            .Select(item => new NewOrderItemViewModel
-            {
-                ProductCode = item.ProductCode,
-                Quantity = item.Quantity
-            })
-            .ToList();
-
-        if (!dataService.CreateOrder(GetCurrentEmail(), items))
-        {
-            TempData[ToastErrorKey] = "Ordine non creato. Verifica prodotto e quantita disponibile.";
-            return RedirectToAction(nameof(Cart));
-        }
-
-        dataService.ClearCart(GetCurrentEmail());
         TempData[ToastSuccessKey] = "Ordine creato correttamente.";
         return RedirectToAction(nameof(Orders));
     }
