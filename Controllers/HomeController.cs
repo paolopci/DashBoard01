@@ -218,7 +218,17 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
 
         if (!dataService.UpdateCartItemQuantity(GetCurrentEmail(), productCode, quantity))
         {
+            if (IsAjaxRequest())
+            {
+                return Json(new { success = false, message = "Quantita non aggiornata. Verifica disponibilita articolo." });
+            }
+
             TempData[ToastErrorKey] = "Quantita non aggiornata. Verifica disponibilita articolo.";
+        }
+
+        if (IsAjaxRequest())
+        {
+            return CartJson(productCode);
         }
 
         return RedirectToAction(nameof(Cart));
@@ -236,7 +246,17 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         var item = dataService.GetCart(GetCurrentEmail()).Items.FirstOrDefault(existing => string.Equals(existing.ProductCode, productCode, StringComparison.OrdinalIgnoreCase));
         if (item is null || !dataService.UpdateCartItemQuantity(GetCurrentEmail(), productCode, item.Quantity + 1))
         {
+            if (IsAjaxRequest())
+            {
+                return Json(new { success = false, message = "Quantita non aggiornata. Verifica disponibilita articolo." });
+            }
+
             TempData[ToastErrorKey] = "Quantita non aggiornata. Verifica disponibilita articolo.";
+        }
+
+        if (IsAjaxRequest())
+        {
+            return CartJson(productCode);
         }
 
         return RedirectToAction(nameof(Cart));
@@ -254,6 +274,11 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         var item = dataService.GetCart(GetCurrentEmail()).Items.FirstOrDefault(existing => string.Equals(existing.ProductCode, productCode, StringComparison.OrdinalIgnoreCase));
         if (item is null)
         {
+            if (IsAjaxRequest())
+            {
+                return Json(new { success = false, message = "Articolo non trovato nel carrello." });
+            }
+
             TempData[ToastErrorKey] = "Articolo non trovato nel carrello.";
             return RedirectToAction(nameof(Cart));
         }
@@ -261,12 +286,27 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         if (item.Quantity <= 1)
         {
             dataService.RemoveCartItem(GetCurrentEmail(), productCode);
+            if (IsAjaxRequest())
+            {
+                return CartJson(productCode, removedProductCode: productCode);
+            }
+
             return RedirectToAction(nameof(Cart));
         }
 
         if (!dataService.UpdateCartItemQuantity(GetCurrentEmail(), productCode, item.Quantity - 1))
         {
+            if (IsAjaxRequest())
+            {
+                return Json(new { success = false, message = "Quantita non aggiornata. Verifica disponibilita articolo." });
+            }
+
             TempData[ToastErrorKey] = "Quantita non aggiornata. Verifica disponibilita articolo.";
+        }
+
+        if (IsAjaxRequest())
+        {
+            return CartJson(productCode);
         }
 
         return RedirectToAction(nameof(Cart));
@@ -283,7 +323,17 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
 
         if (!dataService.RemoveCartItem(GetCurrentEmail(), productCode))
         {
+            if (IsAjaxRequest())
+            {
+                return Json(new { success = false, message = "Articolo non rimosso dal carrello." });
+            }
+
             TempData[ToastErrorKey] = "Articolo non rimosso dal carrello.";
+        }
+
+        if (IsAjaxRequest())
+        {
+            return CartJson(productCode, removedProductCode: productCode);
         }
 
         return RedirectToAction(nameof(Cart));
@@ -515,5 +565,37 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
     private string? GetCurrentEmail()
     {
         return User.Identity?.Name;
+    }
+
+    private bool IsAjaxRequest()
+    {
+        return string.Equals(Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private JsonResult CartJson(string productCode, string? removedProductCode = null)
+    {
+        var cart = dataService.GetCart(GetCurrentEmail());
+        var item = cart.Items.FirstOrDefault(existing => string.Equals(existing.ProductCode, productCode, StringComparison.OrdinalIgnoreCase));
+
+        return Json(new
+        {
+            success = true,
+            removedProductCode,
+            cart = new
+            {
+                totalItems = cart.TotalItems,
+                totalAmount = DisplayFormatter.FormatEuro(cart.TotalAmount),
+                hasUnavailableItems = cart.HasUnavailableItems
+            },
+            item = item is null
+                ? null
+                : new
+                {
+                    productCode = item.ProductCode,
+                    quantity = item.Quantity,
+                    lineTotal = DisplayFormatter.FormatEuro(item.LineTotal),
+                    isAvailable = item.IsAvailable
+                }
+        });
     }
 }
