@@ -251,6 +251,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         var products = dbContext.Products
             .AsNoTracking()
             .Include(product => product.Category)
+            .Include(product => product.CarouselImages)
             .Select(MapProduct)
             .ToList();
 
@@ -330,6 +331,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         var product = dbContext.Products
             .AsNoTracking()
             .Include(product => product.Category)
+            .Include(product => product.CarouselImages)
             .FirstOrDefault(product => product.Code == normalizedCode);
 
         return product is null ? null : MapProduct(product);
@@ -340,6 +342,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return dbContext.Products
             .AsNoTracking()
             .Include(product => product.Category)
+            .Include(product => product.CarouselImages)
             .Where(product => product.StockQuantity > 0)
             .OrderBy(product => product.Name)
             .Select(MapProduct)
@@ -985,7 +988,22 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             Description = entity.Description ?? string.Empty,
             ImageUrl = entity.ImageUrl ?? string.Empty,
             UnitCost = entity.Price,
-            Stock = entity.StockQuantity
+            Stock = entity.StockQuantity,
+            CarouselImages = entity.CarouselImages
+                .OrderBy(image => image.DisplayOrder)
+                .ThenBy(image => image.Id)
+                .Select(MapProductCarouselImage)
+                .ToList()
+        };
+    }
+
+    private static ProductCarouselImage MapProductCarouselImage(ProductCarouselImageEntity entity)
+    {
+        return new ProductCarouselImage
+        {
+            ImageUrl = entity.ImageUrl,
+            AltText = entity.AltText,
+            DisplayOrder = entity.DisplayOrder
         };
     }
 

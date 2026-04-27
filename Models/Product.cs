@@ -9,4 +9,5 @@ public class Product
     public string ImageUrl { get; set; } = string.Empty;
     public decimal UnitCost { get; set; }
     public int Stock { get; set; }
+    public List<ProductCarouselImage> CarouselImages { get; set; } = new();
 }

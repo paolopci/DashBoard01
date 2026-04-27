@@ -14,6 +14,7 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<OrderStatusHistoryEntity> OrderStatusHistory => Set<OrderStatusHistoryEntity>();
     public DbSet<CartEntity> Carts => Set<CartEntity>();
     public DbSet<CartItemEntity> CartItems => Set<CartItemEntity>();
+    public DbSet<ProductCarouselImageEntity> ProductCarouselImages => Set<ProductCarouselImageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +57,24 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
                 .WithMany(category => category.Products)
                 .HasForeignKey(product => product.CategoryCode)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProductCarouselImageEntity>(entity =>
+        {
+            entity.ToTable("ProductCarouselImages");
+            entity.HasKey(image => image.Id);
+            entity.HasIndex(image => image.ImageUrl).IsUnique();
+            entity.HasIndex(image => new { image.ProductId, image.DisplayOrder }).IsUnique();
+            entity.Property(image => image.ImageUrl).HasMaxLength(500).IsRequired();
+            entity.Property(image => image.AltText).HasMaxLength(200).IsRequired();
+            entity.Property(image => image.DisplayOrder).IsRequired();
+            entity.Property(image => image.CreatedAt).IsRequired();
+
+            entity
+                .HasOne(image => image.Product)
+                .WithMany(product => product.CarouselImages)
+                .HasForeignKey(image => image.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<CustomerEntity>(entity =>

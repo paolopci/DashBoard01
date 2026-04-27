@@ -14,4 +14,5 @@ public class ProductEntity
 
     public CategoryEntity Category { get; set; } = null!;
     public ICollection<OrderItemEntity> OrderItems { get; set; } = new List<OrderItemEntity>();
+    public ICollection<ProductCarouselImageEntity> CarouselImages { get; set; } = new List<ProductCarouselImageEntity>();
 }

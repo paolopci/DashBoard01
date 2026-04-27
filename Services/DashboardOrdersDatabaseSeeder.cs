@@ -27,6 +27,7 @@ public class DashboardOrdersDatabaseSeeder(
         await EnsureRolesAsync();
         await SeedCategoriesAsync(categories, cancellationToken);
         await SeedProductsAsync(products, cancellationToken);
+        await SeedProductCarouselImagesAsync(cancellationToken);
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
         await SeedCustomerUsersAsync(cancellationToken);
         await SynchronizeUserRolesAsync(cancellationToken);
@@ -63,6 +64,70 @@ public class DashboardOrdersDatabaseSeeder(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedProductCarouselImagesAsync(CancellationToken cancellationToken)
+    {
+        const int carouselImagesPerProduct = 5;
+        var existingImageUrls = await dbContext.ProductCarouselImages
+            .Select(image => image.ImageUrl)
+            .ToHashSetAsync(StringComparer.OrdinalIgnoreCase, cancellationToken);
+        var products = await dbContext.Products
+            .Include(product => product.Category)
+            .Include(product => product.CarouselImages)
+            .OrderBy(product => product.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var product in products)
+        {
+            var usedDisplayOrders = product.CarouselImages
+                .Select(image => image.DisplayOrder)
+                .ToHashSet();
+
+            for (var displayOrder = 1; displayOrder <= carouselImagesPerProduct; displayOrder++)
+            {
+                if (usedDisplayOrders.Contains(displayOrder))
+                {
+                    continue;
+                }
+
+                var imageUrl = CreateUniqueCarouselImageUrl(product, displayOrder, existingImageUrls);
+                dbContext.ProductCarouselImages.Add(new ProductCarouselImageEntity
+                {
+                    ProductId = product.Id,
+                    ImageUrl = imageUrl,
+                    AltText = $"{product.Name} immagine {displayOrder}",
+                    DisplayOrder = displayOrder,
+                    CreatedAt = SeedCreatedAt
+                });
+                existingImageUrls.Add(imageUrl);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string CreateUniqueCarouselImageUrl(
+        ProductEntity product,
+        int displayOrder,
+        ISet<string> existingImageUrls)
+    {
+        var lockNumber = product.Id * 100 + displayOrder;
+        var keywords = MockDataService.GetProductImageKeywords(product.Name, product.Category.Name);
+        var imageUrl = CreateCarouselImageUrl(keywords, lockNumber);
+
+        while (existingImageUrls.Contains(imageUrl))
+        {
+            lockNumber++;
+            imageUrl = CreateCarouselImageUrl(keywords, lockNumber);
+        }
+
+        return imageUrl;
+    }
+
+    private static string CreateCarouselImageUrl(string keywords, int lockNumber)
+    {
+        return $"https://loremflickr.com/800/800/{keywords}?lock={lockNumber}";
     }
 
     private async Task SeedProductsAsync(IEnumerable<Models.Product> products, CancellationToken cancellationToken)
@@ -167,7 +232,8 @@ public class DashboardOrdersDatabaseSeeder(
 
     private async Task SynchronizeUserRolesAsync(CancellationToken cancellationToken)
     {
-        var users = await userManager.Users.ToListAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var users = userManager.Users.ToList();
 
         foreach (var user in users)
         {

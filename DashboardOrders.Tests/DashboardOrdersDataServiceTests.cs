@@ -515,6 +515,51 @@ public class DashboardOrdersDataServiceTests
     }
 
     [Fact]
+    public void GetProduct_QuandoProdottoHaImmaginiCarousel_AlloraLeMappaOrdinate()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        SeedProductCarouselImages(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.GetProduct("PRD-001");
+
+        // Assert
+        risultato.Should().NotBeNull();
+        risultato!.CarouselImages.Should().SatisfyRespectively(
+            prima =>
+            {
+                prima.ImageUrl.Should().Be("https://example.com/laptop-front-800.jpg");
+                prima.AltText.Should().Be("Laptop tracer vista frontale");
+                prima.DisplayOrder.Should().Be(1);
+            },
+            seconda =>
+            {
+                seconda.ImageUrl.Should().Be("https://example.com/laptop-side-800.jpg");
+                seconda.AltText.Should().Be("Laptop tracer vista laterale");
+                seconda.DisplayOrder.Should().Be(2);
+            });
+    }
+
+    [Fact]
+    public void GetAvailableProducts_QuandoProdottoHaImmaginiCarousel_AlloraIncludeCarouselOrdinato()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 10, price: 25m);
+        SeedProductCarouselImages(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var risultato = sut.GetAvailableProducts();
+
+        // Assert
+        risultato.Single().CarouselImages.Select(image => image.DisplayOrder).Should().Equal(1, 2);
+    }
+
+    [Fact]
     public void CreateProduct_QuandoImmagineValida_AlloraSalvaImageUrl()
     {
         // Arrange
@@ -594,6 +639,29 @@ public class DashboardOrdersDataServiceTests
             ImageUrl = "https://loremflickr.com/320/240/laptop,computer/all?lock=1",
             CreatedAt = DateTime.UtcNow
         });
+        dbContext.SaveChanges();
+    }
+
+    private static void SeedProductCarouselImages(DashboardOrdersDbContext dbContext)
+    {
+        var product = dbContext.Products.Single(product => product.Code == "PRD-001");
+        dbContext.ProductCarouselImages.AddRange(
+            new ProductCarouselImageEntity
+            {
+                ProductId = product.Id,
+                ImageUrl = "https://example.com/laptop-side-800.jpg",
+                AltText = "Laptop tracer vista laterale",
+                DisplayOrder = 2,
+                CreatedAt = DateTime.UtcNow
+            },
+            new ProductCarouselImageEntity
+            {
+                ProductId = product.Id,
+                ImageUrl = "https://example.com/laptop-front-800.jpg",
+                AltText = "Laptop tracer vista frontale",
+                DisplayOrder = 1,
+                CreatedAt = DateTime.UtcNow
+            });
         dbContext.SaveChanges();
     }
 
