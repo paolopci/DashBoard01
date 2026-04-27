@@ -26,6 +26,51 @@ public class CheckoutDataServiceTests
     }
 
     [Fact]
+    public void GetItalianProvinces_QuandoLookupPresenti_AlloraRestituisceProvinceDistinteOrdinate()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedItalianPostalCodes(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var province = sut.GetItalianProvinces();
+
+        // Assert
+        province.Should().Equal("Ancona", "Pesaro e Urbino");
+    }
+
+    [Fact]
+    public void GetItalianCities_QuandoProvinciaIndicata_AlloraRestituisceCittaDistinteOrdinate()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedItalianPostalCodes(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var citta = sut.GetItalianCities("Pesaro e Urbino");
+
+        // Assert
+        citta.Should().Equal("Fano", "Pesaro");
+    }
+
+    [Fact]
+    public void GetItalianPostalCodes_QuandoCittaMultiCap_AlloraRestituisceCapDisponibili()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedItalianPostalCodes(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var cap = sut.GetItalianPostalCodes("Pesaro e Urbino", "Pesaro");
+
+        // Assert
+        cap.Should().Equal("61121", "61122");
+    }
+
+    [Fact]
     public void SaveCheckoutAddresses_QuandoDatiValidi_AlloraAggiornaSessione()
     {
         // Arrange
@@ -46,6 +91,47 @@ public class CheckoutDataServiceTests
         checkout.ShippingCity.Should().Be("Milano");
         checkout.BillingSameAsShipping.Should().BeTrue();
         checkout.CurrentStep.Should().Be(CheckoutStep.Addresses);
+    }
+
+    [Fact]
+    public void SaveCheckoutAddresses_QuandoCampiStrutturatiEFatturazioneUguale_AlloraComponeECopiaIndirizzi()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.AddOrUpdateCartItem("cliente@test.it", "PRD-001", 1).Should().BeTrue();
+        sut.StartCheckout("cliente@test.it").Should().BeTrue();
+        var model = new CheckoutAddressesViewModel
+        {
+            ShippingLastName = "Rossi",
+            ShippingFirstName = "Mario",
+            ShippingPhonePrefix = "+39",
+            ShippingPhoneNumber = "3281234567",
+            ShippingStreet = "Via Roma",
+            ShippingStreetNumber = "1",
+            ShippingProvince = "Pesaro e Urbino",
+            ShippingCity = "Pesaro",
+            ShippingPostalCode = "61121",
+            BillingSameAsShipping = true
+        };
+
+        // Act
+        var risultato = sut.SaveCheckoutAddresses("cliente@test.it", model);
+        var checkout = sut.GetCheckout("cliente@test.it");
+
+        // Assert
+        risultato.Should().BeTrue();
+        checkout.Should().NotBeNull();
+        checkout!.ShippingFullName.Should().Be("Rossi Mario");
+        checkout.ShippingPhone.Should().Be("+39 3281234567");
+        checkout.ShippingAddressLine.Should().Be("Via Roma 1");
+        checkout.ShippingCountry.Should().Be("Italia");
+        checkout.BillingFullName.Should().Be(checkout.ShippingFullName);
+        checkout.BillingAddressLine.Should().Be(checkout.ShippingAddressLine);
+        checkout.BillingCity.Should().Be(checkout.ShippingCity);
+        checkout.BillingPostalCode.Should().Be(checkout.ShippingPostalCode);
+        checkout.BillingCountry.Should().Be("Italia");
     }
 
     [Fact]
@@ -215,6 +301,40 @@ public class CheckoutDataServiceTests
             ImageUrl = "https://loremflickr.com/320/240/laptop,computer/all?lock=checkout",
             CreatedAt = DateTime.UtcNow
         });
+        dbContext.SaveChanges();
+    }
+
+    private static void SeedItalianPostalCodes(DashboardOrdersDbContext dbContext)
+    {
+        dbContext.ItalianPostalCodes.AddRange(
+            new ItalianPostalCodeEntity
+            {
+                ProvinceName = "Pesaro e Urbino",
+                ProvinceCode = "PU",
+                CityName = "Pesaro",
+                PostalCode = "61122"
+            },
+            new ItalianPostalCodeEntity
+            {
+                ProvinceName = "Ancona",
+                ProvinceCode = "AN",
+                CityName = "Ancona",
+                PostalCode = "60121"
+            },
+            new ItalianPostalCodeEntity
+            {
+                ProvinceName = "Pesaro e Urbino",
+                ProvinceCode = "PU",
+                CityName = "Fano",
+                PostalCode = "61032"
+            },
+            new ItalianPostalCodeEntity
+            {
+                ProvinceName = "Pesaro e Urbino",
+                ProvinceCode = "PU",
+                CityName = "Pesaro",
+                PostalCode = "61121"
+            });
         dbContext.SaveChanges();
     }
 }
