@@ -26,6 +26,13 @@ public interface IDashboardOrdersDataService
     bool UpdateCartItemQuantity(string? customerEmail, string productCode, int quantity);
     bool RemoveCartItem(string? customerEmail, string productCode);
     bool ClearCart(string? customerEmail);
+    bool StartCheckout(string? customerEmail);
+    CheckoutSessionViewModel? GetCheckout(string? customerEmail);
+    bool SaveCheckoutAddresses(string? customerEmail, CheckoutAddressesViewModel model);
+    bool SaveCheckoutOptions(string? customerEmail, CheckoutOptionsViewModel model);
+    CheckoutConfirmResult ConfirmCheckout(string? customerEmail);
+    CheckoutPaymentResult ProcessTestPayment(string? customerEmail, int orderId, TestPaymentOutcome outcome);
+    OrderDetailsViewModel? GetOrderDetails(int orderId, string? requesterEmail, bool isAdmin);
     bool CreateProduct(Product product);
     bool UpdateProduct(Product product);
     bool CreateOrder(string? customerEmail, string productCode, int quantity);

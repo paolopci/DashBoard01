@@ -348,36 +348,195 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             return RedirectToAction(nameof(Orders));
         }
 
-        var cart = dataService.GetCart(GetCurrentEmail());
-        if (cart.Items.Count == 0)
+        if (!dataService.StartCheckout(GetCurrentEmail()))
         {
-            TempData[ToastErrorKey] = "Il carrello e vuoto.";
+            TempData[ToastErrorKey] = "Checkout non avviato. Verifica carrello e disponibilita articoli.";
             return RedirectToAction(nameof(Cart));
         }
 
-        if (cart.HasUnavailableItems)
+        return RedirectToAction(nameof(CheckoutSummary));
+    }
+
+    [HttpGet]
+    public IActionResult CheckoutSummary()
+    {
+        if (IsAdmin())
         {
-            TempData[ToastErrorKey] = "Verifica le quantita: uno o piu articoli non sono disponibili.";
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var checkout = dataService.GetCheckout(GetCurrentEmail());
+        if (checkout is null)
+        {
+            TempData[ToastErrorKey] = "Checkout non disponibile o scaduto.";
             return RedirectToAction(nameof(Cart));
         }
 
-        var items = cart.Items
-            .Select(item => new NewOrderItemViewModel
-            {
-                ProductCode = item.ProductCode,
-                Quantity = item.Quantity
-            })
-            .ToList();
+        return View(checkout);
+    }
 
-        if (!dataService.CreateOrder(GetCurrentEmail(), items))
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult StartCheckout()
+    {
+        return CheckoutCart();
+    }
+
+    [HttpGet]
+    public IActionResult CheckoutAddresses()
+    {
+        if (IsAdmin())
         {
-            TempData[ToastErrorKey] = "Ordine non creato. Verifica prodotto e quantita disponibile.";
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var checkout = dataService.GetCheckout(GetCurrentEmail());
+        if (checkout is null)
+        {
+            TempData[ToastErrorKey] = "Checkout non disponibile o scaduto.";
             return RedirectToAction(nameof(Cart));
         }
 
-        dataService.ClearCart(GetCurrentEmail());
-        TempData[ToastSuccessKey] = "Ordine creato correttamente.";
-        return RedirectToAction(nameof(Orders));
+        return View(checkout);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult CheckoutAddresses(CheckoutAddressesViewModel model)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var checkout = dataService.GetCheckout(GetCurrentEmail()) ?? new CheckoutSessionViewModel();
+            CopyAddresses(model, checkout);
+            return View(checkout);
+        }
+
+        if (!dataService.SaveCheckoutAddresses(GetCurrentEmail(), model))
+        {
+            TempData[ToastErrorKey] = "Dati spedizione o fatturazione non salvati.";
+            return RedirectToAction(nameof(CheckoutAddresses));
+        }
+
+        return RedirectToAction(nameof(CheckoutConfirm));
+    }
+
+    [HttpGet]
+    public IActionResult CheckoutConfirm()
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var checkout = dataService.GetCheckout(GetCurrentEmail());
+        if (checkout is null)
+        {
+            TempData[ToastErrorKey] = "Checkout non disponibile o scaduto.";
+            return RedirectToAction(nameof(Cart));
+        }
+
+        return View(checkout);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult CheckoutOptions(CheckoutOptionsViewModel model)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        if (!ModelState.IsValid || !dataService.SaveCheckoutOptions(GetCurrentEmail(), model))
+        {
+            TempData[ToastErrorKey] = "Seleziona metodo consegna e pagamento validi.";
+            return RedirectToAction(nameof(CheckoutConfirm));
+        }
+
+        return RedirectToAction(nameof(CheckoutConfirm));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [ActionName(nameof(CheckoutConfirm))]
+    public IActionResult CheckoutConfirmPost(CheckoutOptionsViewModel? model = null)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        if (model is not null && ModelState.IsValid && !dataService.SaveCheckoutOptions(GetCurrentEmail(), model))
+        {
+            TempData[ToastErrorKey] = "Seleziona metodo consegna e pagamento validi.";
+            return RedirectToAction(nameof(CheckoutConfirm));
+        }
+
+        var result = dataService.ConfirmCheckout(GetCurrentEmail());
+        if (!result.Success || result.OrderId is null)
+        {
+            TempData[ToastErrorKey] = result.ErrorMessage;
+            return RedirectToAction(nameof(CheckoutConfirm));
+        }
+
+        return result.RequiresPayment
+            ? RedirectToAction(nameof(CheckoutPayment), new { orderId = result.OrderId.Value })
+            : RedirectToAction(nameof(CheckoutResult), new { orderId = result.OrderId.Value });
+    }
+
+    [HttpGet]
+    public IActionResult CheckoutPayment(int orderId)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var order = dataService.GetOrderDetails(orderId, GetCurrentEmail(), isAdmin: false);
+        return order is null ? NotFound() : View(order);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult CheckoutPayment(int orderId, TestPaymentOutcome outcome)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var result = dataService.ProcessTestPayment(GetCurrentEmail(), orderId, outcome);
+        if (!result.Success)
+        {
+            TempData[ToastErrorKey] = result.ErrorMessage;
+            return RedirectToAction(nameof(CheckoutPayment), new { orderId });
+        }
+
+        return RedirectToAction(nameof(CheckoutResult), new { orderId });
+    }
+
+    [HttpGet]
+    public IActionResult CheckoutResult(int orderId)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var order = dataService.GetOrderDetails(orderId, GetCurrentEmail(), isAdmin: false);
+        return order is null ? NotFound() : View(order);
+    }
+
+    [HttpGet]
+    public IActionResult OrderDetails(int id)
+    {
+        var order = dataService.GetOrderDetails(id, GetCurrentEmail(), IsAdmin());
+        return order is null ? NotFound() : View(order);
     }
 
     [HttpGet]
@@ -555,6 +714,23 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             UnitCost = model.UnitCost,
             Stock = model.Stock
         };
+    }
+
+    private static void CopyAddresses(CheckoutAddressesViewModel source, CheckoutSessionViewModel target)
+    {
+        target.ShippingFullName = source.ShippingFullName;
+        target.ShippingAddressLine = source.ShippingAddressLine;
+        target.ShippingCity = source.ShippingCity;
+        target.ShippingPostalCode = source.ShippingPostalCode;
+        target.ShippingCountry = source.ShippingCountry;
+        target.ShippingPhone = source.ShippingPhone;
+        target.BillingSameAsShipping = source.BillingSameAsShipping;
+        target.BillingFullName = source.BillingFullName;
+        target.BillingAddressLine = source.BillingAddressLine;
+        target.BillingCity = source.BillingCity;
+        target.BillingPostalCode = source.BillingPostalCode;
+        target.BillingCountry = source.BillingCountry;
+        target.BillingVatNumber = source.BillingVatNumber;
     }
 
     private bool IsAdmin()

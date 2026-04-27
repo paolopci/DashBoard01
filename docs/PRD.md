@@ -2,72 +2,47 @@
 
 ## Obiettivo
 
-Realizzare un carrello acquisti persistente per i clienti autenticati, separando la composizione del carrello dalla creazione effettiva dell'ordine.
+Evolvere il checkout cliente da creazione ordine diretta a flusso realistico multi-step:
 
-## Problema/Contesto
+`Carrello -> Riepilogo checkout -> Spedizione/Fatturazione -> Conferma finale -> Pagamento test o ordine pending -> Esito -> Dettaglio ordine`.
 
-La pagina `Home/NewOrder` oggi costruisce un ordine temporaneo nella UI e lo salva direttamente come ordine. Il cliente invece deve poter aggiungere articoli a un carrello persistente, ritrovarli dopo una nuova login, gestire quantita e rimozione da una pagina `Cart`, poi confermare l'ordine solo dalla pagina carrello.
+## Contesto
+
+Il carrello persistente esistente consente gia di comporre articoli e modificarne quantita. Prima di questa evoluzione, la CTA del carrello chiamava `CheckoutCart` e creava subito un ordine reale. Il nuovo flusso deve mantenere carrello, stock e storico ordine, ma aggiungere passaggi espliciti e dati checkout.
 
 ## Scope
 
-- Aggiungere un link/icona carrello nell'header, a sinistra del menu utente autenticato, con badge numero articoli.
-- Rimuovere da `NewOrder` il blocco tabellare con righe ordine, totale e pulsanti finali visto in figura 2.
-- Trasformare `NewOrder` in pagina di selezione articolo/quantita con azione di aggiunta al carrello.
-- Creare la pagina `Home/Cart` ispirata ad Amazon: elenco articoli a sinistra, riepilogo ordine a destra, CTA `Procedi all'ordine`.
-- Rendere il carrello persistente lato database per cliente autenticato.
-- Consentire modifica quantita e cancellazione articolo con controllo stile figura 4: cestino, decremento, quantita, incremento.
-- Alla conferma carrello, creare l'ordine usando la logica esistente e svuotare il carrello solo se l'ordine viene creato correttamente.
-- Aggiungere test automatici backend/controller pertinenti ed eseguire build, test e build CSS.
+- Aggiungere sessione checkout persistente per cliente autenticato.
+- Aggiungere dati spedizione e fatturazione test, senza generazione fiscale reale.
+- Aggiungere metodo consegna e metodo pagamento test.
+- Creare ordine solo dalla conferma finale.
+- Simulare pagamento senza gateway esterni e senza addebiti reali.
+- Aggiungere pagina esito e pagina dettaglio ordine.
+- Mantenere `CheckoutCart` come alias compatibile verso il nuovo flusso.
 
 ## Out of scope
 
-- Selezione parziale degli articoli del carrello per checkout v1: tutti gli articoli validi del carrello vengono inclusi nell'ordine.
-- Wishlist, `salva per dopo`, codici sconto, Prime, regalo, spedizione reale o calcolo costi spedizione.
-- Pagamenti online o integrazioni esterne.
-- Persistenza per utenti anonimi.
-- Nuove librerie UI o framework frontend.
-- Riscrittura completa del layout esistente.
+- Integrazioni Stripe, PayPal, POS o gateway bancari.
+- Raccolta o salvataggio dati carta reali.
+- Fatture fiscali reali, numerazione fiscale o invio a sistemi esterni.
+- Scelta parziale articoli dal carrello.
+- Nuove librerie o framework.
 
 ## Requisiti funzionali
 
-- Il carrello e associato all'email dell'utente autenticato non admin.
-- Il carrello persiste oltre la sessione browser e viene ricaricato al login successivo.
-- La durata proposta del carrello e 30 giorni dall'ultimo aggiornamento; ogni aggiunta/modifica rinnova la scadenza.
-- Un carrello scaduto viene ignorato e cancellato in modo lazy alla prima lettura o modifica.
-- L'icona carrello mostra il numero totale di pezzi presenti nel carrello del cliente.
-- Da `NewOrder`, il cliente puo scegliere categoria, prodotto e quantita e aggiungere l'articolo al carrello.
-- Se un prodotto e gia nel carrello, l'aggiunta aggiorna la quantita senza creare duplicati.
-- La quantita non puo essere minore di 1 o maggiore dello stock disponibile.
-- La pagina `Cart` mostra immagine, nome, descrizione, prezzo unitario, quantita, totale riga e totale provvisorio.
-- Il controllo quantita in `Cart` permette decremento, incremento e rimozione articolo.
-- Se lo stock diventa insufficiente prima del checkout, il checkout fallisce con messaggio utente e il carrello resta invariato.
-- Alla conferma valida, viene creato un ordine con gli articoli del carrello e il carrello viene svuotato.
-- Admin continua a essere escluso dal flusso cliente `NewOrder`/`Cart`.
-
-## Vincoli tecnici
-
-- Mantenere lo stack esistente: ASP.NET Core MVC, Razor, EF Core, Identity, Tailwind, xUnit, FluentAssertions, NSubstitute.
-- Non introdurre nuove librerie.
-- Usare Tailwind gia presente e ricompilare `wwwroot/css/app.css` tramite `npm run build:css`.
-- Usare persistenza database, non `localStorage`, per garantire ritrovamento al login successivo.
-- Aggiungere entita EF coerenti con `Data/Entities` e mapping in `DashboardOrdersDbContext`.
-- Aggiungere uno script SQL idempotente in `scripts/` per creare le tabelle carrello nel database reale.
-- Riutilizzare `DashboardOrdersDataService.CreateOrder` per confermare l'ordine, cosi stock e storico ordine restano gestiti dalla logica esistente.
+- Il checkout parte solo per clienti non admin con carrello non vuoto e articoli disponibili.
+- La sessione checkout conserva dati inseriti e scade automaticamente.
+- La conferma rivalida lo stock prima di creare l'ordine.
+- Il carrello viene svuotato solo se l'ordine viene creato.
+- Il pagamento test puo riuscire, fallire o restare pending.
+- Il cliente puo vedere solo i propri dettagli ordine; admin puo vedere tutti.
 
 ## Acceptance criteria
 
-- In header, per cliente autenticato, compare il carrello a sinistra del menu utente con badge quantita.
-- `Home/NewOrder` non mostra piu la tabella ordine/totale/pulsanti finali di figura 2.
-- Aggiungendo un articolo da `NewOrder`, l'articolo viene salvato nel carrello persistente.
-- Chiudendo la sessione e rifacendo login entro 30 giorni, il carrello viene ritrovato.
-- `Home/Cart` mostra layout responsive ispirato ad Amazon con elenco articoli e riepilogo laterale.
-- Il controllo quantita stile figura 4 aggiorna o rimuove l'articolo.
-- `Procedi all'ordine` crea l'ordine e svuota il carrello solo in caso di successo.
-- Carrello vuoto e carrello scaduto mostrano stato vuoto comprensibile.
-- `dotnet test DashBoard01.sln` passa.
-- `dotnet build DashBoard01.sln` passa.
-- `npm run build:css` passa.
-
-## Definizione di completamento
-
-Il lavoro e completato quando il flusso cliente `NewOrder -> Cart persistente -> Checkout -> Orders` e implementato, verificato con test automatici e build, con `docs/PRD.md` e `docs/PLAN.md` aggiornati e nessuna fase `Scope finale: in` rimasta pending o blocked.
+- `CheckoutCart` non crea piu ordini diretti.
+- Il flusso completo e navigabile dalle view Razor.
+- Gli ordini creati salvano dettagli checkout separati.
+- Pagamento test riuscito porta l'ordine a `Confirmed`.
+- Pagamento test fallito porta l'ordine a `PaymentFailed`.
+- Metodo pending crea ordine senza pagamento simulato.
+- `dotnet test DashBoard01.sln`, `dotnet build DashBoard01.sln` e `npm run build:css` passano.

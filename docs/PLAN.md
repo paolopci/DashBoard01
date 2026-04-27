@@ -1,238 +1,70 @@
 # PLAN
 
-## Fase 1 - Aggiornamento documentale carrello
+- [x] Fase 1 - Documentazione checkout realistico
 Stato: completed
 Scope finale: in
 Tipo fase: analisi
 Obiettivo:
-Aggiornare `docs/PRD.md` e `docs/PLAN.md` con il nuovo flusso carrello persistente.
-Attivita:
-- sostituire il PRD precedente con il PRD carrello;
-- sostituire il PLAN precedente con queste fasi conformi al template della skill;
-- mantenere una sola fase eseguibile per volta.
+Aggiornare `docs/PRD.md` e `docs/PLAN.md` con il nuovo checkout multi-step.
 File o aree coinvolte:
 - `docs/PRD.md`
 - `docs/PLAN.md`
-Backend impact: no
-Frontend impact: no
-Dipendenze:
-approvazione del piano
 Validazioni:
-- ispezione statica dei documenti: superata, `docs/PRD.md` rispetta il template minimo obbligatorio e `docs/PLAN.md` contiene fasi conformi al template della skill.
-Definition of done:
-PRD e PLAN del carrello sono salvati nei documenti del repository.
-Tracer Bullet: vietata
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-AGENTS.md non e presente nel repository; applicate le regole disponibili in `shared/workflow-operativo.md`. Prossimo passo: Fase 2 - Persistenza backend del carrello.
+- Documenti aggiornati con scope, out of scope e acceptance criteria.
 
-## Fase 2 - Persistenza backend del carrello
+- [x] Fase 2 - Modello dati checkout e ordine
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Creare il modello persistente del carrello e le operazioni service necessarie a leggere, aggiungere, aggiornare, rimuovere e svuotare articoli.
-Attivita:
-- aggiungere entita `CartEntity` e `CartItemEntity`;
-- aggiungere `DbSet` e mapping EF in `DashboardOrdersDbContext`;
-- aggiungere script SQL idempotente `scripts/2026-04-26-add-shopping-cart.sql`;
-- estendere `IDashboardOrdersDataService` con metodi carrello;
-- implementare in `DashboardOrdersDataService` lettura carrello, add/upsert item, update quantity, remove item, clear cart, count badge e scadenza lazy a 30 giorni;
-- aggiungere model/view model carrello per UI e controller.
+Persistenza per sessione checkout e dettagli checkout associati all'ordine.
 File o aree coinvolte:
-- `Data/Entities/`
+- `Data/Entities/CheckoutSessionEntity.cs`
+- `Data/Entities/OrderCheckoutDetailsEntity.cs`
 - `Data/DashboardOrdersDbContext.cs`
+- `Models/CheckoutViewModels.cs`
+- `scripts/2026-04-27-add-realistic-checkout.sql`
+Validazioni:
+- Test service checkout mirati.
+
+- [x] Fase 3 - Service layer checkout
+Stato: completed
+Scope finale: in
+Tipo fase: implementazione
+Obiettivo:
+Gestire avvio checkout, indirizzi, opzioni, conferma ordine, pagamento test e dettaglio ordine.
+File o aree coinvolte:
 - `Services/IDashboardOrdersDataService.cs`
 - `Services/DashboardOrdersDataService.cs`
-- `Models/`
-- `scripts/`
-- `DashboardOrders.Tests/`
-Backend impact: si
-Frontend impact: no
-Dipendenze:
-Fase 1 completed
 Validazioni:
-- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~ShoppingCartDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step2-test\`: superato, 8 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step2-build\`: superato, 0 warning, 0 errori.
-Definition of done:
-Il service gestisce un carrello persistente per email cliente, con scadenza 30 giorni, quantita valide e svuotamento carrello.
-Tracer Bullet: obbligatoria
-Sub-agent: ammesso
-Sub-task delegabili:
-- creare lo script SQL idempotente in `scripts/` mentre il lavoro locale implementa entita/service;
-- aggiungere test service carrello in file test dedicato o esistente, dopo aver congelato i contratti service.
-Note:
-Esito fase:
-- aggiunte entita persistenti `CartEntity` e `CartItemEntity` con mapping EF, indici e relazioni;
-- aggiunto `CartViewModel` con righe, totale pezzi, totale importo e flag articoli non disponibili;
-- esteso `IDashboardOrdersDataService` e implementati lettura carrello, conteggio badge, add/upsert, update quantita, remove, clear e scadenza lazy a 30 giorni;
-- aggiunto script SQL idempotente `scripts/2026-04-26-add-shopping-cart.sql`;
-- aggiunta copertura test service su creazione, upsert, limiti stock, update, rimozione, clear e scadenza.
-Prossimo passo:
-Fase 3 - Wiring MVC e checkout.
+- `CheckoutDataServiceTests`: passati.
 
-## Fase 3 - Wiring MVC e checkout
+- [x] Fase 4 - Controller e UI Razor
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Esporre il carrello persistente tramite azioni MVC reali e convertire il carrello in ordine confermato.
-Attivita:
-- aggiungere `GET Home/Cart`;
-- aggiungere POST per aggiunta da `NewOrder`;
-- aggiungere POST per incremento, decremento, set quantita e rimozione articolo;
-- aggiungere POST `CheckoutCart` che chiama la logica esistente di creazione ordine e svuota il carrello solo a successo;
-- aggiungere un ViewComponent o meccanismo equivalente per il badge carrello nell'header senza duplicare `ViewData` in ogni action;
-- aggiornare test controller per accesso, add, update, remove e checkout.
+Esporre route e view del flusso `Carrello -> Checkout -> Esito -> Dettaglio`.
 File o aree coinvolte:
 - `Controllers/HomeController.cs`
-- `Services/IDashboardOrdersDataService.cs`
-- `Models/`
-- `Views/Shared/`
-- `DashboardOrders.Tests/HomeControllerTests.cs`
-Backend impact: si
-Frontend impact: si
-Dipendenze:
-Fase 2 completed
-Validazioni:
-- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step3-controller-test\`: superato, 29 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step3-build\`: superato, 0 warning, 0 errori.
-Definition of done:
-Le route MVC del carrello funzionano sul service persistente e il checkout crea un ordine reale senza perdere il carrello in caso di errore.
-Tracer Bullet: obbligatoria
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-Esito fase:
-- trasformato `HomeController.NewOrder` POST in aggiunta articolo al carrello persistente;
-- aggiunti `GET Cart`, update quantita, incremento, decremento, rimozione articolo e checkout carrello;
-- il checkout crea l'ordine con `CreateOrder` e svuota il carrello con `ClearCart` solo se la creazione riesce;
-- aggiunto `CartBadgeViewComponent` con modello dedicato per il badge carrello riusabile dall'header;
-- aggiornati test controller per nuovo flusso carrello e checkout.
-Prossimo passo:
-Fase 4 - UI NewOrder, Cart e icona header.
-
-## Fase 4 - UI NewOrder, Cart e icona header
-Stato: completed
-Scope finale: in
-Tipo fase: implementazione
-Obiettivo:
-Realizzare l'esperienza utente richiesta per aggiunta articolo, pagina carrello e badge header.
-Attivita:
-- rimuovere da `Views/Home/NewOrder.cshtml` tabella righe ordine, totale ordine e pulsanti finali;
-- mantenere selezione categoria/prodotto/quantita e trasformare `Add Articolo` in submit verso aggiunta carrello;
-- creare `Views/Home/Cart.cshtml` con layout responsive ispirato ad Amazon: lista articoli, riepilogo laterale, totale provvisorio, CTA checkout;
-- implementare controllo quantita stile figura 4 con cestino, meno, valore quantita e piu;
-- aggiornare `_Layout.cshtml` per mostrare il carrello a sinistra del menu utente;
-- ricompilare CSS Tailwind.
-File o aree coinvolte:
-- `Views/Home/NewOrder.cshtml`
 - `Views/Home/Cart.cshtml`
-- `Views/Shared/_Layout.cshtml`
-- eventuale partial/view component badge carrello
-- `wwwroot/css/app.css`
-Backend impact: no
-Frontend impact: si
-Dipendenze:
-Fase 3 completed
+- `Views/Home/CheckoutSummary.cshtml`
+- `Views/Home/CheckoutAddresses.cshtml`
+- `Views/Home/CheckoutConfirm.cshtml`
+- `Views/Home/CheckoutPayment.cshtml`
+- `Views/Home/CheckoutResult.cshtml`
+- `Views/Home/OrderDetails.cshtml`
 Validazioni:
-- `npm run build:css`: superato; presente solo avviso informativo Browserslist outdated.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step4-build\`: superato, 0 warning, 0 errori.
-- ispezione statica Razor: `NewOrder` non contiene piu tabella/totale ordine, `Cart` contiene controlli quantita e checkout, `_Layout` invoca `CartBadge`.
-Definition of done:
-Le view mostrano il flusso richiesto, sono responsive e coerenti con Tailwind/layout esistente.
-Tracer Bullet: vietata
-Sub-agent: ammesso
-Sub-task delegabili:
-- aggiornare solo `Views/Home/NewOrder.cshtml`;
-- creare solo `Views/Home/Cart.cshtml`;
-- aggiornare solo header/badge in `_Layout.cshtml` e view component associato.
-Note:
-Esito fase:
-- rimossa da `NewOrder` la tabella righe ordine con totale e pulsanti finali;
-- `NewOrder` ora invia `ProductCode` e `Quantity` al POST esistente per aggiunta al carrello;
-- creata `Cart.cshtml` con elenco articoli, immagine, disponibilita, prezzo, totale provvisorio, checkout e controlli quantita stile figura 4;
-- collegato il badge carrello nell'header a sinistra del menu utente;
-- ricompilato `wwwroot/css/app.css` con Tailwind.
-Prossimo passo:
-Fase 5 - Verifica end-to-end e hardening.
+- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-targeted\`: superato, 37 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-build-ui\`: superato, 0 warning, 0 errori.
 
-## Fase 5 - Verifica end-to-end e hardening
+- [x] Fase 5 - Verifica finale
 Stato: completed
 Scope finale: in
 Tipo fase: verifica
 Obiettivo:
-Verificare il flusso completo e chiudere regressioni o casi limite emersi.
-Attivita:
-- eseguire test mirati carrello/controller/service;
-- eseguire `dotnet test DashBoard01.sln`;
-- eseguire `dotnet build DashBoard01.sln`;
-- eseguire `npm run build:css`;
-- verificare manualmente o con browser locale il percorso `NewOrder -> Cart -> Checkout -> Orders`;
-- aggiornare `docs/PLAN.md` con esito e validazioni.
-File o aree coinvolte:
-- solution completa
-- `docs/PLAN.md`
-Backend impact: si
-Frontend impact: si
-Dipendenze:
-Fase 4 completed
-Validazioni:
-- `dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~ShoppingCartDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step5-targeted-test\`: superato, 37 test passati.
-- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step5-full-test\`: superato, 143 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\cart-step5-build\`: superato, 0 warning, 0 errori.
+Verificare build, test e CSS.
+Validazioni previste:
+- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-full-test-2\`: superato, 155 test passati.
+- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-final-build-2\`: superato, 0 warning, 0 errori.
 - `npm run build:css`: superato; presente solo avviso informativo Browserslist outdated.
-- script SQL `scripts/2026-04-26-add-shopping-cart.sql` applicato al database locale `DashboardAppDb`; tabelle `Carts` e `CartItems` verificate.
-- verifica HTTP autenticata su server locale `http://localhost:5032`: login seed riuscito, `NewOrder` 200 senza tabella rimossa, `Cart` 200, add prodotto `LEGACY-PRD-1` riuscito, checkout redirect a `/Home/Orders`, `Orders` 200.
-Definition of done:
-Tutti i controlli pertinenti passano oppure eventuali blocchi sono marcati con causa precisa.
-Tracer Bullet: obbligatoria
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-Esito fase:
-- completate verifiche automatiche mirate e complete;
-- completata build CSS e build .NET;
-- completata tracer bullet reale `NewOrder -> Cart -> Checkout -> Orders` su database locale dopo applicazione dello script carrello autorizzata dall'utente;
-- arrestato il server locale usato per la verifica.
-Prossimo passo:
-Fase 6 - Archiviazione documentale.
-
-## Fase 6 - Archiviazione documentale
-Stato: completed
-Scope finale: in
-Tipo fase: hardening
-Obiettivo:
-Archiviare PRD e PLAN a sviluppo completato secondo la skill.
-Attivita:
-- verificare che tutte le fasi `Scope finale: in` siano completed;
-- copiare `docs/PRD.md` e `docs/PLAN.md` in `docs/History` con timestamp `dd_MM_yyyy_HHmmss`;
-- non sovrascrivere archivi esistenti.
-File o aree coinvolte:
-- `docs/PRD.md`
-- `docs/PLAN.md`
-- `docs/History/`
-Backend impact: no
-Frontend impact: no
-Dipendenze:
-Fase 5 completed
-Validazioni:
-- tutte le fasi `Scope finale: in` risultano `completed`.
-- archivi documentali creati con timestamp `26_04_2026_104743`.
-- presenza file `docs/History/PRD-26_04_2026_104743.md` e `docs/History/PLAN-26_04_2026_104743.md` verificata.
-Definition of done:
-PRD e PLAN finali sono archiviati con lo stesso timestamp.
-Tracer Bullet: vietata
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-Esito fase:
-- archiviati PRD e PLAN finali in `docs/History` con lo stesso timestamp;
-- nessuna fase `Scope finale: in` resta pending o blocked.
-Prossimo passo:
-Nessuno, piano completato.

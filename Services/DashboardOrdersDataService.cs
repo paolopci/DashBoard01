@@ -8,6 +8,9 @@ namespace DashboardOrders.Services;
 public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : IDashboardOrdersDataService
 {
     private const int CartRetentionDays = 30;
+    private const int CheckoutRetentionHours = 24;
+    private const string PaymentMethodTestCard = "test-card";
+    private const string PaymentMethodPending = "pending";
 
     private sealed record PagedResult<T>(List<T> Items, int CurrentPage, int PageSize, int TotalPages);
 
@@ -474,6 +477,239 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return true;
     }
 
+    public bool StartCheckout(string? customerEmail)
+    {
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        var cart = GetCart(normalizedEmail);
+        if (string.IsNullOrWhiteSpace(normalizedEmail) || cart.Items.Count == 0 || cart.HasUnavailableItems)
+        {
+            return false;
+        }
+
+        var now = GetCurrentTimestamp();
+        var session = GetActiveCheckoutSession(normalizedEmail, trackChanges: true);
+        if (session is null)
+        {
+            session = new CheckoutSessionEntity
+            {
+                CustomerEmail = normalizedEmail,
+                CreatedAt = now
+            };
+            dbContext.CheckoutSessions.Add(session);
+        }
+
+        session.CurrentStep = (int)CheckoutStep.Summary;
+        session.TotalItems = cart.TotalItems;
+        session.TotalAmount = cart.TotalAmount;
+        session.CreatedOrderId = null;
+        TouchCheckoutSession(session, now);
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public CheckoutSessionViewModel? GetCheckout(string? customerEmail)
+    {
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        var session = GetActiveCheckoutSession(normalizedEmail, trackChanges: false);
+        return session is null ? null : MapCheckoutSession(session, GetCart(normalizedEmail));
+    }
+
+    public bool SaveCheckoutAddresses(string? customerEmail, CheckoutAddressesViewModel model)
+    {
+        var session = GetActiveCheckoutSession(customerEmail, trackChanges: true);
+        if (session is null || !AreShippingFieldsValid(model) || !AreBillingFieldsValid(model))
+        {
+            return false;
+        }
+
+        session.ShippingFullName = NormalizeText(model.ShippingFullName);
+        session.ShippingAddressLine = NormalizeText(model.ShippingAddressLine);
+        session.ShippingCity = NormalizeText(model.ShippingCity);
+        session.ShippingPostalCode = NormalizeText(model.ShippingPostalCode);
+        session.ShippingCountry = NormalizeText(model.ShippingCountry);
+        session.ShippingPhone = NormalizeText(model.ShippingPhone);
+        session.BillingSameAsShipping = model.BillingSameAsShipping;
+        session.BillingFullName = model.BillingSameAsShipping ? session.ShippingFullName : NormalizeText(model.BillingFullName);
+        session.BillingAddressLine = model.BillingSameAsShipping ? session.ShippingAddressLine : NormalizeText(model.BillingAddressLine);
+        session.BillingCity = model.BillingSameAsShipping ? session.ShippingCity : NormalizeText(model.BillingCity);
+        session.BillingPostalCode = model.BillingSameAsShipping ? session.ShippingPostalCode : NormalizeText(model.BillingPostalCode);
+        session.BillingCountry = model.BillingSameAsShipping ? session.ShippingCountry : NormalizeText(model.BillingCountry);
+        session.BillingVatNumber = NormalizeOptionalText(model.BillingVatNumber);
+        session.CurrentStep = (int)CheckoutStep.Addresses;
+        TouchCheckoutSession(session, GetCurrentTimestamp());
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public bool SaveCheckoutOptions(string? customerEmail, CheckoutOptionsViewModel model)
+    {
+        var session = GetActiveCheckoutSession(customerEmail, trackChanges: true);
+        if (session is null || !HasCheckoutAddresses(session))
+        {
+            return false;
+        }
+
+        var deliveryMethod = NormalizeCheckoutChoice(model.DeliveryMethod, "standard");
+        var paymentMethod = NormalizeCheckoutChoice(model.PaymentMethod, PaymentMethodPending);
+        if (paymentMethod is not PaymentMethodTestCard and not PaymentMethodPending)
+        {
+            return false;
+        }
+
+        session.DeliveryMethod = deliveryMethod;
+        session.PaymentMethod = paymentMethod;
+        session.CurrentStep = (int)CheckoutStep.Confirm;
+        TouchCheckoutSession(session, GetCurrentTimestamp());
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public CheckoutConfirmResult ConfirmCheckout(string? customerEmail)
+    {
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        var session = GetActiveCheckoutSession(normalizedEmail, trackChanges: true);
+        if (session is null || !HasCheckoutAddresses(session))
+        {
+            return CheckoutConfirmResult.Failed("Checkout non valido o scaduto.");
+        }
+
+        var cart = GetCart(normalizedEmail);
+        if (cart.Items.Count == 0)
+        {
+            return CheckoutConfirmResult.Failed("Il carrello e vuoto.");
+        }
+
+        if (cart.HasUnavailableItems)
+        {
+            return CheckoutConfirmResult.Failed("Uno o piu articoli non sono disponibili.");
+        }
+
+        var items = cart.Items
+            .Select(item => new NewOrderItemViewModel { ProductCode = item.ProductCode, Quantity = item.Quantity })
+            .ToList();
+        var initialStatus = session.PaymentMethod == PaymentMethodTestCard ? OrderStatus.PaymentPending : OrderStatus.Pending;
+        var order = CreateOrderEntity(normalizedEmail, items, initialStatus);
+        if (order is null)
+        {
+            return CheckoutConfirmResult.Failed("Ordine non creato. Verifica disponibilita articoli.");
+        }
+
+        dbContext.Orders.Add(order);
+        dbContext.SaveChanges();
+
+        dbContext.OrderCheckoutDetails.Add(CreateOrderCheckoutDetails(order.Id, session, initialStatus));
+        session.CreatedOrderId = order.Id;
+        session.CurrentStep = session.PaymentMethod == PaymentMethodTestCard
+            ? (int)CheckoutStep.Payment
+            : (int)CheckoutStep.Result;
+        TouchCheckoutSession(session, GetCurrentTimestamp());
+        ClearCart(normalizedEmail);
+        dbContext.SaveChanges();
+
+        return new CheckoutConfirmResult
+        {
+            Success = true,
+            OrderId = order.Id,
+            RequiresPayment = session.PaymentMethod == PaymentMethodTestCard
+        };
+    }
+
+    public CheckoutPaymentResult ProcessTestPayment(string? customerEmail, int orderId, TestPaymentOutcome outcome)
+    {
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        var order = dbContext.Orders
+            .Include(existingOrder => existingOrder.Customer)
+            .Include(existingOrder => existingOrder.Items)
+            .ThenInclude(item => item.Product)
+            .Include(existingOrder => existingOrder.StatusHistory)
+            .Include(existingOrder => existingOrder.CheckoutDetails)
+            .FirstOrDefault(existingOrder => existingOrder.Id == orderId);
+
+        if (order is null || order.CheckoutDetails is null || order.Customer.Email.ToLower() != normalizedEmail)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Ordine non trovato." };
+        }
+
+        var currentStatus = ToOrderStatus(order.Status);
+        if (currentStatus != OrderStatus.PaymentPending || order.CheckoutDetails.PaymentMethod != PaymentMethodTestCard)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Pagamento test non disponibile per questo ordine." };
+        }
+
+        var now = GetCurrentTimestamp();
+        var finalStatus = outcome switch
+        {
+            TestPaymentOutcome.Authorized => OrderStatus.Confirmed,
+            TestPaymentOutcome.Failed => OrderStatus.PaymentFailed,
+            _ => OrderStatus.PaymentPending
+        };
+
+        if (outcome == TestPaymentOutcome.Authorized)
+        {
+            var transactionReference = CreateTestTransactionReference(orderId);
+            AppendStatusHistory(order, currentStatus, OrderStatus.PaymentAuthorized, normalizedEmail, "Pagamento test autorizzato", transactionReference, now);
+            order.Status = (int)OrderStatus.PaymentAuthorized;
+            AppendStatusHistory(order, OrderStatus.PaymentAuthorized, OrderStatus.Confirmed, normalizedEmail, "Ordine confermato dopo pagamento test", null, now);
+            order.Status = (int)OrderStatus.Confirmed;
+            order.CheckoutDetails.PaymentStatus = "authorized";
+            order.CheckoutDetails.TestTransactionReference = transactionReference;
+        }
+        else if (outcome == TestPaymentOutcome.Failed)
+        {
+            RestoreOrderStock(order);
+            AppendStatusHistory(order, currentStatus, OrderStatus.PaymentFailed, normalizedEmail, "Pagamento test fallito", null, now);
+            order.Status = (int)OrderStatus.PaymentFailed;
+            order.CheckoutDetails.PaymentStatus = "failed";
+        }
+        else
+        {
+            order.CheckoutDetails.PaymentStatus = "pending";
+        }
+
+        order.UpdatedAt = now;
+        order.CheckoutDetails.UpdatedAt = now;
+        var session = GetActiveCheckoutSession(normalizedEmail, trackChanges: true);
+        if (session is not null)
+        {
+            session.CreatedOrderId = orderId;
+            session.CurrentStep = (int)CheckoutStep.Result;
+            TouchCheckoutSession(session, now);
+        }
+
+        dbContext.SaveChanges();
+        return new CheckoutPaymentResult
+        {
+            Success = true,
+            OrderId = orderId,
+            FinalStatus = finalStatus
+        };
+    }
+
+    public OrderDetailsViewModel? GetOrderDetails(int orderId, string? requesterEmail, bool isAdmin)
+    {
+        var normalizedEmail = NormalizeEmail(requesterEmail);
+        var order = dbContext.Orders
+            .AsNoTracking()
+            .Include(existingOrder => existingOrder.Customer)
+            .Include(existingOrder => existingOrder.Items)
+            .ThenInclude(item => item.Product)
+            .Include(existingOrder => existingOrder.StatusHistory)
+            .Include(existingOrder => existingOrder.CheckoutDetails)
+            .AsSplitQuery()
+            .FirstOrDefault(existingOrder => existingOrder.Id == orderId);
+
+        if (order is null || (!isAdmin && order.Customer.Email.ToLower() != normalizedEmail))
+        {
+            return null;
+        }
+
+        return new OrderDetailsViewModel
+        {
+            Order = MapOrder(order),
+            CheckoutDetails = order.CheckoutDetails is null ? null : MapOrderCheckoutDetails(order.CheckoutDetails)
+        };
+    }
+
     public bool CreateProduct(Product product)
     {
         var normalizedCode = NormalizeCode(product.Code);
@@ -532,77 +768,12 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
     public bool CreateOrder(string? customerEmail, IReadOnlyList<NewOrderItemViewModel> items)
     {
-        if (string.IsNullOrWhiteSpace(customerEmail) || items.Count == 0)
+        var order = CreateOrderEntity(customerEmail, items, OrderStatus.Pending);
+        if (order is null)
         {
             return false;
         }
 
-        var requestedItems = items
-            .Select(item => new
-            {
-                ProductCode = NormalizeCode(item.ProductCode),
-                item.Quantity
-            })
-            .ToList();
-
-        if (requestedItems.Any(item => string.IsNullOrWhiteSpace(item.ProductCode) || item.Quantity <= 0))
-        {
-            return false;
-        }
-
-        if (requestedItems.Select(item => item.ProductCode).Distinct(StringComparer.OrdinalIgnoreCase).Count() != requestedItems.Count)
-        {
-            return false;
-        }
-
-        var requestedCodes = requestedItems.Select(item => item.ProductCode).ToList();
-        var products = dbContext.Products
-            .Where(product => requestedCodes.Contains(product.Code))
-            .ToList();
-
-        if (products.Count != requestedItems.Count)
-        {
-            return false;
-        }
-
-        foreach (var requestedItem in requestedItems)
-        {
-            var product = products.Single(product => product.Code == requestedItem.ProductCode);
-            if (product.StockQuantity <= 0 || product.StockQuantity < requestedItem.Quantity)
-            {
-                return false;
-            }
-        }
-
-        var customer = FindOrCreateCustomer(customerEmail);
-        var createdAt = GetCurrentTimestamp();
-        var initialStatus = OrderStatus.Pending;
-        var order = new OrderEntity
-        {
-            OrderNumber = CreateNextOrderNumber(),
-            CustomerId = customer.Id,
-            TotalAmount = requestedItems.Sum(item =>
-            {
-                var product = products.Single(product => product.Code == item.ProductCode);
-                return product.Price * item.Quantity;
-            }),
-            Status = (int)initialStatus,
-            CreatedAt = createdAt
-        };
-
-        foreach (var requestedItem in requestedItems)
-        {
-            var product = products.Single(product => product.Code == requestedItem.ProductCode);
-            product.StockQuantity -= requestedItem.Quantity;
-            order.Items.Add(new OrderItemEntity
-            {
-                ProductId = product.Id,
-                Quantity = requestedItem.Quantity,
-                UnitPrice = product.Price
-            });
-        }
-
-        AppendInitialStatusHistory(order, initialStatus, customerEmail, createdAt);
         dbContext.Orders.Add(order);
         dbContext.SaveChanges();
 
@@ -863,6 +1034,204 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return updatedAt.AddDays(CartRetentionDays);
     }
 
+    private CheckoutSessionEntity? GetActiveCheckoutSession(string? customerEmail, bool trackChanges)
+    {
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            return null;
+        }
+
+        var query = dbContext.CheckoutSessions.Where(session => session.CustomerEmail == normalizedEmail);
+        var session = trackChanges
+            ? query.FirstOrDefault()
+            : query.AsNoTracking().FirstOrDefault();
+
+        if (session is null)
+        {
+            return null;
+        }
+
+        if (session.ExpiresAt > GetCurrentTimestamp())
+        {
+            return session;
+        }
+
+        DeleteExpiredCheckoutSession(normalizedEmail);
+        return null;
+    }
+
+    private void DeleteExpiredCheckoutSession(string normalizedEmail)
+    {
+        var expiredSession = dbContext.CheckoutSessions.FirstOrDefault(session => session.CustomerEmail == normalizedEmail);
+        if (expiredSession is null || expiredSession.ExpiresAt > GetCurrentTimestamp())
+        {
+            return;
+        }
+
+        dbContext.CheckoutSessions.Remove(expiredSession);
+        dbContext.SaveChanges();
+    }
+
+    private static void TouchCheckoutSession(CheckoutSessionEntity session, DateTime updatedAt)
+    {
+        session.UpdatedAt = updatedAt;
+        session.ExpiresAt = updatedAt.AddHours(CheckoutRetentionHours);
+    }
+
+    private static CheckoutSessionViewModel MapCheckoutSession(CheckoutSessionEntity session, CartViewModel cart)
+    {
+        return new CheckoutSessionViewModel
+        {
+            CurrentStep = ToCheckoutStep(session.CurrentStep),
+            Cart = cart,
+            TotalItems = session.TotalItems,
+            TotalAmount = session.TotalAmount,
+            ShippingFullName = session.ShippingFullName ?? string.Empty,
+            ShippingAddressLine = session.ShippingAddressLine ?? string.Empty,
+            ShippingCity = session.ShippingCity ?? string.Empty,
+            ShippingPostalCode = session.ShippingPostalCode ?? string.Empty,
+            ShippingCountry = session.ShippingCountry ?? string.Empty,
+            ShippingPhone = session.ShippingPhone ?? string.Empty,
+            BillingSameAsShipping = session.BillingSameAsShipping,
+            BillingFullName = session.BillingFullName ?? string.Empty,
+            BillingAddressLine = session.BillingAddressLine ?? string.Empty,
+            BillingCity = session.BillingCity ?? string.Empty,
+            BillingPostalCode = session.BillingPostalCode ?? string.Empty,
+            BillingCountry = session.BillingCountry ?? string.Empty,
+            BillingVatNumber = session.BillingVatNumber ?? string.Empty,
+            DeliveryMethod = session.DeliveryMethod,
+            PaymentMethod = session.PaymentMethod,
+            CreatedOrderId = session.CreatedOrderId,
+            ExpiresAt = session.ExpiresAt
+        };
+    }
+
+    private OrderEntity? CreateOrderEntity(string? customerEmail, IReadOnlyList<NewOrderItemViewModel> items, OrderStatus initialStatus)
+    {
+        if (string.IsNullOrWhiteSpace(customerEmail) || items.Count == 0)
+        {
+            return null;
+        }
+
+        var requestedItems = items
+            .Select(item => new
+            {
+                ProductCode = NormalizeCode(item.ProductCode),
+                item.Quantity
+            })
+            .ToList();
+
+        if (requestedItems.Any(item => string.IsNullOrWhiteSpace(item.ProductCode) || item.Quantity <= 0))
+        {
+            return null;
+        }
+
+        if (requestedItems.Select(item => item.ProductCode).Distinct(StringComparer.OrdinalIgnoreCase).Count() != requestedItems.Count)
+        {
+            return null;
+        }
+
+        var requestedCodes = requestedItems.Select(item => item.ProductCode).ToList();
+        var products = dbContext.Products
+            .Where(product => requestedCodes.Contains(product.Code))
+            .ToList();
+
+        if (products.Count != requestedItems.Count)
+        {
+            return null;
+        }
+
+        foreach (var requestedItem in requestedItems)
+        {
+            var product = products.Single(product => product.Code == requestedItem.ProductCode);
+            if (product.StockQuantity <= 0 || product.StockQuantity < requestedItem.Quantity)
+            {
+                return null;
+            }
+        }
+
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        var customer = FindOrCreateCustomer(normalizedEmail);
+        var createdAt = GetCurrentTimestamp();
+        var order = new OrderEntity
+        {
+            OrderNumber = CreateNextOrderNumber(),
+            CustomerId = customer.Id,
+            TotalAmount = requestedItems.Sum(item =>
+            {
+                var product = products.Single(product => product.Code == item.ProductCode);
+                return product.Price * item.Quantity;
+            }),
+            Status = (int)initialStatus,
+            CreatedAt = createdAt
+        };
+
+        foreach (var requestedItem in requestedItems)
+        {
+            var product = products.Single(product => product.Code == requestedItem.ProductCode);
+            product.StockQuantity -= requestedItem.Quantity;
+            order.Items.Add(new OrderItemEntity
+            {
+                ProductId = product.Id,
+                Quantity = requestedItem.Quantity,
+                UnitPrice = product.Price
+            });
+        }
+
+        AppendInitialStatusHistory(order, initialStatus, normalizedEmail, createdAt);
+        return order;
+    }
+
+    private static OrderCheckoutDetailsEntity CreateOrderCheckoutDetails(int orderId, CheckoutSessionEntity session, OrderStatus initialStatus)
+    {
+        return new OrderCheckoutDetailsEntity
+        {
+            OrderId = orderId,
+            ShippingFullName = session.ShippingFullName ?? string.Empty,
+            ShippingAddressLine = session.ShippingAddressLine ?? string.Empty,
+            ShippingCity = session.ShippingCity ?? string.Empty,
+            ShippingPostalCode = session.ShippingPostalCode ?? string.Empty,
+            ShippingCountry = session.ShippingCountry ?? string.Empty,
+            ShippingPhone = session.ShippingPhone ?? string.Empty,
+            BillingSameAsShipping = session.BillingSameAsShipping,
+            BillingFullName = session.BillingFullName ?? string.Empty,
+            BillingAddressLine = session.BillingAddressLine ?? string.Empty,
+            BillingCity = session.BillingCity ?? string.Empty,
+            BillingPostalCode = session.BillingPostalCode ?? string.Empty,
+            BillingCountry = session.BillingCountry ?? string.Empty,
+            BillingVatNumber = session.BillingVatNumber,
+            DeliveryMethod = session.DeliveryMethod,
+            PaymentMethod = session.PaymentMethod,
+            PaymentStatus = initialStatus == OrderStatus.PaymentPending ? "pending" : "not-required",
+            CreatedAt = GetCurrentTimestamp()
+        };
+    }
+
+    private static OrderCheckoutDetailsViewModel MapOrderCheckoutDetails(OrderCheckoutDetailsEntity entity)
+    {
+        return new OrderCheckoutDetailsViewModel
+        {
+            ShippingFullName = entity.ShippingFullName,
+            ShippingAddressLine = entity.ShippingAddressLine,
+            ShippingCity = entity.ShippingCity,
+            ShippingPostalCode = entity.ShippingPostalCode,
+            ShippingCountry = entity.ShippingCountry,
+            ShippingPhone = entity.ShippingPhone,
+            BillingSameAsShipping = entity.BillingSameAsShipping,
+            BillingFullName = entity.BillingFullName,
+            BillingAddressLine = entity.BillingAddressLine,
+            BillingCity = entity.BillingCity,
+            BillingPostalCode = entity.BillingPostalCode,
+            BillingCountry = entity.BillingCountry,
+            BillingVatNumber = entity.BillingVatNumber ?? string.Empty,
+            DeliveryMethod = entity.DeliveryMethod,
+            PaymentMethod = entity.PaymentMethod,
+            PaymentStatus = entity.PaymentStatus,
+            TestTransactionReference = entity.TestTransactionReference ?? string.Empty
+        };
+    }
+
     private CustomerEntity FindOrCreateCustomer(string email)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -1068,6 +1437,70 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
     {
         var normalizedImageUrl = (imageUrl ?? string.Empty).Trim();
         return string.IsNullOrWhiteSpace(normalizedImageUrl) ? null : normalizedImageUrl;
+    }
+
+    private static string NormalizeText(string? value)
+    {
+        return (value ?? string.Empty).Trim();
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        var normalized = NormalizeText(value);
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static string NormalizeCheckoutChoice(string? value, string defaultValue)
+    {
+        var normalized = NormalizeText(value).ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(normalized) ? defaultValue : normalized;
+    }
+
+    private static bool AreShippingFieldsValid(CheckoutAddressesViewModel model)
+    {
+        return !string.IsNullOrWhiteSpace(model.ShippingFullName)
+            && !string.IsNullOrWhiteSpace(model.ShippingAddressLine)
+            && !string.IsNullOrWhiteSpace(model.ShippingCity)
+            && !string.IsNullOrWhiteSpace(model.ShippingPostalCode)
+            && !string.IsNullOrWhiteSpace(model.ShippingCountry)
+            && !string.IsNullOrWhiteSpace(model.ShippingPhone);
+    }
+
+    private static bool AreBillingFieldsValid(CheckoutAddressesViewModel model)
+    {
+        return model.BillingSameAsShipping
+            || (!string.IsNullOrWhiteSpace(model.BillingFullName)
+                && !string.IsNullOrWhiteSpace(model.BillingAddressLine)
+                && !string.IsNullOrWhiteSpace(model.BillingCity)
+                && !string.IsNullOrWhiteSpace(model.BillingPostalCode)
+                && !string.IsNullOrWhiteSpace(model.BillingCountry));
+    }
+
+    private static bool HasCheckoutAddresses(CheckoutSessionEntity session)
+    {
+        return !string.IsNullOrWhiteSpace(session.ShippingFullName)
+            && !string.IsNullOrWhiteSpace(session.ShippingAddressLine)
+            && !string.IsNullOrWhiteSpace(session.ShippingCity)
+            && !string.IsNullOrWhiteSpace(session.ShippingPostalCode)
+            && !string.IsNullOrWhiteSpace(session.ShippingCountry)
+            && !string.IsNullOrWhiteSpace(session.ShippingPhone)
+            && !string.IsNullOrWhiteSpace(session.BillingFullName)
+            && !string.IsNullOrWhiteSpace(session.BillingAddressLine)
+            && !string.IsNullOrWhiteSpace(session.BillingCity)
+            && !string.IsNullOrWhiteSpace(session.BillingPostalCode)
+            && !string.IsNullOrWhiteSpace(session.BillingCountry);
+    }
+
+    private static CheckoutStep ToCheckoutStep(int value)
+    {
+        return Enum.IsDefined(typeof(CheckoutStep), value)
+            ? (CheckoutStep)value
+            : CheckoutStep.Summary;
+    }
+
+    private static string CreateTestTransactionReference(int orderId)
+    {
+        return $"TEST-{orderId}-{DateTime.UtcNow:yyyyMMddHHmmss}";
     }
 
     private static void AppendInitialStatusHistory(OrderEntity order, OrderStatus initialStatus, string changedBy, DateTime changedAt)

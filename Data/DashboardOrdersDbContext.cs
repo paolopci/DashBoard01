@@ -14,6 +14,8 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<OrderStatusHistoryEntity> OrderStatusHistory => Set<OrderStatusHistoryEntity>();
     public DbSet<CartEntity> Carts => Set<CartEntity>();
     public DbSet<CartItemEntity> CartItems => Set<CartItemEntity>();
+    public DbSet<CheckoutSessionEntity> CheckoutSessions => Set<CheckoutSessionEntity>();
+    public DbSet<OrderCheckoutDetailsEntity> OrderCheckoutDetails => Set<OrderCheckoutDetailsEntity>();
     public DbSet<ProductCarouselImageEntity> ProductCarouselImages => Set<ProductCarouselImageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -144,6 +146,35 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<OrderCheckoutDetailsEntity>(entity =>
+        {
+            entity.ToTable("OrderCheckoutDetails");
+            entity.HasKey(details => details.Id);
+            entity.HasIndex(details => details.OrderId).IsUnique();
+            entity.Property(details => details.ShippingFullName).HasMaxLength(120).IsRequired();
+            entity.Property(details => details.ShippingAddressLine).HasMaxLength(200).IsRequired();
+            entity.Property(details => details.ShippingCity).HasMaxLength(100).IsRequired();
+            entity.Property(details => details.ShippingPostalCode).HasMaxLength(20).IsRequired();
+            entity.Property(details => details.ShippingCountry).HasMaxLength(100).IsRequired();
+            entity.Property(details => details.ShippingPhone).HasMaxLength(30).IsRequired();
+            entity.Property(details => details.BillingFullName).HasMaxLength(120).IsRequired();
+            entity.Property(details => details.BillingAddressLine).HasMaxLength(200).IsRequired();
+            entity.Property(details => details.BillingCity).HasMaxLength(100).IsRequired();
+            entity.Property(details => details.BillingPostalCode).HasMaxLength(20).IsRequired();
+            entity.Property(details => details.BillingCountry).HasMaxLength(100).IsRequired();
+            entity.Property(details => details.BillingVatNumber).HasMaxLength(40);
+            entity.Property(details => details.DeliveryMethod).HasMaxLength(30).IsRequired();
+            entity.Property(details => details.PaymentMethod).HasMaxLength(30).IsRequired();
+            entity.Property(details => details.PaymentStatus).HasMaxLength(30).IsRequired();
+            entity.Property(details => details.TestTransactionReference).HasMaxLength(80);
+
+            entity
+                .HasOne(details => details.Order)
+                .WithOne(order => order.CheckoutDetails)
+                .HasForeignKey<OrderCheckoutDetailsEntity>(details => details.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<CartEntity>(entity =>
         {
             entity.ToTable("Carts");
@@ -177,6 +208,30 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
                 .WithMany()
                 .HasForeignKey(item => item.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CheckoutSessionEntity>(entity =>
+        {
+            entity.ToTable("CheckoutSessions");
+            entity.HasKey(session => session.Id);
+            entity.HasIndex(session => session.CustomerEmail).IsUnique();
+            entity.HasIndex(session => session.ExpiresAt);
+            entity.Property(session => session.CustomerEmail).HasMaxLength(256).IsRequired();
+            entity.Property(session => session.TotalAmount).HasPrecision(18, 2);
+            entity.Property(session => session.ShippingFullName).HasMaxLength(120);
+            entity.Property(session => session.ShippingAddressLine).HasMaxLength(200);
+            entity.Property(session => session.ShippingCity).HasMaxLength(100);
+            entity.Property(session => session.ShippingPostalCode).HasMaxLength(20);
+            entity.Property(session => session.ShippingCountry).HasMaxLength(100);
+            entity.Property(session => session.ShippingPhone).HasMaxLength(30);
+            entity.Property(session => session.BillingFullName).HasMaxLength(120);
+            entity.Property(session => session.BillingAddressLine).HasMaxLength(200);
+            entity.Property(session => session.BillingCity).HasMaxLength(100);
+            entity.Property(session => session.BillingPostalCode).HasMaxLength(20);
+            entity.Property(session => session.BillingCountry).HasMaxLength(100);
+            entity.Property(session => session.BillingVatNumber).HasMaxLength(40);
+            entity.Property(session => session.DeliveryMethod).HasMaxLength(30).IsRequired();
+            entity.Property(session => session.PaymentMethod).HasMaxLength(30).IsRequired();
         });
     }
 }

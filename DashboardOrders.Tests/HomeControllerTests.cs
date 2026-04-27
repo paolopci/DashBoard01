@@ -442,71 +442,89 @@ public class HomeControllerTests
     }
 
     [Fact]
-    public void CheckoutCart_QuandoCarrelloValido_AlloraCreaOrdineSvuotaCarrelloEReindirizzaAOrders()
+    public void CheckoutCart_QuandoCarrelloValido_AlloraAvviaCheckoutSenzaCreareOrdine()
     {
         // Arrange
         sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
-        dataService.GetCart("mario.rossi@example.com").Returns(new CartViewModel
-        {
-            Items =
-            [
-                new CartItemViewModel { ProductCode = "PRD-001", Quantity = 2, Stock = 5 },
-                new CartItemViewModel { ProductCode = "PRD-002", Quantity = 1, Stock = 3 }
-            ]
-        });
-        dataService.CreateOrder("mario.rossi@example.com", Arg.Any<IReadOnlyList<NewOrderItemViewModel>>()).Returns(true);
-        dataService.ClearCart("mario.rossi@example.com").Returns(true);
+        dataService.StartCheckout("mario.rossi@example.com").Returns(true);
 
         // Act
         var risultato = sut.CheckoutCart();
 
         // Assert
-        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Orders");
-        dataService.Received(1).CreateOrder("mario.rossi@example.com", Arg.Is<IReadOnlyList<NewOrderItemViewModel>>(items =>
-            items.Count == 2 &&
-            items[0].ProductCode == "PRD-001" &&
-            items[0].Quantity == 2 &&
-            items[1].ProductCode == "PRD-002" &&
-            items[1].Quantity == 1));
-        dataService.Received(1).ClearCart("mario.rossi@example.com");
-        sut.TempData["Toast.Success"].Should().Be("Ordine creato correttamente.");
-    }
-
-    [Fact]
-    public void CheckoutCart_QuandoCreazioneOrdineFallisce_AlloraNonSvuotaCarrello()
-    {
-        // Arrange
-        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
-        dataService.GetCart("mario.rossi@example.com").Returns(new CartViewModel
-        {
-            Items = [new CartItemViewModel { ProductCode = "PRD-001", Quantity = 2, Stock = 5 }]
-        });
-        dataService.CreateOrder("mario.rossi@example.com", Arg.Any<IReadOnlyList<NewOrderItemViewModel>>()).Returns(false);
-
-        // Act
-        var risultato = sut.CheckoutCart();
-
-        // Assert
-        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Cart");
-        dataService.DidNotReceive().ClearCart(Arg.Any<string?>());
-        sut.TempData["Toast.Error"].Should().Be("Ordine non creato. Verifica prodotto e quantita disponibile.");
-    }
-
-    [Fact]
-    public void CheckoutCart_QuandoCarrelloVuoto_AlloraNonCreaOrdine()
-    {
-        // Arrange
-        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
-        dataService.GetCart("mario.rossi@example.com").Returns(new CartViewModel());
-
-        // Act
-        var risultato = sut.CheckoutCart();
-
-        // Assert
-        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Cart");
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("CheckoutSummary");
+        dataService.Received(1).StartCheckout("mario.rossi@example.com");
         dataService.DidNotReceive().CreateOrder(Arg.Any<string?>(), Arg.Any<IReadOnlyList<NewOrderItemViewModel>>());
         dataService.DidNotReceive().ClearCart(Arg.Any<string?>());
-        sut.TempData["Toast.Error"].Should().Be("Il carrello e vuoto.");
+    }
+
+    [Fact]
+    public void CheckoutSummary_QuandoSessionePresente_AlloraMostraRiepilogo()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        var checkout = new CheckoutSessionViewModel
+        {
+            Cart = new CartViewModel(),
+            TotalItems = 1,
+            TotalAmount = 25m
+        };
+        dataService.GetCheckout("mario.rossi@example.com").Returns(checkout);
+
+        // Act
+        var risultato = sut.CheckoutSummary();
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(checkout);
+    }
+
+    [Fact]
+    public void CheckoutConfirm_Post_QuandoPagamentoRichiesto_AlloraReindirizzaAPayment()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        dataService.ConfirmCheckout("mario.rossi@example.com").Returns(new CheckoutConfirmResult
+        {
+            Success = true,
+            OrderId = 42,
+            RequiresPayment = true
+        });
+
+        // Act
+        var risultato = sut.CheckoutConfirmPost();
+
+        // Assert
+        var redirect = risultato.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be("CheckoutPayment");
+        redirect.RouteValues.Should().ContainKey("orderId").WhoseValue.Should().Be(42);
+    }
+
+    [Fact]
+    public void OrderDetails_QuandoClienteProprietario_AlloraMostraDettaglio()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        var dettaglio = new OrderDetailsViewModel { Order = new Order { Id = 42 } };
+        dataService.GetOrderDetails(42, "mario.rossi@example.com", false).Returns(dettaglio);
+
+        // Act
+        var risultato = sut.OrderDetails(42);
+
+        // Assert
+        risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(dettaglio);
+    }
+
+    [Fact]
+    public void OrderDetails_QuandoServizioNonRestituisceOrdine_AlloraNotFound()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+
+        // Act
+        var risultato = sut.OrderDetails(42);
+
+        // Assert
+        risultato.Should().BeOfType<NotFoundResult>();
     }
 
     private static ClaimsPrincipal CreateUser(string email, params string[] roles)
