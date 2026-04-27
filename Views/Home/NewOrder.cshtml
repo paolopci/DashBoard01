@@ -34,32 +34,7 @@
 
     <div asp-validation-summary="ModelOnly" class="px-6 pt-5 text-sm font-semibold text-rose-600"></div>
 
-    <div class="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-                <label for="SelectedProductName" class="mb-2 block text-sm font-semibold text-slate-700">Articolo</label>
-                <input id="SelectedProductName" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
-            </div>
-            <div>
-                <label for="SelectedProductPrice" class="mb-2 block text-sm font-semibold text-slate-700">Prezzo</label>
-                <input id="SelectedProductPrice" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
-            </div>
-            <div class="md:col-span-2">
-                <label for="SelectedProductDescription" class="mb-2 block text-sm font-semibold text-slate-700">Descrizione</label>
-                <textarea id="SelectedProductDescription" rows="3" readonly class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"></textarea>
-            </div>
-        </div>
-
-        <div class="grid min-h-[260px] grid-cols-[64px_minmax(0,1fr)] gap-4">
-            <div id="SelectedProductCarousel" class="flex flex-col gap-2 overflow-y-auto" aria-label="Immagini prodotto"></div>
-            <div class="flex aspect-square min-h-[260px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <img id="SelectedProductImage" alt="" class="hidden max-h-full w-full rounded-lg object-contain" />
-                <span id="SelectedProductImageFallback" class="text-center text-sm font-semibold text-slate-400">Image Product</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 gap-5 px-6 pb-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] md:items-end">
+    <div class="grid grid-cols-1 gap-5 px-6 py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] md:items-end">
         <div>
             <label for="CategoryCode" class="mb-2 block text-sm font-semibold text-slate-700">Category</label>
             <select id="CategoryCode" data-category-select class="w-full rounded-lg border border-amber-500 bg-white px-3 py-2 text-sm text-slate-700 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-200">
@@ -87,6 +62,31 @@
             <button type="submit" data-add-item disabled class="inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-600/20 transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
                 Add Articolo
             </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div>
+                <label for="SelectedProductName" class="mb-2 block text-sm font-semibold text-slate-700">Articolo</label>
+                <input id="SelectedProductName" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
+            </div>
+            <div>
+                <label for="SelectedProductPrice" class="mb-2 block text-sm font-semibold text-slate-700">Prezzo</label>
+                <input id="SelectedProductPrice" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
+            </div>
+            <div class="md:col-span-2">
+                <label for="SelectedProductDescription" class="mb-2 block text-sm font-semibold text-slate-700">Descrizione</label>
+                <textarea id="SelectedProductDescription" rows="3" readonly class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"></textarea>
+            </div>
+        </div>
+
+        <div class="grid min-h-[260px] grid-cols-[64px_minmax(0,1fr)] gap-4">
+            <div id="SelectedProductCarousel" class="flex flex-col gap-2 overflow-y-auto" aria-label="Immagini prodotto"></div>
+            <div class="flex aspect-square min-h-[260px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <img id="SelectedProductImage" alt="" class="hidden max-h-full w-full rounded-lg object-contain" />
+                <span id="SelectedProductImageFallback" class="text-center text-sm font-semibold text-slate-400">Image Product</span>
+            </div>
         </div>
     </div>
 </form>
