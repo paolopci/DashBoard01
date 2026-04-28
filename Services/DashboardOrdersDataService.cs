@@ -516,9 +516,9 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
     public List<string> GetItalianProvinces()
     {
-        return dbContext.ItalianPostalCodes
+        return dbContext.ItalianProvinces
             .AsNoTracking()
-            .Select(postalCode => postalCode.ProvinceName)
+            .Select(province => province.Name)
             .Distinct()
             .OrderBy(provinceName => provinceName)
             .ToList();
@@ -532,10 +532,10 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             return [];
         }
 
-        return dbContext.ItalianPostalCodes
+        return dbContext.ItalianMunicipalities
             .AsNoTracking()
-            .Where(postalCode => postalCode.ProvinceName == normalizedProvinceName)
-            .Select(postalCode => postalCode.CityName)
+            .Where(municipality => municipality.Province.Name == normalizedProvinceName)
+            .Select(municipality => municipality.Name)
             .Distinct()
             .OrderBy(cityName => cityName)
             .ToList();

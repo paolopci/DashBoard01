@@ -2,78 +2,75 @@
 
 ## Obiettivo
 
-Aggiornare la pagina `CheckoutAddresses` per gestire indirizzi italiani strutturati, lookup provincia/citta/CAP da database, validazione obbligatoria lato client/server e composizione retrocompatibile dei campi checkout esistenti.
+Sostituire i dati demo territoriali usati dal checkout con un dataset completo e verificabile basato su ISTAT per regioni, province/citta metropolitane e comuni italiani, mantenendo i CAP in una fonte separata e non derivata per supposizione.
 
 ## Problema/Contesto
 
-Il checkout multi-step esistente usa campi liberi per nome completo, telefono, indirizzo, citta, CAP e paese. La pagina deve invece guidare l'utente nella compilazione degli indirizzi di spedizione e fatturazione, limitando la spedizione all'Italia e automatizzando la scelta del CAP in base a provincia e citta.
+Il progetto contiene una tabella `ItalianPostalCodes` con dati demo minimi per province, citta e CAP. Questa tabella e sufficiente per il checkout dimostrativo, ma non rappresenta l'elenco completo e affidabile dei comuni italiani e non contiene i codici amministrativi ISTAT di regioni, province e comuni.
+
+ISTAT e fonte primaria per i codici delle unita amministrative territoriali, ma non pubblica i CAP postali. I CAP devono quindi restare separati e importati solo da una fonte distinta verificabile per licenza, formato e qualita.
 
 ## Scope
 
-- Rinominare visivamente il campo `Paese` in `Provincia (obbligatorio)` e mantenere `Italia` come paese implicito salvato nei campi country esistenti.
-- Aggiungere lookup `ItalianPostalCodes` con provincia, sigla provincia, citta e CAP.
-- Esporre lookup read-only per province, citta per provincia e CAP per provincia+citta.
-- Dividere nome completo in `Cognome` e `Nome`.
-- Dividere telefono in prefisso internazionale con bandiera e numero.
-- Dividere indirizzo in via/piazza/viale e numero civico.
-- Applicare la stessa logica a spedizione e fatturazione.
-- Copiare i dati di spedizione nella fatturazione quando `BillingSameAsShipping` e attivo.
-- Disabilitare `Salva e continua` finche i campi obbligatori visibili non sono valorizzati.
-- Aggiornare o aggiungere test automatici pertinenti.
-- Aggiungere script SQL idempotente per tabella lookup e seed demo.
+- Usare ISTAT come fonte primaria per regioni, province/citta metropolitane e comuni italiani.
+- Importare tutti i codici amministrativi disponibili nel dataset ISTAT corrente.
+- Introdurre tabelle normalizzate per `ItalianRegions`, `ItalianProvinces` e `ItalianMunicipalities`.
+- Conservare `ItalianPostalCodes` come tabella separata per CAP.
+- Aggiornare i lookup checkout per leggere province e citta dal dataset ISTAT.
+- Restituire CAP solo quando presenti in `ItalianPostalCodes` da fonte separata validata.
+- Creare un importer o script idempotente che scarica o legge il permalink ISTAT e valida il dataset prima dell'inserimento.
+- Sostituire solo i dati demo territoriali autorizzati, senza toccare ordini, prodotti, utenti, carrelli o storico.
+- Aggiungere test automatici su parsing/import, lookup e coerenza dei dati.
 
 ## Out of scope
 
-- Integrazione con API postali ufficiali o servizi esterni a runtime.
-- Accuratezza postale certificata da Poste Italiane.
-- Nuove librerie UI, JavaScript o pacchetti NuGet/npm.
-- Modifica distruttiva delle colonne checkout e ordine esistenti.
-- Refactoring esteso del checkout multi-step gia implementato.
-- Fatturazione fiscale reale.
+- Inventare CAP mancanti o completarli per supposizione.
+- Usare ISTAT come fonte dei CAP.
+- Acquistare database CAP commerciali.
+- Installare nuove librerie, SDK, CLI o tool.
+- Eliminare dati non territoriali.
+- Refactoring esteso del checkout non necessario all'import territoriale.
+- Validazione postale certificata a livello di via/civico.
 
 ## Requisiti funzionali
 
-- La select Provincia mostra province italiane ordinate alfabeticamente.
-- La select Citta resta disabilitata finche non viene scelta una provincia.
-- Dopo la selezione della provincia, la select Citta mostra solo le citta della provincia selezionata.
-- Dopo la selezione della citta, il CAP viene valorizzato automaticamente se esiste un solo valore.
-- Se una citta ha piu CAP, il CAP viene selezionato da una select con tutti i valori disponibili.
-- Pesaro deve supportare almeno i CAP `61121` e `61122` nel seed demo.
-- I campi obbligatori devono mostrare la dicitura `(obbligatorio)`.
-- `Salva e continua` deve essere disabilitato quando manca almeno un campo obbligatorio visibile.
-- Il telefono deve salvare prefisso e numero in modo compatibile con il campo `ShippingPhone` esistente.
-- Nome e cognome devono salvare un valore compatibile con `ShippingFullName`.
-- Via e numero civico devono salvare un valore compatibile con `ShippingAddressLine`.
-- Se `BillingSameAsShipping` e attivo, i campi fatturazione devono essere uguali a quelli spedizione.
-- Se `BillingSameAsShipping` e disattivo, i campi fatturazione obbligatori devono essere compilati e validati.
+- L'import ISTAT deve validare che il dataset contenga 20 regioni e 7.894 comuni per l'aggiornamento ISTAT al 21 febbraio 2026.
+- Ogni regione deve avere codice e denominazione.
+- Ogni provincia/citta metropolitana deve avere codice ISTAT, sigla quando disponibile e denominazione.
+- Ogni comune deve avere codice ISTAT, denominazione e collegamento a provincia e regione.
+- I comuni duplicati per codice ISTAT devono bloccare l'import.
+- Le righe senza codici amministrativi obbligatori devono bloccare l'import o essere riportate come errore, senza inserimento parziale non verificato.
+- La select Provincia del checkout deve usare dati ISTAT ordinati alfabeticamente.
+- La select Citta deve mostrare solo comuni appartenenti alla provincia selezionata.
+- Il lookup CAP deve continuare a leggere solo da `ItalianPostalCodes`.
+- Se non esistono CAP validati per un comune, il sistema non deve generarli automaticamente.
 
 ## Vincoli tecnici
 
-- Usare ASP.NET Core MVC e Razor Views gia presenti.
-- Usare EF Core e `DashboardOrdersDbContext` gia presenti.
-- Non installare nuove librerie, tool, package, SDK, CLI o dipendenze.
-- Non eliminare file o dati senza consenso esplicito.
-- Non introdurre breaking change sulle tabelle checkout e ordine esistenti.
-- Usare Tailwind gia compilato nel progetto; eseguire `npm run build:css` solo se necessario per nuove classi non presenti.
-- Usare script SQL idempotente invece di migration EF completa per il seed lookup.
+- Usare ASP.NET Core MVC, EF Core e SQL Server gia presenti.
+- Non installare nuove dipendenze NuGet o npm.
+- Preferire codice C# interno o script SQL idempotenti nel repository.
+- Non modificare configurazioni sensibili senza esplicitare l'impatto.
+- Non introdurre breaking change su checkout, ordini, utenti o prodotti.
+- Mantenere `ItalianPostalCodes` compatibile con i test e il flusso CAP esistente.
+- Usare `dotnet-task-decomposition`: una fase alla volta, validata e documentata in `docs/PLAN.md`.
 
 ## Acceptance criteria
 
-- `CheckoutAddresses` mostra campi strutturati per spedizione e fatturazione.
-- Provincia precede Citta in entrambe le sezioni.
-- Citta e CAP dipendono dalla provincia selezionata.
-- CAP singolo viene selezionato automaticamente.
-- CAP multiplo rimane selezionabile.
-- `Salva e continua` resta disabilitato finche i campi obbligatori visibili non sono compilati.
-- `BillingSameAsShipping` copia i dati spedizione nei dati fatturazione.
-- I dati salvati restano compatibili con `CheckoutSessionEntity` e `OrderCheckoutDetailsEntity`.
-- I test service/controller pertinenti passano.
+- Esistono tabelle normalizzate per regioni, province e comuni ISTAT.
+- L'import ISTAT e idempotente e non duplica righe.
+- Il dataset ISTAT importato supera i controlli di completezza e integrita referenziale.
+- I dati demo territoriali precedenti non sono piu la fonte primaria per province e citta.
+- I lookup checkout usano province e comuni ISTAT.
+- I CAP restano separati e vengono restituiti solo se presenti da fonte validata.
+- I test pertinenti passano.
 - La solution compila.
+- Il database locale viene popolato e verificato con query di conteggio e coerenza.
 
 ## Definizione di completamento
 
-- `docs/PRD.md` e `docs/PLAN.md` sono aggiornati e coerenti con la skill `dotnet-task-decomposition`.
-- I test RED pertinenti sono stati verificati come fallenti prima dell'implementazione.
-- Le modifiche backend, frontend e SQL sono implementate.
-- Le validazioni documentate in `docs/PLAN.md` sono eseguite con esito positivo oppure con rischio residuo dichiarato.
-- Eventuali test non eseguiti sono dichiarati con motivo.
+- `docs/PRD.md` e `docs/PLAN.md` sono aggiornati per l'import territoriale ISTAT + CAP separati.
+- Schema, importer, lookup e test sono implementati.
+- L'import nel database e stato eseguito o, se bloccato, il motivo tecnico e documentato con precisione.
+- I controlli finali su conteggi, orfani e campioni noti sono eseguiti.
+- `dotnet test DashBoard01.sln` e `dotnet build DashBoard01.sln` sono eseguiti con esito documentato.

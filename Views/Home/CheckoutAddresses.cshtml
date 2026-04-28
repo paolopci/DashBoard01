@@ -3,12 +3,13 @@
     ViewData["Title"] = "Spedizione e fatturazione";
     var fieldClass = "rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-500";
     var labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600";
-    var requiredText = " (obbligatorio)";
+    var requiredMark = Html.Raw("<span class=\"text-red-600\" aria-hidden=\"true\"> *</span><span class=\"sr-only\"> obbligatorio</span>");
 }
 
 <div class="mb-6">
     <h2 class="text-3xl font-bold text-slate-900">Spedizione e fatturazione</h2>
     <p class="mt-1 text-sm text-slate-500">Dati usati solo per simulare il checkout. Non viene generata fattura reale.</p>
+    <p class="mt-3 text-xs font-medium text-slate-500"><span class="text-red-600" aria-hidden="true">*</span> Campi obbligatori</p>
 </div>
 
 <form method="post" asp-controller="Home" asp-action="CheckoutAddresses" class="space-y-6" data-checkout-address-form>
@@ -19,15 +20,15 @@
 
         <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-                <label asp-for="ShippingLastName" class="@labelClass">Cognome@(requiredText)</label>
+                <label asp-for="ShippingLastName" class="@labelClass">Cognome @(requiredMark)</label>
                 <input asp-for="ShippingLastName" class="@fieldClass w-full" autocomplete="family-name" data-required-field />
             </div>
             <div>
-                <label asp-for="ShippingFirstName" class="@labelClass">Nome@(requiredText)</label>
+                <label asp-for="ShippingFirstName" class="@labelClass">Nome @(requiredMark)</label>
                 <input asp-for="ShippingFirstName" class="@fieldClass w-full" autocomplete="given-name" data-required-field />
             </div>
             <div class="md:col-span-2">
-                <label class="@labelClass">Telefono@(requiredText)</label>
+                <label class="@labelClass">Telefono @(requiredMark)</label>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-[12rem_1fr]">
                     <select asp-for="ShippingPhonePrefix" class="@fieldClass w-full" data-required-field>
                         <option value="">Prefisso</option>
@@ -37,15 +38,15 @@
                 </div>
             </div>
             <div>
-                <label asp-for="ShippingStreet" class="@labelClass">Via, viale, piazza@(requiredText)</label>
+                <label asp-for="ShippingStreet" class="@labelClass">Via, viale, piazza @(requiredMark)</label>
                 <input asp-for="ShippingStreet" class="@fieldClass w-full" autocomplete="address-line1" data-required-field />
             </div>
             <div>
-                <label asp-for="ShippingStreetNumber" class="@labelClass">Numero civico@(requiredText)</label>
+                <label asp-for="ShippingStreetNumber" class="@labelClass">Numero civico @(requiredMark)</label>
                 <input asp-for="ShippingStreetNumber" class="@fieldClass w-full" autocomplete="address-line2" data-required-field />
             </div>
             <div>
-                <label asp-for="ShippingProvince" class="@labelClass">Provincia@(requiredText)</label>
+                <label asp-for="ShippingProvince" class="@labelClass">Provincia @(requiredMark)</label>
                 <select asp-for="ShippingProvince" class="@fieldClass w-full" data-province-select data-required-field>
                     <option value="">Seleziona provincia</option>
                     @if (!string.IsNullOrWhiteSpace(Model.ShippingProvince))
@@ -55,7 +56,7 @@
                 </select>
             </div>
             <div>
-                <label asp-for="ShippingCity" class="@labelClass">Città@(requiredText)</label>
+                <label asp-for="ShippingCity" class="@labelClass">Città @(requiredMark)</label>
                 <select asp-for="ShippingCity" class="@fieldClass w-full" data-city-select data-required-field disabled>
                     <option value="">Seleziona città</option>
                     @if (!string.IsNullOrWhiteSpace(Model.ShippingCity))
@@ -65,7 +66,7 @@
                 </select>
             </div>
             <div>
-                <label asp-for="ShippingPostalCode" class="@labelClass">CAP@(requiredText)</label>
+                <label asp-for="ShippingPostalCode" class="@labelClass">CAP @(requiredMark)</label>
                 <select asp-for="ShippingPostalCode" class="@fieldClass w-full" data-postal-code-select data-required-field disabled>
                     <option value="">Seleziona CAP</option>
                     @if (!string.IsNullOrWhiteSpace(Model.ShippingPostalCode))
@@ -90,11 +91,11 @@
 
         <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2" data-billing-fields>
             <div>
-                <label asp-for="BillingLastName" class="@labelClass">Cognome fatturazione@(requiredText)</label>
+                <label asp-for="BillingLastName" class="@labelClass">Cognome fatturazione @(requiredMark)</label>
                 <input asp-for="BillingLastName" class="@fieldClass w-full" data-billing-required-field />
             </div>
             <div>
-                <label asp-for="BillingFirstName" class="@labelClass">Nome fatturazione@(requiredText)</label>
+                <label asp-for="BillingFirstName" class="@labelClass">Nome fatturazione @(requiredMark)</label>
                 <input asp-for="BillingFirstName" class="@fieldClass w-full" data-billing-required-field />
             </div>
             <div class="md:col-span-2">
@@ -102,15 +103,15 @@
                 <input asp-for="BillingVatNumber" class="@fieldClass w-full" />
             </div>
             <div>
-                <label asp-for="BillingStreet" class="@labelClass">Via, viale, piazza fatturazione@(requiredText)</label>
+                <label asp-for="BillingStreet" class="@labelClass">Via, viale, piazza fatturazione @(requiredMark)</label>
                 <input asp-for="BillingStreet" class="@fieldClass w-full" data-billing-required-field />
             </div>
             <div>
-                <label asp-for="BillingStreetNumber" class="@labelClass">Numero civico@(requiredText)</label>
+                <label asp-for="BillingStreetNumber" class="@labelClass">Numero civico @(requiredMark)</label>
                 <input asp-for="BillingStreetNumber" class="@fieldClass w-full" data-billing-required-field />
             </div>
             <div>
-                <label asp-for="BillingProvince" class="@labelClass">Provincia@(requiredText)</label>
+                <label asp-for="BillingProvince" class="@labelClass">Provincia @(requiredMark)</label>
                 <select asp-for="BillingProvince" class="@fieldClass w-full" data-province-select data-billing-required-field>
                     <option value="">Seleziona provincia</option>
                     @if (!string.IsNullOrWhiteSpace(Model.BillingProvince))
@@ -120,7 +121,7 @@
                 </select>
             </div>
             <div>
-                <label asp-for="BillingCity" class="@labelClass">Città@(requiredText)</label>
+                <label asp-for="BillingCity" class="@labelClass">Città @(requiredMark)</label>
                 <select asp-for="BillingCity" class="@fieldClass w-full" data-city-select data-billing-required-field disabled>
                     <option value="">Seleziona città</option>
                     @if (!string.IsNullOrWhiteSpace(Model.BillingCity))
@@ -130,7 +131,7 @@
                 </select>
             </div>
             <div>
-                <label asp-for="BillingPostalCode" class="@labelClass">CAP@(requiredText)</label>
+                <label asp-for="BillingPostalCode" class="@labelClass">CAP @(requiredMark)</label>
                 <select asp-for="BillingPostalCode" class="@fieldClass w-full" data-postal-code-select data-billing-required-field disabled>
                     <option value="">Seleziona CAP</option>
                     @if (!string.IsNullOrWhiteSpace(Model.BillingPostalCode))
@@ -294,6 +295,19 @@
                 composeHiddenFields(billing);
             };
 
+            const syncBillingLocationFromShipping = async () => {
+                if (!billingSame.checked) {
+                    return;
+                }
+
+                const billing = form.querySelector('[data-address-section="billing"]');
+                copyShippingToBilling();
+                await loadCities(billing);
+                await loadPostalCodes(billing);
+                copyShippingToBilling();
+                composeHiddenFields(billing);
+            };
+
             const setBillingState = () => {
                 const sameAsShipping = billingSame.checked;
                 billingFields.querySelectorAll('input, select').forEach((field) => {
@@ -323,6 +337,7 @@
             };
 
             sections.forEach((section) => {
+                const isShipping = section.dataset.addressSection === 'shipping';
                 const citySelect = section.querySelector('[data-city-select]');
                 const postalCodeSelect = section.querySelector('[data-postal-code-select]');
                 citySelect.dataset.selectedValue = citySelect.value;
@@ -331,15 +346,37 @@
                 section.querySelector('[data-province-select]').addEventListener('change', async () => {
                     await loadCities(section);
                     await loadPostalCodes(section);
+                    if (isShipping) {
+                        await syncBillingLocationFromShipping();
+                    }
                 });
                 citySelect.addEventListener('change', async () => {
                     await loadPostalCodes(section);
+                    if (isShipping) {
+                        await syncBillingLocationFromShipping();
+                    }
                 });
-                section.addEventListener('input', updateState);
-                section.addEventListener('change', updateState);
+                section.addEventListener('input', () => {
+                    updateState();
+                    if (isShipping && billingSame.checked) {
+                        copyShippingToBilling();
+                        updateState();
+                    }
+                });
+                section.addEventListener('change', () => {
+                    updateState();
+                    if (isShipping && billingSame.checked) {
+                        copyShippingToBilling();
+                        updateState();
+                    }
+                });
             });
 
-            billingSame.addEventListener('change', updateState);
+            billingSame.addEventListener('change', async () => {
+                updateState();
+                await syncBillingLocationFromShipping();
+                updateState();
+            });
             form.addEventListener('submit', () => {
                 sections.forEach(composeHiddenFields);
                 if (billingSame.checked) {
@@ -355,6 +392,7 @@
                     await loadCities(section);
                     await loadPostalCodes(section);
                 }
+                await syncBillingLocationFromShipping();
                 updateState();
             });
         })();

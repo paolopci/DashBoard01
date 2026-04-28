@@ -17,6 +17,9 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<CheckoutSessionEntity> CheckoutSessions => Set<CheckoutSessionEntity>();
     public DbSet<OrderCheckoutDetailsEntity> OrderCheckoutDetails => Set<OrderCheckoutDetailsEntity>();
     public DbSet<ItalianPostalCodeEntity> ItalianPostalCodes => Set<ItalianPostalCodeEntity>();
+    public DbSet<ItalianRegionEntity> ItalianRegions => Set<ItalianRegionEntity>();
+    public DbSet<ItalianProvinceEntity> ItalianProvinces => Set<ItalianProvinceEntity>();
+    public DbSet<ItalianMunicipalityEntity> ItalianMunicipalities => Set<ItalianMunicipalityEntity>();
     public DbSet<ProductCarouselImageEntity> ProductCarouselImages => Set<ProductCarouselImageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -246,6 +249,63 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
             entity.Property(postalCode => postalCode.ProvinceCode).HasMaxLength(4).IsRequired();
             entity.Property(postalCode => postalCode.CityName).HasMaxLength(100).IsRequired();
             entity.Property(postalCode => postalCode.PostalCode).HasMaxLength(10).IsRequired();
+        });
+
+        modelBuilder.Entity<ItalianRegionEntity>(entity =>
+        {
+            entity.ToTable("ItalianRegions");
+            entity.HasKey(region => region.Code);
+            entity.HasIndex(region => region.Name).IsUnique();
+            entity.Property(region => region.Code).HasMaxLength(2).IsRequired();
+            entity.Property(region => region.Name).HasMaxLength(100).IsRequired();
+            entity.Property(region => region.Nuts1Code).HasMaxLength(5);
+            entity.Property(region => region.Nuts2Code).HasMaxLength(5);
+        });
+
+        modelBuilder.Entity<ItalianProvinceEntity>(entity =>
+        {
+            entity.ToTable("ItalianProvinces");
+            entity.HasKey(province => province.Code);
+            entity.HasIndex(province => province.Name);
+            entity.HasIndex(province => province.Abbreviation);
+            entity.Property(province => province.Code).HasMaxLength(3).IsRequired();
+            entity.Property(province => province.RegionCode).HasMaxLength(2).IsRequired();
+            entity.Property(province => province.Name).HasMaxLength(100).IsRequired();
+            entity.Property(province => province.Abbreviation).HasMaxLength(4);
+            entity.Property(province => province.Nuts3Code).HasMaxLength(5);
+
+            entity
+                .HasOne(province => province.Region)
+                .WithMany(region => region.Provinces)
+                .HasForeignKey(province => province.RegionCode)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ItalianMunicipalityEntity>(entity =>
+        {
+            entity.ToTable("ItalianMunicipalities");
+            entity.HasKey(municipality => municipality.Code);
+            entity.HasIndex(municipality => municipality.Name);
+            entity.HasIndex(municipality => municipality.ProvinceCode);
+            entity.HasIndex(municipality => new { municipality.ProvinceCode, municipality.Name });
+            entity.Property(municipality => municipality.Code).HasMaxLength(6).IsRequired();
+            entity.Property(municipality => municipality.ProvinceCode).HasMaxLength(3).IsRequired();
+            entity.Property(municipality => municipality.RegionCode).HasMaxLength(2).IsRequired();
+            entity.Property(municipality => municipality.Name).HasMaxLength(100).IsRequired();
+            entity.Property(municipality => municipality.CadastralCode).HasMaxLength(4);
+            entity.Property(municipality => municipality.IsProvinceCapital).IsRequired();
+
+            entity
+                .HasOne(municipality => municipality.Province)
+                .WithMany(province => province.Municipalities)
+                .HasForeignKey(municipality => municipality.ProvinceCode)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(municipality => municipality.Region)
+                .WithMany(region => region.Municipalities)
+                .HasForeignKey(municipality => municipality.RegionCode)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

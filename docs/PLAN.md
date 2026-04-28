@@ -14,18 +14,17 @@
 - [x] Completare Fase 7.
 - [ ] Archiviare PRD/PLAN in `docs/History` a sviluppo complessivo concluso.
 
-## Fase 1 - Normalizzazione documentale checkout indirizzi Italia
+## Fase 1 - Normalizzazione documentale import ISTAT
 Stato: completed
 Scope finale: in
 Tipo fase: analisi
 Obiettivo:
-Allineare `docs/PRD.md` e `docs/PLAN.md` al template obbligatorio della skill e al piano checkout indirizzi Italia.
+Allineare `docs/PRD.md` e `docs/PLAN.md` al nuovo obiettivo: import completo e verificabile dei dati amministrativi ISTAT, con CAP mantenuti in fonte separata.
 Attivita:
-- [x] Rileggere `docs/PRD.md` e mappare i requisiti checkout indirizzi Italia nel template obbligatorio.
-- [x] Rileggere `docs/PLAN.md` e sostituire il piano legacy con fasi conformi alla skill.
-- [x] Definire una sola fase corrente `in_progress` per la normalizzazione documentale.
-- [x] Inserire checklist generale e campi obbligatori per ogni fase.
-- [x] Validare che PRD/PLAN rispettino template, stati e scope.
+- [x] Rileggere richiesta, repository e vincoli locali.
+- [x] Aggiornare `docs/PRD.md` con obiettivo, scope, vincoli e acceptance criteria.
+- [x] Aggiornare `docs/PLAN.md` con fasi operative conformi a `dotnet-task-decomposition`.
+- [x] Validare staticamente coerenza PRD/PLAN e fase successiva.
 File o aree coinvolte:
 - `docs/PRD.md`
 - `docs/PLAN.md`
@@ -34,205 +33,215 @@ Frontend impact: no
 Dipendenze:
 nessuna
 Validazioni:
-ispezione statica documentale completata: `docs/PRD.md` contiene tutte le sezioni obbligatorie; `docs/PLAN.md` contiene checklist generale, fasi con campi obbligatori e una sola fase `in_progress` prima della chiusura.
+Ispezione statica documentale completata: `docs/PRD.md` contiene il nuovo perimetro ISTAT + CAP separati; `docs/PLAN.md` contiene checklist generale e fasi operative coerenti con il piano approvato.
 Definition of done:
-`docs/PRD.md` e `docs/PLAN.md` rispettano i template obbligatori e identificano la fase successiva eseguibile.
+Documenti aggiornati e coerenti con il piano approvato dall'utente.
 Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Fase documentale obbligatoria prima di riprendere l'implementazione.
+Nessuna modifica applicativa o dati database eseguita in questa fase.
 
-## Fase 2 - Test RED per lookup e composizione indirizzi
+## Fase 2 - Schema territoriale normalizzato
 Stato: completed
 Scope finale: in
-Tipo fase: verifica
+Tipo fase: implementazione
 Obiettivo:
-Completare e verificare test fallenti per lookup province/citta/CAP, composizione campi checkout e action JSON.
+Aggiungere entity, DbSet e configurazione EF Core per regioni, province e comuni italiani normalizzati.
 Attivita:
-- [x] Completare test service per province ordinate, citta filtrate e CAP multipli.
-- [x] Completare test service per composizione dei campi strutturati e fatturazione uguale alla spedizione.
-- [x] Aggiungere test controller per endpoint JSON lookup.
-- [x] Eseguire test mirati e verificare fallimento atteso.
+- [x] Creare entity `ItalianRegionEntity`, `ItalianProvinceEntity`, `ItalianMunicipalityEntity`.
+- [x] Registrare DbSet e mapping in `DashboardOrdersDbContext`.
+- [x] Aggiungere indici e vincoli coerenti con codici ISTAT e relazioni.
+- [x] Creare script SQL idempotente coerente con lo stile esistente.
+- [x] Aggiornare test di schema/service minimi.
 File o aree coinvolte:
-- `DashboardOrders.Tests/CheckoutDataServiceTests.cs`
-- `DashboardOrders.Tests/HomeControllerTests.cs`
+- `Data/Entities/ItalianRegionEntity.cs`
+- `Data/Entities/ItalianProvinceEntity.cs`
+- `Data/Entities/ItalianMunicipalityEntity.cs`
+- `Data/DashboardOrdersDbContext.cs`
+- `scripts/2026-04-28-add-italian-administrative-territories.sql`
+- `DashboardOrders.Tests/ItalianAdministrativeTerritoryMappingTests.cs`
 Backend impact: si
 Frontend impact: no
 Dipendenze:
 Fase 1 completed
 Validazioni:
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-red\`: fallimento RED atteso per simboli mancanti `ItalianPostalCodeEntity`, `ItalianPostalCodes`, metodi lookup service/controller e proprieta form-only del view model.
+`dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~ItalianAdministrativeTerritoryMappingTests"`: superato, 2 test passati.
+`dotnet build DashBoard01.sln`: superato, 0 warning, 0 errori.
 Definition of done:
-I test RED compilano quanto possibile e falliscono per funzionalita mancanti coerenti con il piano.
-Tracer Bullet: vietata
+Schema EF e SQL per dati territoriali normalizzati sono compilabili e verificati.
+Tracer Bullet: obbligatoria
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-I test service sono gia stati avviati prima della normalizzazione del piano.
+`ItalianPostalCodes` resta separata e invariata. Nessun import dati e nessuna modifica al database reale eseguita in questa fase.
 
-## Fase 3 - Lookup backend ItalianPostalCodes
+## Fase 3 - Analisi dataset e contratto importer
 Stato: completed
 Scope finale: in
-Tipo fase: implementazione
+Tipo fase: analisi
 Obiettivo:
-Implementare entity, DbContext, service e action JSON per lookup province/citta/CAP.
+Identificare con certezza il dataset ISTAT corretto, le colonne disponibili e il mapping minimo verso regioni, province e comuni.
 Attivita:
-- [x] Aggiungere `ItalianPostalCodeEntity`.
-- [x] Registrare `ItalianPostalCodes` in `DashboardOrdersDbContext`.
-- [x] Aggiungere metodi lookup a `IDashboardOrdersDataService` e `DashboardOrdersDataService`.
-- [x] Aggiungere action JSON in `HomeController`.
-- [x] Eseguire test mirati e portarli a verde.
+- [x] Recuperare il permalink ISTAT `Elenco-comuni-italiani.xlsx`.
+- [x] Verificare aggiornamento, numero comuni atteso e colonne disponibili.
+- [x] Definire mapping da colonne ISTAT a entity normalizzate.
+- [x] Verificare se una fonte CAP gratuita separata e utilizzabile senza introdurre dati non validati.
+- [x] Documentare eventuali blocchi o assunzioni tecniche prima dell'implementazione.
 File o aree coinvolte:
-- `Data/Entities/ItalianPostalCodeEntity.cs`
-- `Data/DashboardOrdersDbContext.cs`
-- `Services/IDashboardOrdersDataService.cs`
-- `Services/DashboardOrdersDataService.cs`
-- `Controllers/HomeController.cs`
-- `Models/CheckoutViewModels.cs`
+- fonte ISTAT esterna
+- eventuale fonte CAP separata
+- `docs/PLAN.md`
 Backend impact: si
 Frontend impact: no
 Dipendenze:
 Fase 2 completed
 Validazioni:
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~GetItalian|FullyQualifiedName~Italian" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-lookup\`: superato, 9 test passati.
-`dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-lookup-build\`: superato, 0 warning, 0 errori.
+Download verificato del permalink ISTAT `https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.xlsx` in `tmp/istat/Elenco-comuni-italiani.xlsx`.
+Ispezione OpenXML del foglio `CODICI al 21_02_2026`: 7.894 righe dati, 27 colonne, 20 regioni, 110 unita territoriali sovracomunali, 0 codici comune duplicati, 0 righe con codici obbligatori mancanti.
+Campioni verificati: `Roma` = `058091`, `Milano` = `015146`, `Pesaro` = `041044`, `Castegnero Nanto` = `024129`; assetto Sardegna presente con codici UTS `113`, `114`, `115`, `116`, `117`, `119`, `312`, `318`.
+Fonte CAP separata Garda Informatica scaricata in `tmp/cap/gi_db_comuni.zip`: licenza MIT nel `README.txt`, tabella `csv/gi_cap.csv` con colonne `codice_istat;cap`, 8.458 coppie valide, 0 duplicati codice-CAP, 7.895 codici comune con CAP; unico codice non presente nel dataset ISTAT: `999999`, da scartare in import.
 Definition of done:
-Gli endpoint e i metodi lookup restituiscono province, citta e CAP ordinati e filtrati.
-Tracer Bullet: obbligatoria
+Dataset e mapping sono identificati senza ambiguita, oppure il blocco e documentato con dettaglio.
+Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Tracer Bullet minima: richiesta JSON province/citta/CAP fino a query EF reale. Aggiunte proprieta form-only passive in `CheckoutAddressesViewModel` per permettere la compilazione dei test RED della fase successiva; la logica di composizione resta in Fase 4.
+Mapping ISTAT confermato: `ItalianRegions.Code` = `Codice Regione`, `Name` = `Denominazione Regione`, `Nuts1Code` = `Codice NUTS1 2024`, `Nuts2Code` = `Codice NUTS2 2024`; `ItalianProvinces.Code` = `Codice dell'Unita territoriale sovracomunale`, `RegionCode` = `Codice Regione`, `Name` = `Denominazione dell'Unita territoriale sovracomunale`, `Abbreviation` = `Sigla automobilistica`, `Nuts3Code` = `Codice NUTS3 2024`; `ItalianMunicipalities.Code` = `Codice Comune formato alfanumerico`, `ProvinceCode` = `Codice dell'Unita territoriale sovracomunale`, `RegionCode` = `Codice Regione`, `Name` = `Denominazione in italiano`, `CadastralCode` = `Codice Catastale del Comune`, `IsProvinceCapital` = `Flag Comune capoluogo`.
+Non sono stati inseriti dati nel database in questa fase.
 
-## Fase 4 - Campi composti e salvataggio checkout
+## Fase 4 - Importer ISTAT idempotente
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Aggiornare view model e service per comporre nome, telefono, indirizzo e paese implicito Italia senza breaking change sulle colonne esistenti.
+Implementare import idempotente del dataset ISTAT con validazione preventiva e sostituzione controllata dei dati territoriali.
 Attivita:
-- [x] Aggiungere proprieta form-only al view model checkout.
-- [x] Popolare i campi form-only quando si ricarica una sessione esistente.
-- [x] Comporre `ShippingFullName`, `ShippingPhone`, `ShippingAddressLine` e country al salvataggio.
-- [x] Applicare la stessa logica alla fatturazione.
-- [x] Eseguire test mirati e portarli a verde.
+- [x] Implementare parser/importer per file ISTAT.
+- [x] Validare colonne obbligatorie, 20 regioni, 7.894 comuni e duplicati.
+- [x] Inserire regioni, province e comuni in modo idempotente.
+- [x] Evitare inserimenti parziali se la validazione fallisce.
+- [x] Aggiungere test su parsing/import e casi di errore.
 File o aree coinvolte:
-- `Models/CheckoutViewModels.cs`
-- `Services/DashboardOrdersDataService.cs`
-- `Controllers/HomeController.cs`
-- `DashboardOrders.Tests/CheckoutDataServiceTests.cs`
+- `Services/ItalianTerritoryImporter.cs`
+- `Services/ItalianTerritoryImportOptions.cs`
+- `Services/ItalianTerritoryImportResult.cs`
+- `Services/ItalianTerritoryImportException.cs`
+- `Data/`
+- `Program.cs`
+- `DashboardOrders.Tests/ItalianTerritoryImporterTests.cs`
 Backend impact: si
 Frontend impact: no
 Dipendenze:
 Fase 3 completed
 Validazioni:
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-compose\`: superato, 10 test passati.
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-compose-targeted\`: superato, 47 test passati.
+`dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~ItalianTerritoryImporterTests|FullyQualifiedName~ItalianAdministrativeTerritoryMappingTests"`: superato, 5 test passati.
+`dotnet build DashBoard01.sln`: superato, 0 warning, 0 errori.
 Definition of done:
-Il salvataggio produce dati compatibili con le entity checkout esistenti e copia la fatturazione quando richiesto.
+L'importer carica il dataset ISTAT completo o fallisce senza inserimento parziale quando il dataset non e valido.
 Tracer Bullet: obbligatoria
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Non modificare schema delle tabelle checkout esistenti per i campi composti.
+Importer eseguibile da CLI con `--import-italian-territories --istat-territories-xlsx <path> --italian-postal-codes-csv <path>`. L'import sul database reale non e stato eseguito in questa fase.
 
-## Fase 5 - UI Razor e validazione client CheckoutAddresses
+## Fase 5 - Lookup checkout da ISTAT e CAP separati
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Aggiornare la pagina `CheckoutAddresses` con campi strutturati, select dinamiche e bottone disabilitato finche i campi obbligatori non sono validi.
+Aggiornare i lookup checkout affinche province e citta arrivino dalle tabelle ISTAT e i CAP restino separati.
 Attivita:
-- [x] Sostituire input liberi con campi strutturati e label `(obbligatorio)`.
-- [x] Implementare select provincia, citta e CAP per spedizione.
-- [x] Implementare la stessa logica per fatturazione.
-- [x] Gestire `BillingSameAsShipping` copiando e disabilitando i campi fatturazione.
-- [x] Gestire validazione client e stato del bottone `Salva e continua`.
-- [x] Verificare markup e compatibilita con Tailwind esistente.
+- [x] Aggiornare `GetItalianProvinces` per leggere da `ItalianProvinces`.
+- [x] Aggiornare `GetItalianCities` per leggere da `ItalianMunicipalities`.
+- [x] Mantenere `GetItalianPostalCodes` su `ItalianPostalCodes`.
+- [x] Aggiornare test service/controller.
+- [x] Verificare compatibilita Razor/JavaScript checkout.
 File o aree coinvolte:
+- `Services/DashboardOrdersDataService.cs`
+- `Services/IDashboardOrdersDataService.cs`
+- `Controllers/HomeController.cs`
 - `Views/Home/CheckoutAddresses.cshtml`
-Backend impact: no
+- `DashboardOrders.Tests/`
+Backend impact: si
 Frontend impact: si
 Dipendenze:
 Fase 4 completed
 Validazioni:
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-ui-targeted-2\`: superato, 47 test passati.
-`dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-ui-build\`: superato, 0 warning, 0 errori.
-Primo tentativo build parallelo ai test fallito per lock temporaneo su `DashboardOrders.dll`; rilancio sequenziale superato.
+`dotnet test DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests"`: superato, 47 test passati.
+`dotnet build DashBoard01.sln`: superato, 0 warning, 0 errori.
 Definition of done:
-La pagina espone il flusso richiesto e invia dati coerenti con il view model aggiornato.
+Il checkout usa dati ISTAT per province/citta e CAP separati senza regressioni note.
 Tracer Bullet: obbligatoria
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Non introdurre librerie JavaScript.
+Non generare CAP mancanti.
 
-## Fase 6 - Script SQL seed e verifica finale
+## Fase 6 - Import database e controlli SQL
 Stato: completed
 Scope finale: in
 Tipo fase: verifica
 Obiettivo:
-Aggiungere script SQL idempotente per lookup demo e verificare test/build/flusso minimo.
+Eseguire l'import sul database locale e verificare completezza, correttezza e coerenza referenziale.
 Attivita:
-- [x] Creare script SQL idempotente `ItalianPostalCodes`.
-- [x] Includere almeno provincia/citta/CAP necessari ai test, incluso Pesaro `61121` e `61122`.
-- [x] Eseguire test pertinenti.
-- [x] Eseguire build della solution.
-- [x] Aggiornare `docs/PLAN.md` con validazioni finali.
+- [x] Eseguire importer o script su database locale configurato.
+- [x] Verificare conteggio regioni, province e comuni.
+- [x] Verificare assenza di comuni/province orfani.
+- [x] Verificare campioni noti: `Roma`, `Milano`, `Pesaro` e comuni sardi ricodificati 2026.
+- [x] Documentare esito e blocchi eventuali.
 File o aree coinvolte:
-- `scripts/2026-04-27-add-italian-postal-codes.sql`
+- database locale SQL Server
 - `docs/PLAN.md`
 Backend impact: si
 Frontend impact: no
 Dipendenze:
 Fase 5 completed
 Validazioni:
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-sql-targeted\`: superato, 47 test passati.
-`dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-sql-build\`: superato, 0 warning, 0 errori.
+`dotnet run --project .\DashboardOrders.csproj -- --import-italian-territories --istat-territories-xlsx tmp\istat\Elenco-comuni-italiani.xlsx --italian-postal-codes-csv tmp\cap\zip\csv\gi_cap.csv`: superato dopo correzione della transazione EF Core con execution strategy SQL Server.
+`dotnet run --project .\DashboardOrders.csproj -- --verify-italian-territories`: superato; regioni 20, province/citta metropolitane/UTS 110, comuni 7.894, CAP importati 8.457, comuni orfani 0, province orfane 0. Campioni verificati: `Roma` `058091`, `Milano` `015146`, `Pesaro` `041044`, `Castegnero Nanto` `024129`; assetto Sardegna 2026 con 8 UTS attese e 377 comuni.
 Definition of done:
-Validazioni completate e piano aggiornato con esito osservabile.
+Database popolato e verificato oppure blocco documentato senza dati inventati.
 Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Archiviazione `docs/History` da eseguire solo dopo richiesta del nome chat.
+Non sono stati toccati dati non territoriali. Il CAP placeholder/non ISTAT `999999` della fonte CAP separata e stato scartato.
 
-## Fase 7 - Verifica completa finale checkout indirizzi Italia
+## Fase 7 - Verifica finale e archiviazione
 Stato: completed
 Scope finale: in
 Tipo fase: verifica
 Obiettivo:
-Eseguire la validazione finale dell'intervento completo e registrare l'esito nel piano.
+Eseguire validazione finale completa e preparare l'archiviazione documentale.
 Attivita:
-- [x] Eseguire test completi della solution.
-- [x] Eseguire build completa della solution.
-- [x] Eseguire build CSS Tailwind se necessaria per le classi Razor aggiunte.
-- [x] Aggiornare `docs/PLAN.md` con esito finale e rischi residui.
+- [x] Eseguire `dotnet test DashBoard01.sln`.
+- [x] Eseguire `dotnet build DashBoard01.sln`.
+- [x] Aggiornare `docs/PLAN.md` con esiti finali.
+- [x] Preparare richiesta nome chat per archiviazione `docs/History`.
 File o aree coinvolte:
 - `DashBoard01.sln`
 - `DashboardOrders.Tests/`
-- `wwwroot/css/app.css`
 - `docs/PLAN.md`
+- `docs/History/`
 Backend impact: si
 Frontend impact: si
 Dipendenze:
 Fase 6 completed
 Validazioni:
-`dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-final-test\`: superato, 165 test passati.
-`dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\checkout-address-final-build\`: superato, 0 warning, 0 errori.
-`npm run build:css`: superato; presente solo avviso informativo Browserslist/caniuse-lite outdated.
+`dotnet test DashBoard01.sln`: superato, 170 test passati, 0 falliti, 0 ignorati.
+`dotnet build DashBoard01.sln`: superato, 0 warning, 0 errori.
 Definition of done:
-Test, build e CSS build completati oppure eventuali blocchi documentati con rischio residuo.
+Test/build completati e documentazione pronta per archiviazione.
 Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Fase creata come delta conclusivo dopo il completamento della Fase 6. Verifica browser visuale non eseguita in questa fase.
+Archiviazione non eseguita: manca un nome chat esplicito fornito dall'utente. La voce generale di archiviazione resta quindi aperta.

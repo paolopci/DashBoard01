@@ -30,7 +30,7 @@ public class CheckoutDataServiceTests
     {
         // Arrange
         using var dbContext = CreateDbContext();
-        SeedItalianPostalCodes(dbContext);
+        SeedItalianAdministrativeTerritories(dbContext);
         var sut = new DashboardOrdersDataService(dbContext);
 
         // Act
@@ -45,7 +45,7 @@ public class CheckoutDataServiceTests
     {
         // Arrange
         using var dbContext = CreateDbContext();
-        SeedItalianPostalCodes(dbContext);
+        SeedItalianAdministrativeTerritories(dbContext);
         var sut = new DashboardOrdersDataService(dbContext);
 
         // Act
@@ -60,6 +60,7 @@ public class CheckoutDataServiceTests
     {
         // Arrange
         using var dbContext = CreateDbContext();
+        SeedItalianAdministrativeTerritories(dbContext);
         SeedItalianPostalCodes(dbContext);
         var sut = new DashboardOrdersDataService(dbContext);
 
@@ -334,6 +335,62 @@ public class CheckoutDataServiceTests
                 ProvinceCode = "PU",
                 CityName = "Pesaro",
                 PostalCode = "61121"
+            });
+        dbContext.SaveChanges();
+    }
+
+    private static void SeedItalianAdministrativeTerritories(DashboardOrdersDbContext dbContext)
+    {
+        dbContext.ItalianRegions.Add(new ItalianRegionEntity
+        {
+            Code = "11",
+            Name = "Marche",
+            Nuts1Code = "ITI",
+            Nuts2Code = "ITI3"
+        });
+        dbContext.ItalianProvinces.AddRange(
+            new ItalianProvinceEntity
+            {
+                Code = "042",
+                RegionCode = "11",
+                Name = "Ancona",
+                Abbreviation = "AN",
+                Nuts3Code = "ITI32"
+            },
+            new ItalianProvinceEntity
+            {
+                Code = "041",
+                RegionCode = "11",
+                Name = "Pesaro e Urbino",
+                Abbreviation = "PU",
+                Nuts3Code = "ITI31"
+            });
+        dbContext.ItalianMunicipalities.AddRange(
+            new ItalianMunicipalityEntity
+            {
+                Code = "042002",
+                ProvinceCode = "042",
+                RegionCode = "11",
+                Name = "Ancona",
+                CadastralCode = "A271",
+                IsProvinceCapital = true
+            },
+            new ItalianMunicipalityEntity
+            {
+                Code = "041013",
+                ProvinceCode = "041",
+                RegionCode = "11",
+                Name = "Fano",
+                CadastralCode = "D488"
+            },
+            new ItalianMunicipalityEntity
+            {
+                Code = "041044",
+                ProvinceCode = "041",
+                RegionCode = "11",
+                Name = "Pesaro",
+                CadastralCode = "G479",
+                IsProvinceCapital = true
             });
         dbContext.SaveChanges();
     }
