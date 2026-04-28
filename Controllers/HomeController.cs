@@ -400,6 +400,28 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         return View(checkout);
     }
 
+    [HttpGet]
+    public IActionResult ItalianProvinces()
+    {
+        return Json(dataService.GetItalianProvinces());
+    }
+
+    [HttpGet]
+    public IActionResult ItalianCities(string? provinceName)
+    {
+        return string.IsNullOrWhiteSpace(provinceName)
+            ? Json(Array.Empty<string>())
+            : Json(dataService.GetItalianCities(provinceName));
+    }
+
+    [HttpGet]
+    public IActionResult ItalianPostalCodes(string? provinceName, string? cityName)
+    {
+        return string.IsNullOrWhiteSpace(provinceName) || string.IsNullOrWhiteSpace(cityName)
+            ? Json(Array.Empty<string>())
+            : Json(dataService.GetItalianPostalCodes(provinceName, cityName));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public IActionResult CheckoutAddresses(CheckoutAddressesViewModel model)

@@ -514,6 +514,51 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return session is null ? null : MapCheckoutSession(session, GetCart(normalizedEmail));
     }
 
+    public List<string> GetItalianProvinces()
+    {
+        return dbContext.ItalianPostalCodes
+            .AsNoTracking()
+            .Select(postalCode => postalCode.ProvinceName)
+            .Distinct()
+            .OrderBy(provinceName => provinceName)
+            .ToList();
+    }
+
+    public List<string> GetItalianCities(string? provinceName)
+    {
+        var normalizedProvinceName = NormalizeText(provinceName);
+        if (string.IsNullOrWhiteSpace(normalizedProvinceName))
+        {
+            return [];
+        }
+
+        return dbContext.ItalianPostalCodes
+            .AsNoTracking()
+            .Where(postalCode => postalCode.ProvinceName == normalizedProvinceName)
+            .Select(postalCode => postalCode.CityName)
+            .Distinct()
+            .OrderBy(cityName => cityName)
+            .ToList();
+    }
+
+    public List<string> GetItalianPostalCodes(string? provinceName, string? cityName)
+    {
+        var normalizedProvinceName = NormalizeText(provinceName);
+        var normalizedCityName = NormalizeText(cityName);
+        if (string.IsNullOrWhiteSpace(normalizedProvinceName) || string.IsNullOrWhiteSpace(normalizedCityName))
+        {
+            return [];
+        }
+
+        return dbContext.ItalianPostalCodes
+            .AsNoTracking()
+            .Where(postalCode => postalCode.ProvinceName == normalizedProvinceName && postalCode.CityName == normalizedCityName)
+            .Select(postalCode => postalCode.PostalCode)
+            .Distinct()
+            .OrderBy(postalCode => postalCode)
+            .ToList();
+    }
+
     public bool SaveCheckoutAddresses(string? customerEmail, CheckoutAddressesViewModel model)
     {
         var session = GetActiveCheckoutSession(customerEmail, trackChanges: true);
@@ -522,18 +567,18 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             return false;
         }
 
-        session.ShippingFullName = NormalizeText(model.ShippingFullName);
-        session.ShippingAddressLine = NormalizeText(model.ShippingAddressLine);
+        session.ShippingFullName = ResolveShippingFullName(model);
+        session.ShippingAddressLine = ResolveShippingAddressLine(model);
         session.ShippingCity = NormalizeText(model.ShippingCity);
         session.ShippingPostalCode = NormalizeText(model.ShippingPostalCode);
-        session.ShippingCountry = NormalizeText(model.ShippingCountry);
-        session.ShippingPhone = NormalizeText(model.ShippingPhone);
+        session.ShippingCountry = ResolveShippingCountry(model);
+        session.ShippingPhone = ResolveShippingPhone(model);
         session.BillingSameAsShipping = model.BillingSameAsShipping;
-        session.BillingFullName = model.BillingSameAsShipping ? session.ShippingFullName : NormalizeText(model.BillingFullName);
-        session.BillingAddressLine = model.BillingSameAsShipping ? session.ShippingAddressLine : NormalizeText(model.BillingAddressLine);
+        session.BillingFullName = model.BillingSameAsShipping ? session.ShippingFullName : ResolveBillingFullName(model);
+        session.BillingAddressLine = model.BillingSameAsShipping ? session.ShippingAddressLine : ResolveBillingAddressLine(model);
         session.BillingCity = model.BillingSameAsShipping ? session.ShippingCity : NormalizeText(model.BillingCity);
         session.BillingPostalCode = model.BillingSameAsShipping ? session.ShippingPostalCode : NormalizeText(model.BillingPostalCode);
-        session.BillingCountry = model.BillingSameAsShipping ? session.ShippingCountry : NormalizeText(model.BillingCountry);
+        session.BillingCountry = model.BillingSameAsShipping ? session.ShippingCountry : ResolveBillingCountry(model);
         session.BillingVatNumber = NormalizeOptionalText(model.BillingVatNumber);
         session.CurrentStep = (int)CheckoutStep.Addresses;
         TouchCheckoutSession(session, GetCurrentTimestamp());
@@ -1081,7 +1126,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
     private static CheckoutSessionViewModel MapCheckoutSession(CheckoutSessionEntity session, CartViewModel cart)
     {
-        return new CheckoutSessionViewModel
+        var model = new CheckoutSessionViewModel
         {
             CurrentStep = ToCheckoutStep(session.CurrentStep),
             Cart = cart,
@@ -1105,6 +1150,9 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             CreatedOrderId = session.CreatedOrderId,
             ExpiresAt = session.ExpiresAt
         };
+
+        PopulateFormFields(model);
+        return model;
     }
 
     private OrderEntity? CreateOrderEntity(string? customerEmail, IReadOnlyList<NewOrderItemViewModel> items, OrderStatus initialStatus)
@@ -1456,7 +1504,111 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return string.IsNullOrWhiteSpace(normalized) ? defaultValue : normalized;
     }
 
+    private static string ResolveShippingFullName(CheckoutAddressesViewModel model)
+    {
+        var structured = ComposeFullName(model.ShippingLastName, model.ShippingFirstName);
+        return string.IsNullOrWhiteSpace(structured) ? NormalizeText(model.ShippingFullName) : structured;
+    }
+
+    private static string ResolveBillingFullName(CheckoutAddressesViewModel model)
+    {
+        var structured = ComposeFullName(model.BillingLastName, model.BillingFirstName);
+        return string.IsNullOrWhiteSpace(structured) ? NormalizeText(model.BillingFullName) : structured;
+    }
+
+    private static string ResolveShippingAddressLine(CheckoutAddressesViewModel model)
+    {
+        var structured = ComposeAddressLine(model.ShippingStreet, model.ShippingStreetNumber);
+        return string.IsNullOrWhiteSpace(structured) ? NormalizeText(model.ShippingAddressLine) : structured;
+    }
+
+    private static string ResolveBillingAddressLine(CheckoutAddressesViewModel model)
+    {
+        var structured = ComposeAddressLine(model.BillingStreet, model.BillingStreetNumber);
+        return string.IsNullOrWhiteSpace(structured) ? NormalizeText(model.BillingAddressLine) : structured;
+    }
+
+    private static string ResolveShippingPhone(CheckoutAddressesViewModel model)
+    {
+        var structured = ComposePhone(model.ShippingPhonePrefix, model.ShippingPhoneNumber);
+        return string.IsNullOrWhiteSpace(structured) ? NormalizeText(model.ShippingPhone) : structured;
+    }
+
+    private static string ResolveShippingCountry(CheckoutAddressesViewModel model)
+    {
+        return HasStructuredShippingFields(model) ? "Italia" : NormalizeText(model.ShippingCountry);
+    }
+
+    private static string ResolveBillingCountry(CheckoutAddressesViewModel model)
+    {
+        return HasStructuredBillingFields(model) ? "Italia" : NormalizeText(model.BillingCountry);
+    }
+
+    private static string ComposeFullName(string? lastName, string? firstName)
+    {
+        return JoinNonEmpty(NormalizeText(lastName), NormalizeText(firstName));
+    }
+
+    private static string ComposeAddressLine(string? street, string? streetNumber)
+    {
+        return JoinNonEmpty(NormalizeText(street), NormalizeText(streetNumber));
+    }
+
+    private static string ComposePhone(string? phonePrefix, string? phoneNumber)
+    {
+        return JoinNonEmpty(NormalizeText(phonePrefix), NormalizeText(phoneNumber));
+    }
+
+    private static string JoinNonEmpty(params string[] values)
+    {
+        return string.Join(" ", values.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private static void PopulateFormFields(CheckoutSessionViewModel model)
+    {
+        (model.ShippingLastName, model.ShippingFirstName) = SplitFirstToken(model.ShippingFullName);
+        (model.ShippingStreet, model.ShippingStreetNumber) = SplitLastToken(model.ShippingAddressLine);
+        (model.ShippingPhonePrefix, model.ShippingPhoneNumber) = SplitPhone(model.ShippingPhone);
+
+        (model.BillingLastName, model.BillingFirstName) = SplitFirstToken(model.BillingFullName);
+        (model.BillingStreet, model.BillingStreetNumber) = SplitLastToken(model.BillingAddressLine);
+    }
+
+    private static (string First, string Remainder) SplitFirstToken(string? value)
+    {
+        var normalized = NormalizeText(value);
+        var separatorIndex = normalized.IndexOf(' ', StringComparison.Ordinal);
+        return separatorIndex < 0
+            ? (normalized, string.Empty)
+            : (normalized[..separatorIndex], normalized[(separatorIndex + 1)..].Trim());
+    }
+
+    private static (string Remainder, string Last) SplitLastToken(string? value)
+    {
+        var normalized = NormalizeText(value);
+        var separatorIndex = normalized.LastIndexOf(' ');
+        return separatorIndex < 0
+            ? (normalized, string.Empty)
+            : (normalized[..separatorIndex].Trim(), normalized[(separatorIndex + 1)..]);
+    }
+
+    private static (string Prefix, string Number) SplitPhone(string? value)
+    {
+        var normalized = NormalizeText(value);
+        if (!normalized.StartsWith("+", StringComparison.Ordinal))
+        {
+            return (string.Empty, normalized);
+        }
+
+        return SplitFirstToken(normalized);
+    }
+
     private static bool AreShippingFieldsValid(CheckoutAddressesViewModel model)
+    {
+        return HasLegacyShippingFields(model) || HasStructuredShippingFields(model);
+    }
+
+    private static bool HasLegacyShippingFields(CheckoutAddressesViewModel model)
     {
         return !string.IsNullOrWhiteSpace(model.ShippingFullName)
             && !string.IsNullOrWhiteSpace(model.ShippingAddressLine)
@@ -1466,14 +1618,44 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             && !string.IsNullOrWhiteSpace(model.ShippingPhone);
     }
 
+    private static bool HasStructuredShippingFields(CheckoutAddressesViewModel model)
+    {
+        return !string.IsNullOrWhiteSpace(model.ShippingLastName)
+            && !string.IsNullOrWhiteSpace(model.ShippingFirstName)
+            && !string.IsNullOrWhiteSpace(model.ShippingPhonePrefix)
+            && !string.IsNullOrWhiteSpace(model.ShippingPhoneNumber)
+            && !string.IsNullOrWhiteSpace(model.ShippingStreet)
+            && !string.IsNullOrWhiteSpace(model.ShippingStreetNumber)
+            && !string.IsNullOrWhiteSpace(model.ShippingProvince)
+            && !string.IsNullOrWhiteSpace(model.ShippingCity)
+            && !string.IsNullOrWhiteSpace(model.ShippingPostalCode);
+    }
+
     private static bool AreBillingFieldsValid(CheckoutAddressesViewModel model)
     {
         return model.BillingSameAsShipping
-            || (!string.IsNullOrWhiteSpace(model.BillingFullName)
+            || HasLegacyBillingFields(model)
+            || HasStructuredBillingFields(model);
+    }
+
+    private static bool HasLegacyBillingFields(CheckoutAddressesViewModel model)
+    {
+        return !string.IsNullOrWhiteSpace(model.BillingFullName)
                 && !string.IsNullOrWhiteSpace(model.BillingAddressLine)
                 && !string.IsNullOrWhiteSpace(model.BillingCity)
                 && !string.IsNullOrWhiteSpace(model.BillingPostalCode)
-                && !string.IsNullOrWhiteSpace(model.BillingCountry));
+                && !string.IsNullOrWhiteSpace(model.BillingCountry);
+    }
+
+    private static bool HasStructuredBillingFields(CheckoutAddressesViewModel model)
+    {
+        return !string.IsNullOrWhiteSpace(model.BillingLastName)
+            && !string.IsNullOrWhiteSpace(model.BillingFirstName)
+            && !string.IsNullOrWhiteSpace(model.BillingStreet)
+            && !string.IsNullOrWhiteSpace(model.BillingStreetNumber)
+            && !string.IsNullOrWhiteSpace(model.BillingProvince)
+            && !string.IsNullOrWhiteSpace(model.BillingCity)
+            && !string.IsNullOrWhiteSpace(model.BillingPostalCode);
     }
 
     private static bool HasCheckoutAddresses(CheckoutSessionEntity session)

@@ -20,31 +20,61 @@ public enum TestPaymentOutcome
 
 public class CheckoutAddressesViewModel
 {
-    [Required(ErrorMessage = "Indica nome e cognome per la spedizione.")]
+    [StringLength(80)]
+    public string ShippingLastName { get; set; } = string.Empty;
+
+    [StringLength(80)]
+    public string ShippingFirstName { get; set; } = string.Empty;
+
+    [StringLength(8)]
+    public string ShippingPhonePrefix { get; set; } = string.Empty;
+
+    [StringLength(30)]
+    public string ShippingPhoneNumber { get; set; } = string.Empty;
+
+    [StringLength(160)]
+    public string ShippingStreet { get; set; } = string.Empty;
+
+    [StringLength(20)]
+    public string ShippingStreetNumber { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string ShippingProvince { get; set; } = string.Empty;
+
     [StringLength(120)]
     public string ShippingFullName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Indica l'indirizzo di spedizione.")]
     [StringLength(200)]
     public string ShippingAddressLine { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Indica la citta di spedizione.")]
     [StringLength(100)]
     public string ShippingCity { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Indica il CAP di spedizione.")]
     [StringLength(20)]
     public string ShippingPostalCode { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Indica il paese di spedizione.")]
     [StringLength(100)]
     public string ShippingCountry { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Indica un telefono di contatto.")]
     [StringLength(30)]
     public string ShippingPhone { get; set; } = string.Empty;
 
     public bool BillingSameAsShipping { get; set; } = true;
+
+    [StringLength(80)]
+    public string BillingLastName { get; set; } = string.Empty;
+
+    [StringLength(80)]
+    public string BillingFirstName { get; set; } = string.Empty;
+
+    [StringLength(160)]
+    public string BillingStreet { get; set; } = string.Empty;
+
+    [StringLength(20)]
+    public string BillingStreetNumber { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string BillingProvince { get; set; } = string.Empty;
 
     [StringLength(120)]
     public string BillingFullName { get; set; } = string.Empty;

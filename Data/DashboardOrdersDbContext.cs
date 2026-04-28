@@ -16,6 +16,7 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<CartItemEntity> CartItems => Set<CartItemEntity>();
     public DbSet<CheckoutSessionEntity> CheckoutSessions => Set<CheckoutSessionEntity>();
     public DbSet<OrderCheckoutDetailsEntity> OrderCheckoutDetails => Set<OrderCheckoutDetailsEntity>();
+    public DbSet<ItalianPostalCodeEntity> ItalianPostalCodes => Set<ItalianPostalCodeEntity>();
     public DbSet<ProductCarouselImageEntity> ProductCarouselImages => Set<ProductCarouselImageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -232,6 +233,19 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
             entity.Property(session => session.BillingVatNumber).HasMaxLength(40);
             entity.Property(session => session.DeliveryMethod).HasMaxLength(30).IsRequired();
             entity.Property(session => session.PaymentMethod).HasMaxLength(30).IsRequired();
+        });
+
+        modelBuilder.Entity<ItalianPostalCodeEntity>(entity =>
+        {
+            entity.ToTable("ItalianPostalCodes");
+            entity.HasKey(postalCode => postalCode.Id);
+            entity.HasIndex(postalCode => postalCode.ProvinceName);
+            entity.HasIndex(postalCode => postalCode.CityName);
+            entity.HasIndex(postalCode => new { postalCode.ProvinceName, postalCode.CityName, postalCode.PostalCode }).IsUnique();
+            entity.Property(postalCode => postalCode.ProvinceName).HasMaxLength(100).IsRequired();
+            entity.Property(postalCode => postalCode.ProvinceCode).HasMaxLength(4).IsRequired();
+            entity.Property(postalCode => postalCode.CityName).HasMaxLength(100).IsRequired();
+            entity.Property(postalCode => postalCode.PostalCode).HasMaxLength(10).IsRequired();
         });
     }
 }

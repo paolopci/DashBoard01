@@ -479,6 +479,77 @@ public class HomeControllerTests
     }
 
     [Fact]
+    public void ItalianProvinces_QuandoRichiesto_AlloraRestituisceProvinceDalServizio()
+    {
+        // Arrange
+        dataService.GetItalianProvinces().Returns(["Ancona", "Pesaro e Urbino"]);
+
+        // Act
+        var risultato = sut.ItalianProvinces();
+
+        // Assert
+        var json = risultato.Should().BeOfType<JsonResult>().Subject;
+        json.Value.Should().BeEquivalentTo(new[] { "Ancona", "Pesaro e Urbino" }, options => options.WithStrictOrdering());
+        dataService.Received(1).GetItalianProvinces();
+    }
+
+    [Fact]
+    public void ItalianCities_QuandoProvinciaValida_AlloraRestituisceCittaDalServizio()
+    {
+        // Arrange
+        dataService.GetItalianCities("Pesaro e Urbino").Returns(["Fano", "Pesaro"]);
+
+        // Act
+        var risultato = sut.ItalianCities("Pesaro e Urbino");
+
+        // Assert
+        var json = risultato.Should().BeOfType<JsonResult>().Subject;
+        json.Value.Should().BeEquivalentTo(new[] { "Fano", "Pesaro" }, options => options.WithStrictOrdering());
+        dataService.Received(1).GetItalianCities("Pesaro e Urbino");
+    }
+
+    [Fact]
+    public void ItalianCities_QuandoProvinciaVuota_AlloraRestituisceListaVuota()
+    {
+        // Act
+        var risultato = sut.ItalianCities(string.Empty);
+
+        // Assert
+        var json = risultato.Should().BeOfType<JsonResult>().Subject;
+        json.Value.Should().BeEquivalentTo(Array.Empty<string>());
+        dataService.DidNotReceive().GetItalianCities(Arg.Any<string>());
+    }
+
+    [Fact]
+    public void ItalianPostalCodes_QuandoCittaValida_AlloraRestituisceCapDalServizio()
+    {
+        // Arrange
+        dataService.GetItalianPostalCodes("Pesaro e Urbino", "Pesaro").Returns(["61121", "61122"]);
+
+        // Act
+        var risultato = sut.ItalianPostalCodes("Pesaro e Urbino", "Pesaro");
+
+        // Assert
+        var json = risultato.Should().BeOfType<JsonResult>().Subject;
+        json.Value.Should().BeEquivalentTo(new[] { "61121", "61122" }, options => options.WithStrictOrdering());
+        dataService.Received(1).GetItalianPostalCodes("Pesaro e Urbino", "Pesaro");
+    }
+
+    [Theory]
+    [InlineData("", "Pesaro")]
+    [InlineData("Pesaro e Urbino", "")]
+    public void ItalianPostalCodes_QuandoInputVuoto_AlloraRestituisceListaVuota(string provinceName, string cityName)
+    {
+        // Act
+        var risultato = sut.ItalianPostalCodes(provinceName, cityName);
+
+        // Assert
+        var json = risultato.Should().BeOfType<JsonResult>().Subject;
+        json.Value.Should().BeEquivalentTo(Array.Empty<string>());
+        dataService.DidNotReceive().GetItalianPostalCodes(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
     public void CheckoutConfirm_Post_QuandoPagamentoRichiesto_AlloraReindirizzaAPayment()
     {
         // Arrange
