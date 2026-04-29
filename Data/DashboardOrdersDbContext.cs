@@ -171,6 +171,10 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
             entity.Property(details => details.PaymentMethod).HasMaxLength(30).IsRequired();
             entity.Property(details => details.PaymentStatus).HasMaxLength(30).IsRequired();
             entity.Property(details => details.TestTransactionReference).HasMaxLength(80);
+            entity.Property(details => details.StripeCheckoutSessionId).HasMaxLength(120);
+            entity.Property(details => details.StripePaymentIntentId).HasMaxLength(120);
+            entity.Property(details => details.StripePaymentStatus).HasMaxLength(40);
+            entity.HasIndex(details => details.StripeCheckoutSessionId).IsUnique().HasFilter("[StripeCheckoutSessionId] IS NOT NULL");
 
             entity
                 .HasOne(details => details.Order)

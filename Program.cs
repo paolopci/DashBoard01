@@ -29,6 +29,8 @@ builder.Services.AddDbContext<DashboardOrdersDbContext>(options =>
 builder.Services.AddScoped<IDashboardOrdersDataService, DashboardOrdersDataService>();
 builder.Services.AddScoped<DashboardOrdersDatabaseSeeder>();
 builder.Services.AddScoped<ItalianTerritoryImporter>();
+builder.Services.Configure<StripeCheckoutOptions>(builder.Configuration.GetSection("Stripe"));
+builder.Services.AddScoped<IStripeCheckoutService, StripeCheckoutService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddDashboardIdentity();
 builder.Services.AddDashboardJwtAuthentication(builder.Configuration, builder.Environment);

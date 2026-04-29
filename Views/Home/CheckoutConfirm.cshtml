@@ -5,7 +5,7 @@
 
 <div class="mb-6">
     <h2 class="text-3xl font-bold text-slate-900">Conferma finale</h2>
-    <p class="mt-1 text-sm text-slate-500">Scegli consegna e pagamento test, poi crea l'ordine.</p>
+    <p class="mt-1 text-sm text-slate-500">Scegli consegna e pagamento, poi crea l'ordine.</p>
 </div>
 
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -57,7 +57,9 @@
                 <select asp-for="PaymentMethod" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                     <option value="pending">Ordine pending senza addebito</option>
                     <option value="test-card">Pagamento test simulato</option>
+                    <option value="stripe-test">Stripe test hosted</option>
                 </select>
+                <p class="mt-2 text-xs text-slate-500">Stripe test apre la pagina sicura Stripe e non usa addebiti reali.</p>
             </div>
 
             <div class="border-t border-slate-100 pt-5">

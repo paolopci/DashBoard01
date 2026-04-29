@@ -4,6 +4,8 @@ using DashboardOrders.Models;
 using DashboardOrders.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StripeCheckoutSession = Stripe.Checkout.Session;
+using StripeEvent = Stripe.Event;
 
 namespace DashboardOrders.Controllers;
 
@@ -16,11 +18,16 @@ public class HomeController : Controller
 
     private readonly IDashboardOrdersDataService dataService;
     private readonly DashboardOrdersDbContext dbContext;
+    private readonly IStripeCheckoutService stripeCheckoutService;
 
-    public HomeController(IDashboardOrdersDataService dataService, DashboardOrdersDbContext dbContext)
+    public HomeController(
+        IDashboardOrdersDataService dataService,
+        DashboardOrdersDbContext dbContext,
+        IStripeCheckoutService stripeCheckoutService)
     {
         this.dataService = dataService;
         this.dbContext = dbContext;
+        this.stripeCheckoutService = stripeCheckoutService;
     }
 
     /// <summary>
@@ -440,8 +447,10 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
 
         if (!dataService.SaveCheckoutAddresses(GetCurrentEmail(), model))
         {
-            TempData[ToastErrorKey] = "Dati spedizione o fatturazione non salvati.";
-            return RedirectToAction(nameof(CheckoutAddresses));
+            ModelState.AddModelError(string.Empty, "Completa provincia, citta e CAP per spedizione e fatturazione.");
+            var checkout = dataService.GetCheckout(GetCurrentEmail()) ?? new CheckoutSessionViewModel();
+            CopyAddresses(model, checkout);
+            return View(checkout);
         }
 
         return RedirectToAction(nameof(CheckoutConfirm));
@@ -486,7 +495,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
     [HttpPost]
     [ValidateAntiForgeryToken]
     [ActionName(nameof(CheckoutConfirm))]
-    public IActionResult CheckoutConfirmPost(CheckoutOptionsViewModel? model = null)
+    public async Task<IActionResult> CheckoutConfirmPost(CheckoutOptionsViewModel? model = null, CancellationToken cancellationToken = default)
     {
         if (IsAdmin())
         {
@@ -506,9 +515,118 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             return RedirectToAction(nameof(CheckoutConfirm));
         }
 
+        if (result.RequiresStripeCheckout)
+        {
+            var order = dataService.GetOrderDetails(result.OrderId.Value, GetCurrentEmail(), isAdmin: false);
+            if (order is null)
+            {
+                TempData[ToastErrorKey] = "Ordine Stripe non trovato.";
+                return RedirectToAction(nameof(CheckoutConfirm));
+            }
+
+            var returnUrl = Url.Action(nameof(StripeCheckoutReturn), "Home", null, Request.Scheme)
+                + "?session_id={CHECKOUT_SESSION_ID}";
+            var cancelUrl = Url.Action(nameof(CheckoutPayment), "Home", new { orderId = result.OrderId.Value }, Request.Scheme)
+                ?? string.Empty;
+
+            try
+            {
+                var stripeSession = await stripeCheckoutService.CreateCheckoutSessionAsync(order, returnUrl, cancelUrl, cancellationToken);
+                if (!dataService.SaveStripeCheckoutSession(GetCurrentEmail(), result.OrderId.Value, stripeSession))
+                {
+                    TempData[ToastErrorKey] = "Sessione Stripe creata ma non salvata sull'ordine.";
+                    return RedirectToAction(nameof(CheckoutPayment), new { orderId = result.OrderId.Value });
+                }
+
+                return Redirect(stripeSession.Url);
+            }
+            catch (Exception)
+            {
+                TempData[ToastErrorKey] = "Stripe Checkout non disponibile. Verifica configurazione test.";
+                return RedirectToAction(nameof(CheckoutPayment), new { orderId = result.OrderId.Value });
+            }
+        }
+
         return result.RequiresPayment
             ? RedirectToAction(nameof(CheckoutPayment), new { orderId = result.OrderId.Value })
             : RedirectToAction(nameof(CheckoutResult), new { orderId = result.OrderId.Value });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> StripeCheckoutReturn(string? session_id, CancellationToken cancellationToken)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        if (string.IsNullOrWhiteSpace(session_id))
+        {
+            TempData[ToastErrorKey] = "Sessione Stripe mancante.";
+            return RedirectToAction(nameof(Cart));
+        }
+
+        var orderId = dataService.GetOrderIdByStripeCheckoutSession(session_id);
+        var stripeSession = await stripeCheckoutService.GetCheckoutSessionAsync(session_id, cancellationToken);
+        if (stripeSession is null)
+        {
+            TempData[ToastErrorKey] = "Sessione Stripe non trovata.";
+            return orderId.HasValue
+                ? RedirectToAction(nameof(CheckoutPayment), new { orderId = orderId.Value })
+                : RedirectToAction(nameof(Cart));
+        }
+
+        if (string.Equals(stripeSession.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = dataService.CompleteStripePayment(stripeSession.SessionId, stripeSession.PaymentIntentId, stripeSession.PaymentStatus, GetCurrentEmail());
+            if (result.Success && result.OrderId.HasValue)
+            {
+                return RedirectToAction(nameof(CheckoutResult), new { orderId = result.OrderId.Value });
+            }
+
+            TempData[ToastErrorKey] = result.ErrorMessage;
+        }
+        else
+        {
+            TempData[ToastErrorKey] = "Pagamento Stripe non completato.";
+        }
+
+        return orderId.HasValue
+            ? RedirectToAction(nameof(CheckoutPayment), new { orderId = orderId.Value })
+            : RedirectToAction(nameof(Cart));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("/stripe/webhook")]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> StripeWebhook()
+    {
+        var payload = await new StreamReader(Request.Body).ReadToEndAsync();
+        var signature = Request.Headers["Stripe-Signature"].ToString();
+
+        StripeEvent stripeEvent;
+        try
+        {
+            stripeEvent = stripeCheckoutService.ConstructWebhookEvent(payload, signature);
+        }
+        catch (Exception)
+        {
+            return BadRequest();
+        }
+
+        if (stripeEvent.Data.Object is StripeCheckoutSession session)
+        {
+            if (stripeEvent.Type is "checkout.session.completed" or "checkout.session.async_payment_succeeded")
+            {
+                dataService.CompleteStripePayment(session.Id, session.PaymentIntentId, session.PaymentStatus, "stripe");
+            }
+            else if (stripeEvent.Type == "checkout.session.async_payment_failed")
+            {
+                dataService.FailStripePayment(session.Id, session.PaymentIntentId, session.PaymentStatus, "stripe");
+            }
+        }
+
+        return Ok();
     }
 
     [HttpGet]

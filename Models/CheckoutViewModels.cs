@@ -121,6 +121,8 @@ public class CheckoutConfirmResult
     public bool Success { get; set; }
     public int? OrderId { get; set; }
     public bool RequiresPayment { get; set; }
+    public bool RequiresStripeCheckout { get; set; }
+    public string PaymentMethod { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
 
     public static CheckoutConfirmResult Failed(string errorMessage)
@@ -134,7 +136,16 @@ public class CheckoutPaymentResult
     public bool Success { get; set; }
     public int? OrderId { get; set; }
     public OrderStatus? FinalStatus { get; set; }
+    public string PaymentStatus { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
+}
+
+public class StripeCheckoutSessionResult
+{
+    public string SessionId { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string? PaymentIntentId { get; set; }
+    public string PaymentStatus { get; set; } = string.Empty;
 }
 
 public class OrderDetailsViewModel
@@ -162,4 +173,7 @@ public class OrderCheckoutDetailsViewModel
     public string PaymentMethod { get; set; } = string.Empty;
     public string PaymentStatus { get; set; } = string.Empty;
     public string TestTransactionReference { get; set; } = string.Empty;
+    public string StripeCheckoutSessionId { get; set; } = string.Empty;
+    public string StripePaymentIntentId { get; set; } = string.Empty;
+    public string StripePaymentStatus { get; set; } = string.Empty;
 }

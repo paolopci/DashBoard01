@@ -6,9 +6,14 @@ using FluentAssertions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
+using StripeCheckoutSession = Stripe.Checkout.Session;
+using StripeEvent = Stripe.Event;
+using StripeEventData = Stripe.EventData;
+using StripeException = Stripe.StripeException;
 using Xunit;
 
 namespace DashboardOrders.Tests;
@@ -16,16 +21,18 @@ namespace DashboardOrders.Tests;
 public class HomeControllerTests
 {
     private readonly IDashboardOrdersDataService dataService;
+    private readonly IStripeCheckoutService stripeCheckoutService;
     private readonly HomeController sut;
     private readonly DashboardOrdersDbContext dbContext;
 
     public HomeControllerTests()
     {
         dataService = Substitute.For<IDashboardOrdersDataService>();
+        stripeCheckoutService = Substitute.For<IStripeCheckoutService>();
         dbContext = new DashboardOrdersDbContext(new DbContextOptionsBuilder<DashboardOrdersDbContext>()
             .UseInMemoryDatabase($"HomeControllerTests-{Guid.NewGuid()}")
             .Options);
-        sut = new HomeController(dataService, dbContext)
+        sut = new HomeController(dataService, dbContext, stripeCheckoutService)
         {
             ControllerContext = new ControllerContext
             {
@@ -550,7 +557,7 @@ public class HomeControllerTests
     }
 
     [Fact]
-    public void CheckoutConfirm_Post_QuandoPagamentoRichiesto_AlloraReindirizzaAPayment()
+    public async Task CheckoutConfirm_Post_QuandoPagamentoRichiesto_AlloraReindirizzaAPayment()
     {
         // Arrange
         sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
@@ -562,12 +569,161 @@ public class HomeControllerTests
         });
 
         // Act
-        var risultato = sut.CheckoutConfirmPost();
+        var risultato = await sut.CheckoutConfirmPost();
 
         // Assert
         var redirect = risultato.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("CheckoutPayment");
         redirect.RouteValues.Should().ContainKey("orderId").WhoseValue.Should().Be(42);
+    }
+
+    [Fact]
+    public void CheckoutAddresses_Post_QuandoServizioRifiutaDati_AlloraRitornaVistaConErrore()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        var model = new CheckoutAddressesViewModel
+        {
+            ShippingLastName = "Rossi",
+            ShippingFirstName = "Mario",
+            ShippingPhonePrefix = "+39",
+            ShippingPhoneNumber = "3281234567",
+            ShippingStreet = "Via Roma",
+            ShippingStreetNumber = "1",
+            BillingSameAsShipping = true
+        };
+        dataService.SaveCheckoutAddresses("mario.rossi@example.com", model).Returns(false);
+        dataService.GetCheckout("mario.rossi@example.com").Returns(new CheckoutSessionViewModel());
+
+        // Act
+        var risultato = sut.CheckoutAddresses(model);
+
+        // Assert
+        var view = risultato.Should().BeOfType<ViewResult>().Subject;
+        view.Model.Should().BeOfType<CheckoutSessionViewModel>();
+        sut.ModelState[string.Empty]!.Errors.Should().Contain(error => error.ErrorMessage.Contains("Completa provincia"));
+    }
+
+    [Fact]
+    public async Task CheckoutConfirm_Post_QuandoStripeRichiesto_AlloraCreaSessioneERedirectAStripe()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        sut.ControllerContext.HttpContext.Request.Scheme = "https";
+        var urlHelper = Substitute.For<IUrlHelper>();
+        urlHelper.Action(Arg.Any<UrlActionContext>()).Returns("https://localhost/stripe-return");
+        sut.Url = urlHelper;
+        var orderDetails = new OrderDetailsViewModel
+        {
+            Order = new Order
+            {
+                Id = 42,
+                OrderNumber = "ORD-00042",
+                Customer = new Customer { Email = "mario.rossi@example.com" },
+                Items = [new OrderItem { ProductName = "Laptop", Quantity = 1, UnitPrice = 25m }]
+            }
+        };
+        var stripeSession = new StripeCheckoutSessionResult
+        {
+            SessionId = "cs_test_123",
+            Url = "https://checkout.stripe.com/c/pay/cs_test_123",
+            PaymentStatus = "unpaid"
+        };
+        dataService.ConfirmCheckout("mario.rossi@example.com").Returns(new CheckoutConfirmResult
+        {
+            Success = true,
+            OrderId = 42,
+            RequiresPayment = true,
+            RequiresStripeCheckout = true,
+            PaymentMethod = "stripe-test"
+        });
+        dataService.GetOrderDetails(42, "mario.rossi@example.com", false).Returns(orderDetails);
+        stripeCheckoutService.CreateCheckoutSessionAsync(orderDetails, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(stripeSession);
+        dataService.SaveStripeCheckoutSession("mario.rossi@example.com", 42, stripeSession).Returns(true);
+
+        // Act
+        var risultato = await sut.CheckoutConfirmPost();
+
+        // Assert
+        risultato.Should().BeOfType<RedirectResult>().Which.Url.Should().Be(stripeSession.Url);
+        await stripeCheckoutService.Received(1).CreateCheckoutSessionAsync(orderDetails, Arg.Is<string>(url => url.Contains("{CHECKOUT_SESSION_ID}")), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        dataService.Received(1).SaveStripeCheckoutSession("mario.rossi@example.com", 42, stripeSession);
+    }
+
+    [Fact]
+    public async Task StripeCheckoutReturn_QuandoSessionePagata_AlloraCompletaPagamentoERedirectAResult()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        dataService.GetOrderIdByStripeCheckoutSession("cs_test_paid").Returns(42);
+        stripeCheckoutService.GetCheckoutSessionAsync("cs_test_paid", Arg.Any<CancellationToken>())
+            .Returns(new StripeCheckoutSessionResult
+            {
+                SessionId = "cs_test_paid",
+                PaymentIntentId = "pi_paid",
+                PaymentStatus = "paid"
+            });
+        dataService.CompleteStripePayment("cs_test_paid", "pi_paid", "paid", "mario.rossi@example.com")
+            .Returns(new CheckoutPaymentResult
+            {
+                Success = true,
+                OrderId = 42,
+                FinalStatus = OrderStatus.Confirmed
+            });
+
+        // Act
+        var risultato = await sut.StripeCheckoutReturn("cs_test_paid", CancellationToken.None);
+
+        // Assert
+        var redirect = risultato.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be("CheckoutResult");
+        redirect.RouteValues.Should().ContainKey("orderId").WhoseValue.Should().Be(42);
+    }
+
+    [Fact]
+    public async Task StripeWebhook_QuandoFirmaNonValida_AlloraBadRequestENonAggiornaPagamento()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("{}"));
+        sut.ControllerContext.HttpContext.Request.Headers["Stripe-Signature"] = "firma-non-valida";
+        stripeCheckoutService.ConstructWebhookEvent("{}", "firma-non-valida").Returns(_ => throw new StripeException("Firma non valida"));
+
+        // Act
+        var risultato = await sut.StripeWebhook();
+
+        // Assert
+        risultato.Should().BeOfType<BadRequestResult>();
+        dataService.DidNotReceive().CompleteStripePayment(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+        dataService.DidNotReceive().FailStripePayment(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task StripeWebhook_QuandoEventoCompletato_AlloraCompletaPagamento()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("{}"));
+        sut.ControllerContext.HttpContext.Request.Headers["Stripe-Signature"] = "firma-valida";
+        stripeCheckoutService.ConstructWebhookEvent("{}", "firma-valida").Returns(new StripeEvent
+        {
+            Type = "checkout.session.completed",
+            Data = new StripeEventData
+            {
+                Object = new StripeCheckoutSession
+                {
+                    Id = "cs_test_paid",
+                    PaymentIntentId = "pi_paid",
+                    PaymentStatus = "paid"
+                }
+            }
+        });
+
+        // Act
+        var risultato = await sut.StripeWebhook();
+
+        // Assert
+        risultato.Should().BeOfType<OkResult>();
+        dataService.Received(1).CompleteStripePayment("cs_test_paid", "pi_paid", "paid", "stripe");
     }
 
     [Fact]

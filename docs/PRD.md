@@ -2,75 +2,72 @@
 
 ## Obiettivo
 
-Sostituire i dati demo territoriali usati dal checkout con un dataset completo e verificabile basato su ISTAT per regioni, province/citta metropolitane e comuni italiani, mantenendo i CAP in una fonte separata e non derivata per supposizione.
+Integrare Stripe Checkout in modalita test nel flusso checkout esistente, senza carte reali e senza addebiti reali, mantenendo disponibile il simulatore interno gia presente.
 
 ## Problema/Contesto
 
-Il progetto contiene una tabella `ItalianPostalCodes` con dati demo minimi per province, citta e CAP. Questa tabella e sufficiente per il checkout dimostrativo, ma non rappresenta l'elenco completo e affidabile dei comuni italiani e non contiene i codici amministrativi ISTAT di regioni, province e comuni.
+Il checkout crea gia ordini da carrello e indirizzi, poi consente un pagamento test simulato con `test-card`. L'utente vuole sapere cosa succede dopo la pagina spedizione e vuole un pagamento realistico in ambiente Stripe test.
 
-ISTAT e fonte primaria per i codici delle unita amministrative territoriali, ma non pubblica i CAP postali. I CAP devono quindi restare separati e importati solo da una fonte distinta verificabile per licenza, formato e qualita.
+Stripe deve essere usato solo in modalita test, con pagina hosted ufficiale e conferma tramite ritorno utente e webhook firmato.
 
 ## Scope
 
-- Usare ISTAT come fonte primaria per regioni, province/citta metropolitane e comuni italiani.
-- Importare tutti i codici amministrativi disponibili nel dataset ISTAT corrente.
-- Introdurre tabelle normalizzate per `ItalianRegions`, `ItalianProvinces` e `ItalianMunicipalities`.
-- Conservare `ItalianPostalCodes` come tabella separata per CAP.
-- Aggiornare i lookup checkout per leggere province e citta dal dataset ISTAT.
-- Restituire CAP solo quando presenti in `ItalianPostalCodes` da fonte separata validata.
-- Creare un importer o script idempotente che scarica o legge il permalink ISTAT e valida il dataset prima dell'inserimento.
-- Sostituire solo i dati demo territoriali autorizzati, senza toccare ordini, prodotti, utenti, carrelli o storico.
-- Aggiungere test automatici su parsing/import, lookup e coerenza dei dati.
+- Aggiungere opzione pagamento `stripe-test` nella conferma checkout.
+- Mantenere le opzioni esistenti `pending` e `test-card`.
+- Creare ordine `PaymentPending` prima del redirect a Stripe, come gia avviene per il pagamento test interno.
+- Creare una Stripe Checkout Session hosted per pagamenti one-time.
+- Salvare su `OrderCheckoutDetails` i riferimenti Stripe minimi utili alla riconciliazione.
+- Gestire ritorno da Stripe e webhook per confermare o fallire il pagamento.
+- Aggiornare UI checkout/pagamento per distinguere simulatore interno e Stripe test.
+- Aggiungere test automatici su service, controller e flusso stato ordine.
 
 ## Out of scope
 
-- Inventare CAP mancanti o completarli per supposizione.
-- Usare ISTAT come fonte dei CAP.
-- Acquistare database CAP commerciali.
-- Installare nuove librerie, SDK, CLI o tool.
-- Eliminare dati non territoriali.
-- Refactoring esteso del checkout non necessario all'import territoriale.
-- Validazione postale certificata a livello di via/civico.
+- Pagamenti reali in live mode.
+- Salvataggio carte o metodi di pagamento.
+- Abbonamenti, rimborsi, Connect o marketplace.
+- Payment Element o form carta custom.
+- Installare Stripe CLI o configurare webhook pubblici senza ulteriore permesso.
+- Inserire chiavi Stripe in `appsettings*.json`.
 
 ## Requisiti funzionali
 
-- L'import ISTAT deve validare che il dataset contenga 20 regioni e 7.894 comuni per l'aggiornamento ISTAT al 21 febbraio 2026.
-- Ogni regione deve avere codice e denominazione.
-- Ogni provincia/citta metropolitana deve avere codice ISTAT, sigla quando disponibile e denominazione.
-- Ogni comune deve avere codice ISTAT, denominazione e collegamento a provincia e regione.
-- I comuni duplicati per codice ISTAT devono bloccare l'import.
-- Le righe senza codici amministrativi obbligatori devono bloccare l'import o essere riportate come errore, senza inserimento parziale non verificato.
-- La select Provincia del checkout deve usare dati ISTAT ordinati alfabeticamente.
-- La select Citta deve mostrare solo comuni appartenenti alla provincia selezionata.
-- Il lookup CAP deve continuare a leggere solo da `ItalianPostalCodes`.
-- Se non esistono CAP validati per un comune, il sistema non deve generarli automaticamente.
+- Il cliente deve poter selezionare `Stripe test` nella pagina `CheckoutConfirm`.
+- Se il pagamento Stripe e selezionato, il sistema deve creare un ordine `PaymentPending`.
+- Il sistema deve creare una Stripe Checkout Session con importi in centesimi, valuta `eur` di default e metadata con ordine e cliente.
+- Il sistema deve reindirizzare il cliente alla URL hosted Stripe.
+- Al ritorno da Stripe, il sistema deve recuperare la sessione e aggiornare l'ordine se il pagamento risulta completato.
+- Il webhook deve verificare la firma `Stripe-Signature` prima di modificare dati.
+- Gli eventi Stripe di successo devono portare l'ordine a `PaymentAuthorized` e poi `Confirmed`.
+- Gli eventi Stripe di fallimento devono portare l'ordine a `PaymentFailed` e ripristinare lo stock in modo coerente con la logica esistente.
+- Gli aggiornamenti da return URL e webhook devono essere idempotenti.
+- Il simulatore interno `test-card` deve continuare a funzionare.
 
 ## Vincoli tecnici
 
 - Usare ASP.NET Core MVC, EF Core e SQL Server gia presenti.
-- Non installare nuove dipendenze NuGet o npm.
-- Preferire codice C# interno o script SQL idempotenti nel repository.
-- Non modificare configurazioni sensibili senza esplicitare l'impatto.
-- Non introdurre breaking change su checkout, ordini, utenti o prodotti.
-- Mantenere `ItalianPostalCodes` compatibile con i test e il flusso CAP esistente.
-- Usare `dotnet-task-decomposition`: una fase alla volta, validata e documentata in `docs/PLAN.md`.
+- Usare `Stripe.net` come SDK ufficiale Stripe.
+- Configurare segreti solo tramite User Secrets, variabili d'ambiente o secret store:
+  - `Stripe:SecretKey`
+  - `Stripe:WebhookSecret`
+  - `Stripe:Currency` opzionale, default `eur`
+- Non committare chiavi reali o test.
+- Non rompere il flusso checkout esistente.
+- Non revertire modifiche non correlate gia presenti nel working tree.
 
 ## Acceptance criteria
 
-- Esistono tabelle normalizzate per regioni, province e comuni ISTAT.
-- L'import ISTAT e idempotente e non duplica righe.
-- Il dataset ISTAT importato supera i controlli di completezza e integrita referenziale.
-- I dati demo territoriali precedenti non sono piu la fonte primaria per province e citta.
-- I lookup checkout usano province e comuni ISTAT.
-- I CAP restano separati e vengono restituiti solo se presenti da fonte validata.
+- L'opzione `stripe-test` e visibile e selezionabile in checkout.
+- Un checkout Stripe crea ordine `PaymentPending` e una Checkout Session hosted.
+- Il sistema salva `StripeCheckoutSessionId`, `StripePaymentIntentId` e stato pagamento Stripe quando disponibili.
+- Return URL e webhook aggiornano correttamente lo stato ordine.
+- Il webhook rifiuta payload con firma non valida.
 - I test pertinenti passano.
 - La solution compila.
-- Il database locale viene popolato e verificato con query di conteggio e coerenza.
 
 ## Definizione di completamento
 
-- `docs/PRD.md` e `docs/PLAN.md` sono aggiornati per l'import territoriale ISTAT + CAP separati.
-- Schema, importer, lookup e test sono implementati.
-- L'import nel database e stato eseguito o, se bloccato, il motivo tecnico e documentato con precisione.
-- I controlli finali su conteggi, orfani e campioni noti sono eseguiti.
-- `dotnet test DashBoard01.sln` e `dotnet build DashBoard01.sln` sono eseguiti con esito documentato.
+- `docs/PRD.md` e `docs/PLAN.md` sono aggiornati per l'integrazione Stripe test.
+- Backend, UI e persistenza minima Stripe sono implementati.
+- I test automatici coprono creazione sessione, return, webhook, successo, fallimento e idempotenza.
+- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj` e `dotnet build DashBoard01.sln` sono eseguiti con esito documentato.

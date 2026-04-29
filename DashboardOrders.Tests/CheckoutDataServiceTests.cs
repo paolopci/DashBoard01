@@ -255,6 +255,116 @@ public class CheckoutDataServiceTests
         dbContext.OrderCheckoutDetails.Single().PaymentStatus.Should().Be("not-required");
     }
 
+    [Fact]
+    public void ConfirmCheckout_ConStripeTest_AlloraCreaOrdinePaymentPendingESvuotaCarrello()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.AddOrUpdateCartItem("cliente@test.it", "PRD-001", 2).Should().BeTrue();
+        sut.StartCheckout("cliente@test.it").Should().BeTrue();
+        sut.SaveCheckoutAddresses("cliente@test.it", CreateAddresses()).Should().BeTrue();
+        sut.SaveCheckoutOptions("cliente@test.it", new CheckoutOptionsViewModel
+        {
+            DeliveryMethod = "standard",
+            PaymentMethod = "stripe-test"
+        }).Should().BeTrue();
+
+        // Act
+        var risultato = sut.ConfirmCheckout("cliente@test.it");
+
+        // Assert
+        risultato.Success.Should().BeTrue();
+        risultato.RequiresPayment.Should().BeTrue();
+        risultato.RequiresStripeCheckout.Should().BeTrue();
+        risultato.PaymentMethod.Should().Be("stripe-test");
+        dbContext.Orders.Single().Status.Should().Be((int)OrderStatus.PaymentPending);
+        dbContext.OrderCheckoutDetails.Should().ContainSingle(details =>
+            details.OrderId == risultato.OrderId &&
+            details.PaymentMethod == "stripe-test" &&
+            details.PaymentStatus == "pending");
+        sut.GetCart("cliente@test.it").Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SaveStripeCheckoutSession_QuandoOrdineStripeValido_AlloraSalvaRiferimenti()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var sut = CreateStripeCheckoutOrder(dbContext, out var orderId);
+
+        // Act
+        var risultato = sut.SaveStripeCheckoutSession("cliente@test.it", orderId, new StripeCheckoutSessionResult
+        {
+            SessionId = "cs_test_123",
+            Url = "https://checkout.stripe.com/c/pay/cs_test_123",
+            PaymentIntentId = "pi_123",
+            PaymentStatus = "unpaid"
+        });
+
+        // Assert
+        risultato.Should().BeTrue();
+        sut.GetOrderIdByStripeCheckoutSession("cs_test_123").Should().Be(orderId);
+        var details = dbContext.OrderCheckoutDetails.Single(details => details.OrderId == orderId);
+        details.StripeCheckoutSessionId.Should().Be("cs_test_123");
+        details.StripePaymentIntentId.Should().Be("pi_123");
+        details.StripePaymentStatus.Should().Be("unpaid");
+    }
+
+    [Fact]
+    public void CompleteStripePayment_QuandoSessionePagata_AlloraAutorizzaEConfermaInModoIdempotente()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var sut = CreateStripeCheckoutOrder(dbContext, out var orderId);
+        sut.SaveStripeCheckoutSession("cliente@test.it", orderId, new StripeCheckoutSessionResult
+        {
+            SessionId = "cs_test_paid",
+            Url = "https://checkout.stripe.com/c/pay/cs_test_paid",
+            PaymentIntentId = "pi_initial",
+            PaymentStatus = "unpaid"
+        }).Should().BeTrue();
+
+        // Act
+        var primoRisultato = sut.CompleteStripePayment("cs_test_paid", "pi_paid", "paid", "stripe");
+        var secondoRisultato = sut.CompleteStripePayment("cs_test_paid", "pi_paid", "paid", "stripe");
+
+        // Assert
+        primoRisultato.Success.Should().BeTrue();
+        secondoRisultato.Success.Should().BeTrue();
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.Confirmed);
+        dbContext.OrderCheckoutDetails.Single(details => details.OrderId == orderId).PaymentStatus.Should().Be("authorized");
+        dbContext.OrderStatusHistory.Count(history => history.OrderId == orderId && history.ToStatus == (int)OrderStatus.PaymentAuthorized).Should().Be(1);
+        dbContext.OrderStatusHistory.Count(history => history.OrderId == orderId && history.ToStatus == (int)OrderStatus.Confirmed).Should().Be(1);
+    }
+
+    [Fact]
+    public void FailStripePayment_QuandoSessioneFallita_AlloraFallisceERipristinaStockUnaSolaVolta()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var sut = CreateStripeCheckoutOrder(dbContext, out var orderId);
+        sut.SaveStripeCheckoutSession("cliente@test.it", orderId, new StripeCheckoutSessionResult
+        {
+            SessionId = "cs_test_failed",
+            Url = "https://checkout.stripe.com/c/pay/cs_test_failed",
+            PaymentIntentId = "pi_initial",
+            PaymentStatus = "unpaid"
+        }).Should().BeTrue();
+
+        // Act
+        var primoRisultato = sut.FailStripePayment("cs_test_failed", "pi_failed", "failed", "stripe");
+        var secondoRisultato = sut.FailStripePayment("cs_test_failed", "pi_failed", "failed", "stripe");
+
+        // Assert
+        primoRisultato.Success.Should().BeTrue();
+        secondoRisultato.Success.Should().BeTrue();
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.PaymentFailed);
+        dbContext.Products.Single(product => product.Code == "PRD-001").StockQuantity.Should().Be(5);
+        dbContext.OrderStatusHistory.Count(history => history.OrderId == orderId && history.ToStatus == (int)OrderStatus.PaymentFailed).Should().Be(1);
+    }
+
     private static CheckoutAddressesViewModel CreateAddresses()
     {
         return new CheckoutAddressesViewModel
@@ -303,6 +413,22 @@ public class CheckoutDataServiceTests
             CreatedAt = DateTime.UtcNow
         });
         dbContext.SaveChanges();
+    }
+
+    private static DashboardOrdersDataService CreateStripeCheckoutOrder(DashboardOrdersDbContext dbContext, out int orderId)
+    {
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.AddOrUpdateCartItem("cliente@test.it", "PRD-001", 1).Should().BeTrue();
+        sut.StartCheckout("cliente@test.it").Should().BeTrue();
+        sut.SaveCheckoutAddresses("cliente@test.it", CreateAddresses()).Should().BeTrue();
+        sut.SaveCheckoutOptions("cliente@test.it", new CheckoutOptionsViewModel
+        {
+            DeliveryMethod = "standard",
+            PaymentMethod = "stripe-test"
+        }).Should().BeTrue();
+        orderId = sut.ConfirmCheckout("cliente@test.it").OrderId!.Value;
+        return sut;
     }
 
     private static void SeedItalianPostalCodes(DashboardOrdersDbContext dbContext)

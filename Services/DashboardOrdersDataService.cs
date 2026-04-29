@@ -11,6 +11,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
     private const int CheckoutRetentionHours = 24;
     private const string PaymentMethodTestCard = "test-card";
     private const string PaymentMethodPending = "pending";
+    private const string PaymentMethodStripeTest = "stripe-test";
 
     private sealed record PagedResult<T>(List<T> Items, int CurrentPage, int PageSize, int TotalPages);
 
@@ -596,7 +597,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
         var deliveryMethod = NormalizeCheckoutChoice(model.DeliveryMethod, "standard");
         var paymentMethod = NormalizeCheckoutChoice(model.PaymentMethod, PaymentMethodPending);
-        if (paymentMethod is not PaymentMethodTestCard and not PaymentMethodPending)
+        if (paymentMethod is not PaymentMethodTestCard and not PaymentMethodPending and not PaymentMethodStripeTest)
         {
             return false;
         }
@@ -632,7 +633,8 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         var items = cart.Items
             .Select(item => new NewOrderItemViewModel { ProductCode = item.ProductCode, Quantity = item.Quantity })
             .ToList();
-        var initialStatus = session.PaymentMethod == PaymentMethodTestCard ? OrderStatus.PaymentPending : OrderStatus.Pending;
+        var requiresPayment = session.PaymentMethod is PaymentMethodTestCard or PaymentMethodStripeTest;
+        var initialStatus = requiresPayment ? OrderStatus.PaymentPending : OrderStatus.Pending;
         var order = CreateOrderEntity(normalizedEmail, items, initialStatus);
         if (order is null)
         {
@@ -644,7 +646,7 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
 
         dbContext.OrderCheckoutDetails.Add(CreateOrderCheckoutDetails(order.Id, session, initialStatus));
         session.CreatedOrderId = order.Id;
-        session.CurrentStep = session.PaymentMethod == PaymentMethodTestCard
+        session.CurrentStep = requiresPayment
             ? (int)CheckoutStep.Payment
             : (int)CheckoutStep.Result;
         TouchCheckoutSession(session, GetCurrentTimestamp());
@@ -655,7 +657,164 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         {
             Success = true,
             OrderId = order.Id,
-            RequiresPayment = session.PaymentMethod == PaymentMethodTestCard
+            RequiresPayment = requiresPayment,
+            RequiresStripeCheckout = session.PaymentMethod == PaymentMethodStripeTest,
+            PaymentMethod = session.PaymentMethod
+        };
+    }
+
+    public bool SaveStripeCheckoutSession(string? customerEmail, int orderId, StripeCheckoutSessionResult session)
+    {
+        var normalizedEmail = NormalizeEmail(customerEmail);
+        if (string.IsNullOrWhiteSpace(session.SessionId) || string.IsNullOrWhiteSpace(session.Url))
+        {
+            return false;
+        }
+
+        var order = dbContext.Orders
+            .Include(existingOrder => existingOrder.Customer)
+            .Include(existingOrder => existingOrder.CheckoutDetails)
+            .FirstOrDefault(existingOrder => existingOrder.Id == orderId);
+
+        if (order is null
+            || order.CheckoutDetails is null
+            || order.Customer.Email.ToLowerInvariant() != normalizedEmail
+            || order.CheckoutDetails.PaymentMethod != PaymentMethodStripeTest)
+        {
+            return false;
+        }
+
+        order.CheckoutDetails.StripeCheckoutSessionId = NormalizeOptionalText(session.SessionId);
+        order.CheckoutDetails.StripePaymentIntentId = NormalizeOptionalText(session.PaymentIntentId);
+        order.CheckoutDetails.StripePaymentStatus = NormalizeOptionalText(session.PaymentStatus);
+        order.CheckoutDetails.PaymentStatus = "pending";
+        order.CheckoutDetails.UpdatedAt = GetCurrentTimestamp();
+        dbContext.SaveChanges();
+        return true;
+    }
+
+    public int? GetOrderIdByStripeCheckoutSession(string stripeCheckoutSessionId)
+    {
+        var normalizedSessionId = NormalizeOptionalText(stripeCheckoutSessionId);
+        if (string.IsNullOrWhiteSpace(normalizedSessionId))
+        {
+            return null;
+        }
+
+        return dbContext.OrderCheckoutDetails
+            .AsNoTracking()
+            .Where(details => details.StripeCheckoutSessionId == normalizedSessionId)
+            .Select(details => (int?)details.OrderId)
+            .FirstOrDefault();
+    }
+
+    public CheckoutPaymentResult CompleteStripePayment(string stripeCheckoutSessionId, string? paymentIntentId, string? stripePaymentStatus, string? changedBy = null)
+    {
+        var order = GetStripeOrderForUpdate(stripeCheckoutSessionId);
+        if (order is null || order.CheckoutDetails is null)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Sessione Stripe non trovata." };
+        }
+
+        if (order.CheckoutDetails.PaymentMethod != PaymentMethodStripeTest)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Pagamento Stripe non disponibile per questo ordine." };
+        }
+
+        var currentStatus = ToOrderStatus(order.Status);
+        if (currentStatus == OrderStatus.Confirmed)
+        {
+            UpdateStripeReferences(order.CheckoutDetails, paymentIntentId, stripePaymentStatus, "authorized");
+            dbContext.SaveChanges();
+            return new CheckoutPaymentResult
+            {
+                Success = true,
+                OrderId = order.Id,
+                FinalStatus = OrderStatus.Confirmed,
+                PaymentStatus = order.CheckoutDetails.PaymentStatus
+            };
+        }
+
+        if (currentStatus != OrderStatus.PaymentPending && currentStatus != OrderStatus.PaymentAuthorized)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Stato ordine non compatibile con conferma Stripe." };
+        }
+
+        var now = GetCurrentTimestamp();
+        var actor = string.IsNullOrWhiteSpace(changedBy) ? "stripe" : changedBy;
+        if (currentStatus == OrderStatus.PaymentPending)
+        {
+            AppendStatusHistory(order, currentStatus, OrderStatus.PaymentAuthorized, actor, "Pagamento Stripe test autorizzato", stripeCheckoutSessionId, now);
+            order.Status = (int)OrderStatus.PaymentAuthorized;
+        }
+
+        AppendStatusHistory(order, OrderStatus.PaymentAuthorized, OrderStatus.Confirmed, actor, "Ordine confermato dopo pagamento Stripe test", stripeCheckoutSessionId, now);
+        order.Status = (int)OrderStatus.Confirmed;
+        order.UpdatedAt = now;
+        UpdateStripeReferences(order.CheckoutDetails, paymentIntentId, stripePaymentStatus, "authorized");
+        order.CheckoutDetails.UpdatedAt = now;
+
+        dbContext.SaveChanges();
+        return new CheckoutPaymentResult
+        {
+            Success = true,
+            OrderId = order.Id,
+            FinalStatus = OrderStatus.Confirmed,
+            PaymentStatus = order.CheckoutDetails.PaymentStatus
+        };
+    }
+
+    public CheckoutPaymentResult FailStripePayment(string stripeCheckoutSessionId, string? paymentIntentId, string? stripePaymentStatus, string? changedBy = null)
+    {
+        var order = GetStripeOrderForUpdate(stripeCheckoutSessionId);
+        if (order is null || order.CheckoutDetails is null)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Sessione Stripe non trovata." };
+        }
+
+        if (order.CheckoutDetails.PaymentMethod != PaymentMethodStripeTest)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Pagamento Stripe non disponibile per questo ordine." };
+        }
+
+        var currentStatus = ToOrderStatus(order.Status);
+        if (currentStatus == OrderStatus.PaymentFailed)
+        {
+            UpdateStripeReferences(order.CheckoutDetails, paymentIntentId, stripePaymentStatus, "failed");
+            dbContext.SaveChanges();
+            return new CheckoutPaymentResult
+            {
+                Success = true,
+                OrderId = order.Id,
+                FinalStatus = OrderStatus.PaymentFailed,
+                PaymentStatus = order.CheckoutDetails.PaymentStatus
+            };
+        }
+
+        if (currentStatus != OrderStatus.PaymentPending && currentStatus != OrderStatus.PaymentAuthorized)
+        {
+            return new CheckoutPaymentResult { ErrorMessage = "Stato ordine non compatibile con fallimento Stripe." };
+        }
+
+        var now = GetCurrentTimestamp();
+        if (!HasStockAlreadyRestored(order))
+        {
+            RestoreOrderStock(order);
+        }
+
+        AppendStatusHistory(order, currentStatus, OrderStatus.PaymentFailed, string.IsNullOrWhiteSpace(changedBy) ? "stripe" : changedBy, "Pagamento Stripe test fallito", stripeCheckoutSessionId, now);
+        order.Status = (int)OrderStatus.PaymentFailed;
+        order.UpdatedAt = now;
+        UpdateStripeReferences(order.CheckoutDetails, paymentIntentId, stripePaymentStatus, "failed");
+        order.CheckoutDetails.UpdatedAt = now;
+
+        dbContext.SaveChanges();
+        return new CheckoutPaymentResult
+        {
+            Success = true,
+            OrderId = order.Id,
+            FinalStatus = OrderStatus.PaymentFailed,
+            PaymentStatus = order.CheckoutDetails.PaymentStatus
         };
     }
 
@@ -1276,7 +1435,10 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             DeliveryMethod = entity.DeliveryMethod,
             PaymentMethod = entity.PaymentMethod,
             PaymentStatus = entity.PaymentStatus,
-            TestTransactionReference = entity.TestTransactionReference ?? string.Empty
+            TestTransactionReference = entity.TestTransactionReference ?? string.Empty,
+            StripeCheckoutSessionId = entity.StripeCheckoutSessionId ?? string.Empty,
+            StripePaymentIntentId = entity.StripePaymentIntentId ?? string.Empty,
+            StripePaymentStatus = entity.StripePaymentStatus ?? string.Empty
         };
     }
 
@@ -1683,6 +1845,36 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
     private static string CreateTestTransactionReference(int orderId)
     {
         return $"TEST-{orderId}-{DateTime.UtcNow:yyyyMMddHHmmss}";
+    }
+
+    private OrderEntity? GetStripeOrderForUpdate(string stripeCheckoutSessionId)
+    {
+        var normalizedSessionId = NormalizeOptionalText(stripeCheckoutSessionId);
+        if (string.IsNullOrWhiteSpace(normalizedSessionId))
+        {
+            return null;
+        }
+
+        return dbContext.Orders
+            .Include(existingOrder => existingOrder.Customer)
+            .Include(existingOrder => existingOrder.Items)
+            .ThenInclude(item => item.Product)
+            .Include(existingOrder => existingOrder.StatusHistory)
+            .Include(existingOrder => existingOrder.CheckoutDetails)
+            .FirstOrDefault(existingOrder =>
+                existingOrder.CheckoutDetails != null &&
+                existingOrder.CheckoutDetails.StripeCheckoutSessionId == normalizedSessionId);
+    }
+
+    private static void UpdateStripeReferences(
+        OrderCheckoutDetailsEntity details,
+        string? paymentIntentId,
+        string? stripePaymentStatus,
+        string paymentStatus)
+    {
+        details.PaymentStatus = paymentStatus;
+        details.StripePaymentIntentId = NormalizeOptionalText(paymentIntentId) ?? details.StripePaymentIntentId;
+        details.StripePaymentStatus = NormalizeOptionalText(stripePaymentStatus) ?? details.StripePaymentStatus;
     }
 
     private static void AppendInitialStatusHistory(OrderEntity order, OrderStatus initialStatus, string changedBy, DateTime changedAt)
