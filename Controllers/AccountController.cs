@@ -194,11 +194,11 @@ public class AccountController : Controller
     {
         if (model.DateOfBirth == default)
         {
-            ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita è obbligatoria.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.DateOfBirth), "La data di nascita è obbligatoria.");
         }
         else if (model.DateOfBirth.Date > DateTime.Today)
         {
-            ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita non può essere nel futuro.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.DateOfBirth), "La data di nascita non può essere nel futuro.");
         }
     }
 
@@ -211,12 +211,12 @@ public class AccountController : Controller
     {
         if (string.IsNullOrWhiteSpace(model.UserLogin))
         {
-            ModelState.AddModelError(nameof(Models.Login.UserLogin), "Il login è obbligatorio.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Login.UserLogin), "Il login è obbligatorio.");
         }
 
         if (string.IsNullOrWhiteSpace(model.Password))
         {
-            ModelState.AddModelError(nameof(Models.Login.Password), "La password è obbligatoria.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Login.Password), "La password è obbligatoria.");
         }
     }
 
@@ -224,8 +224,8 @@ public class AccountController : Controller
     {
         model.UserLogin = string.Empty;
         model.Password = string.Empty;
-        ModelState.Remove(nameof(Models.Login.UserLogin));
-        ModelState.Remove(nameof(Models.Login.Password));
+        ModelState.Remove(nameof(DashboardOrders.Models.ViewModels.Login.UserLogin));
+        ModelState.Remove(nameof(DashboardOrders.Models.ViewModels.Login.Password));
     }
 
     private static RegisterDto ToRegisterDto(Register model)
