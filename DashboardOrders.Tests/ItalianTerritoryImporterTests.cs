@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Security;
 using DashboardOrders.Data;
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;

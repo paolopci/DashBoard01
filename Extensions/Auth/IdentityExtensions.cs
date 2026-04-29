@@ -1,5 +1,6 @@
+using DashboardOrders.Models.ViewModels;
 using DashboardOrders.Data;
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
 namespace DashboardOrders.Extensions.Auth;

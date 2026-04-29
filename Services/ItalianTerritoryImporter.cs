@@ -2,7 +2,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Xml;
 using DashboardOrders.Data;
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DashboardOrders.Services;

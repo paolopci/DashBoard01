@@ -1,5 +1,5 @@
 using DashboardOrders.Data;
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using FluentAssertions;

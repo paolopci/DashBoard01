@@ -1,7 +1,9 @@
+using DashboardOrders.Models.Dto;
+using DashboardOrders.Models.ViewModels;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Extensions.Auth;
 using DashboardOrders.Models;
 using Microsoft.AspNetCore.Identity;

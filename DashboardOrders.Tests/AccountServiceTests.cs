@@ -1,4 +1,6 @@
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Models.Dto;
+using DashboardOrders.Models.ViewModels;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using FluentAssertions;

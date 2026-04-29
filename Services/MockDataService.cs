@@ -1,3 +1,4 @@
+using DashboardOrders.Models.ViewModels;
 using DashboardOrders.Models;
 
 namespace DashboardOrders.Services;
