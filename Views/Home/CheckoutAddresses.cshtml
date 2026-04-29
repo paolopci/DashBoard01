@@ -168,6 +168,7 @@
 </form>
 
 @section Scripts {
+    <script src="~/js/phone-prefix-combobox.js" asp-append-version="true"></script>
     <script>
         (() => {
             const form = document.querySelector('[data-checkout-address-form]');
@@ -186,16 +187,11 @@
             const billingSame = form.querySelector('[data-billing-same]');
             const billingFields = form.querySelector('[data-billing-fields]');
             const sections = [...form.querySelectorAll('[data-address-section]')];
-            const phonePrefixCombobox = form.querySelector('[data-phone-prefix-combobox]');
-            const phonePrefixValue = form.querySelector('[data-phone-prefix-value]');
-            const phoneCountryIso2 = form.querySelector('[data-phone-country-iso2]');
-            const phonePrefixToggle = form.querySelector('[data-phone-prefix-toggle]');
-            const phonePrefixPanel = form.querySelector('[data-phone-prefix-panel]');
-            const phonePrefixSearch = form.querySelector('[data-phone-prefix-search]');
-            const phonePrefixOptions = form.querySelector('[data-phone-prefix-options]');
-            const phonePrefixFlag = form.querySelector('[data-phone-prefix-flag]');
-            const phonePrefixLabel = form.querySelector('[data-phone-prefix-label]');
-            let phoneCountryPrefixes = [];
+            const phonePrefixCombobox = window.DashboardPhonePrefixCombobox?.init({
+                root: form,
+                endpoint: endpoints.phonePrefixes,
+                onChange: () => updateState()
+            });
 
             const fetchJson = async (url) => {
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -208,109 +204,6 @@
                 select.append(new Option(placeholder, ''));
                 values.forEach((value) => select.append(new Option(value, value)));
                 select.value = values.includes(currentValue) ? currentValue : '';
-            };
-
-            const getSelectedPhonePrefix = () => {
-                const iso2 = phoneCountryIso2?.value || '';
-                const dialCode = phonePrefixValue?.value || '';
-                return phoneCountryPrefixes.find((prefix) => prefix.iso2 === iso2)
-                    || phoneCountryPrefixes.find((prefix) => prefix.dialCode === dialCode)
-                    || null;
-            };
-
-            const setSelectedPhonePrefix = (prefix) => {
-                if (!prefix || !phonePrefixValue || !phoneCountryIso2) {
-                    return;
-                }
-
-                phonePrefixValue.value = prefix.dialCode;
-                phoneCountryIso2.value = prefix.iso2;
-                phonePrefixLabel.textContent = `${prefix.iso2} ${prefix.dialCode}`;
-                phonePrefixToggle.title = `${prefix.localizedCountryName || prefix.countryName} ${prefix.dialCode}`;
-                if (phonePrefixFlag) {
-                    phonePrefixFlag.src = prefix.flagPath;
-                    phonePrefixFlag.hidden = false;
-                }
-                renderPhonePrefixOptions(phonePrefixSearch?.value || '');
-                updateState();
-            };
-
-            const closePhonePrefixPanel = () => {
-                phonePrefixPanel?.classList.add('hidden');
-                phonePrefixToggle?.setAttribute('aria-expanded', 'false');
-            };
-
-            const openPhonePrefixPanel = () => {
-                phonePrefixPanel?.classList.remove('hidden');
-                phonePrefixToggle?.setAttribute('aria-expanded', 'true');
-                phonePrefixSearch?.focus();
-                phonePrefixSearch?.select();
-            };
-
-            const renderPhonePrefixOptions = (searchTerm = '') => {
-                if (!phonePrefixOptions) {
-                    return;
-                }
-
-                const selectedIso2 = phoneCountryIso2?.value || '';
-                const normalizedSearch = searchTerm.trim().toLowerCase();
-                const filtered = phoneCountryPrefixes
-                    .filter((prefix) => {
-                        const haystack = [
-                            prefix.iso2,
-                            prefix.iso3,
-                            prefix.countryName,
-                            prefix.localizedCountryName,
-                            prefix.dialCode
-                        ].join(' ').toLowerCase();
-                        return !normalizedSearch || haystack.includes(normalizedSearch);
-                    })
-                    .slice(0, 80);
-
-                phonePrefixOptions.innerHTML = '';
-                if (filtered.length === 0) {
-                    const empty = document.createElement('div');
-                    empty.className = 'px-3 py-2 text-sm text-slate-500';
-                    empty.textContent = 'Nessun prefisso trovato';
-                    phonePrefixOptions.append(empty);
-                    return;
-                }
-
-                filtered.forEach((prefix) => {
-                    const option = document.createElement('button');
-                    option.type = 'button';
-                    option.role = 'option';
-                    option.setAttribute('aria-selected', String(prefix.iso2 === selectedIso2));
-                    option.className = 'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none';
-                    option.dataset.iso2 = prefix.iso2;
-                    option.innerHTML = `
-                        <img alt="" class="h-4 w-6 shrink-0 rounded-sm object-cover ring-1 ring-slate-200" src="${prefix.flagPath}">
-                        <span class="min-w-0 flex-1 truncate">${prefix.localizedCountryName || prefix.countryName}</span>
-                        <span class="shrink-0 font-semibold text-slate-500">${prefix.dialCode}</span>
-                    `;
-                    option.addEventListener('click', () => {
-                        setSelectedPhonePrefix(prefix);
-                        closePhonePrefixPanel();
-                        phonePrefixToggle?.focus();
-                    });
-                    phonePrefixOptions.append(option);
-                });
-            };
-
-            const loadPhonePrefixes = async () => {
-                phoneCountryPrefixes = await fetchJson(endpoints.phonePrefixes);
-                if (phoneCountryPrefixes.length === 0) {
-                    return;
-                }
-
-                const currentIso2 = phoneCountryIso2?.value || '';
-                const currentDialCode = phonePrefixValue?.value || '+39';
-                const selected = phoneCountryPrefixes.find((prefix) => prefix.iso2 === currentIso2)
-                    || phoneCountryPrefixes.find((prefix) => prefix.dialCode === currentDialCode && prefix.iso2 === 'IT')
-                    || phoneCountryPrefixes.find((prefix) => prefix.dialCode === currentDialCode)
-                    || phoneCountryPrefixes.find((prefix) => prefix.iso2 === 'IT')
-                    || phoneCountryPrefixes[0];
-                setSelectedPhonePrefix(selected);
             };
 
             const fillProvinces = async () => {
@@ -386,7 +279,7 @@
                     addressLine.value = [get('Street'), get('StreetNumber')].filter(Boolean).join(' ');
                 }
                 if (country) {
-                    const selectedPrefix = getSelectedPhonePrefix();
+                    const selectedPrefix = phonePrefixCombobox?.getSelectedPrefix();
                     country.value = isShipping && selectedPrefix
                         ? (selectedPrefix.localizedCountryName || selectedPrefix.countryName)
                         : 'Italia';
@@ -503,35 +396,6 @@
                 });
             });
 
-            phonePrefixToggle?.addEventListener('click', () => {
-                const isOpen = phonePrefixToggle.getAttribute('aria-expanded') === 'true';
-                if (isOpen) {
-                    closePhonePrefixPanel();
-                } else {
-                    openPhonePrefixPanel();
-                }
-            });
-            phonePrefixSearch?.addEventListener('input', () => {
-                renderPhonePrefixOptions(phonePrefixSearch.value);
-            });
-            phonePrefixSearch?.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') {
-                    closePhonePrefixPanel();
-                    phonePrefixToggle?.focus();
-                    return;
-                }
-
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    phonePrefixOptions?.querySelector('button')?.click();
-                }
-            });
-            document.addEventListener('click', (event) => {
-                if (phonePrefixCombobox && !phonePrefixCombobox.contains(event.target)) {
-                    closePhonePrefixPanel();
-                }
-            });
-
             billingSame.addEventListener('change', async () => {
                 updateState();
                 await syncBillingLocationFromShipping();
@@ -547,7 +411,7 @@
                 }
             });
 
-            Promise.all([fillProvinces(), loadPhonePrefixes()]).then(async () => {
+            Promise.all([fillProvinces(), phonePrefixCombobox?.load()]).then(async () => {
                 for (const section of sections) {
                     await loadCities(section);
                     await loadPostalCodes(section);
@@ -558,4 +422,3 @@
         })();
     </script>
 }
-

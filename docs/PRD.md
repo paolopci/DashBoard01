@@ -2,60 +2,62 @@
 
 ## Obiettivo
 
-Sostituire il campo prefisso telefonico del checkout con un combobox custom con ricerca, paese, prefisso e bandiera locale, alimentato da una tabella EF Core seedata da dati versionati.
+Mettere in sicurezza e rifattorizzare in modo incrementale il codice introdotto negli ultimi cinque commit su registrazione telefono, prefissi internazionali, checkout e Stripe.
 
 ## Problema/Contesto
 
-La pagina `CheckoutAddresses` espone oggi una `select` limitata al solo prefisso italiano `+39`. L'utente vuole un'esperienza simile ai selettori internazionali moderni, con tutti i paesi/territori supportati, bandierine locali e salvataggio coerente del paese associato al prefisso.
+Gli ultimi commit hanno aggiunto prefissi telefonici internazionali, campi telefono in registrazione, refactor namespace Domain/Models e integrazione Stripe. L'analisi ha evidenziato rischi su migration EF non incrementale, endpoint prefissi non accessibile da registrazione anonima, duplicazione JavaScript del combobox prefissi e punti deboli nel recupero del flusso Stripe.
 
 ## Scope
 
-- Aggiungere un dataset locale versionato dei prefissi telefonici internazionali.
-- Salvare le bandiere SVG in `wwwroot/img/flags/4x3`.
-- Aggiungere tabella EF Core `PhoneCountryPrefixes`.
-- Seedare la tabella da `Data/Seed/phone-country-prefixes.json`.
-- Esporre i prefissi attivi tramite servizio applicativo ed endpoint JSON MVC.
-- Sostituire la select nativa in `CheckoutAddresses` con un combobox custom accessibile.
-- Salvare `ShippingPhonePrefix`, `ShippingPhoneCountryIso2`, `ShippingPhone` e `ShippingCountry` in modo compatibile con il flusso checkout esistente.
-- Aggiornare test automatici per service, controller e mapping EF.
+- Correggere la migration `AddPhoneToApplicationUser` rendendola incrementale e non distruttiva.
+- Allineare vincoli EF per `ApplicationUser.PhonePrefix` e `ApplicationUser.PhoneCountryIso2`.
+- Correggere registrazione anonima con prefisso telefonico e submit utilizzabile.
+- Estrarre il combobox prefissi in JavaScript condiviso senza rendering `innerHTML` di dati dinamici.
+- Usare lo script condiviso in registrazione e checkout indirizzi.
+- Rafforzare return/retry Stripe e controllo ownership dell'ordine.
+- Estrarre costanti condivise per metodi e stati pagamento.
+- Applicare un refactor strutturale leggero su analytics/controller e whitespace.
+- Aggiungere o aggiornare test automatici pertinenti.
 
 ## Out of scope
 
+- Eliminazione di file, dati o configurazioni.
+- Installazione di nuove dipendenze NuGet o npm.
+- Riscrittura completa di `DashboardOrdersDataService`.
+- Modifica del modello dati dei prefissi internazionali gia introdotto.
 - Validazione completa dei numeri telefonici internazionali.
-- Installazione di librerie NuGet, npm o widget UI esterni.
-- Modifica del flusso province/citta/CAP, che resta italiano.
-- Gestione di prefissi multipli per lo stesso ISO oltre al prefisso principale del dataset.
-- Modifiche ai dati storici gia salvati.
+- Cambio del flusso province/citta/CAP, che resta italiano.
 
 ## Requisiti funzionali
 
-- Il cliente deve poter cercare un paese per nome, codice ISO o prefisso.
-- Il controllo deve mostrare bandiera locale, nome paese e prefisso.
-- Il valore postato deve restare compatibile con `ShippingPhonePrefix`.
-- Il checkout deve comporre `ShippingPhone` come `<prefisso> <numero>`.
-- Se il paese selezionato e risolto, `ShippingCountry` deve usare il nome localizzato del paese.
-- Se i dati prefisso non sono disponibili, il checkout deve mantenere fallback compatibile su `Italia`.
-- L'elenco deve usare solo record attivi ordinati per `DisplayOrder` e nome paese.
+- La registrazione anonima deve poter caricare i prefissi telefonici e inviare il form.
+- Il prefisso italiano `+39` deve restare il fallback predefinito.
+- Registrazione e checkout devono usare lo stesso comportamento del combobox prefissi.
+- Il checkout Stripe deve permettere un retry recuperabile quando la sessione Stripe non viene creata o va ripresa.
+- Il return Stripe non deve completare un ordine non appartenente all'utente corrente.
 
 ## Vincoli tecnici
 
 - Usare ASP.NET Core MVC .NET 9, Razor/Tailwind ed EF Core gia presenti.
-- Non introdurre nuove dipendenze.
-- Usare asset locali a runtime, senza chiamate esterne dal browser.
-- Mantenere controller sottili e logica dati nel servizio.
-- Non eliminare codice o file non correlati.
+- Non introdurre nuove tecnologie o librerie.
+- Mantenere controller sottili dove il cambiamento e locale e a basso rischio.
+- Non correggere la migration con operazioni distruttive.
+- Mantenere compatibilita con test xUnit esistenti.
 
 ## Acceptance criteria
 
-- La pagina checkout mostra un combobox prefisso con bandiera e ricerca.
-- Il prefisso italiano `+39` resta il default.
-- Un prefisso estero salva telefono e paese associato.
-- La tabella `PhoneCountryPrefixes` e configurata in EF Core con indice univoco su `Iso2`.
-- Il seeder popola o aggiorna i prefissi da file locale.
-- I test pertinenti passano.
-- La solution compila.
+- La migration telefono contiene solo operazioni incrementali su `AspNetUsers`.
+- `PhonePrefix` e `PhoneCountryIso2` hanno max length coerenti in EF.
+- La pagina registrazione anonima carica i prefissi e il submit non resta bloccato.
+- Il JavaScript del combobox prefissi e condiviso tra registrazione e checkout.
+- Il rendering opzioni prefissi usa nodi DOM e `textContent`.
+- Il flusso Stripe ha controllo ownership e retry esplicito.
+- I test mirati su telefono/registrazione/Stripe passano.
+- `dotnet test`, `dotnet build`, `dotnet ef migrations script` e `git diff --check` hanno esito documentato.
 
 ## Definizione di completamento
 
-- Documentazione, dati locali, asset SVG, entity, migrazione, seed, service, controller, view e test sono aggiornati.
-- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj` e `dotnet build DashBoard01.sln` sono eseguiti con esito documentato.
+- PRD e PLAN sono aggiornati.
+- Codice, migration, view/script e test sono aggiornati.
+- Le verifiche previste dal piano sono eseguite con esito documentato oppure eventuali blocchi sono dichiarati.

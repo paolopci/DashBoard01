@@ -5,18 +5,19 @@
 - [x] Analizzare richiesta, repository e vincoli locali.
 - [x] Aggiornare `docs/PRD.md`.
 - [x] Aggiornare `docs/PLAN.md`.
-- [x] Completare Fase 1.
+- [ ] Completare Fase 1.
 - [x] Completare Fase 2.
 - [x] Completare Fase 3.
 - [x] Completare Fase 4.
+- [x] Completare Fase 5.
 - [ ] Archiviare PRD/PLAN in `docs/History` a sviluppo complessivo concluso.
 
-## Fase 1 - Normalizzazione documentale
+## Fase 1 - Documentazione operativa
 Stato: completed
 Scope finale: in
 Tipo fase: analisi
 Obiettivo:
-Allineare PRD e PLAN alla feature prefissi telefonici internazionali.
+Allineare PRD e PLAN al refactoring post ultimi cinque commit.
 Attivita:
 - [x] Rileggere richiesta, repository e vincoli locali.
 - [x] Aggiornare `docs/PRD.md`.
@@ -31,108 +32,142 @@ nessuna
 Validazioni:
 Ispezione statica documentale.
 Definition of done:
-Documenti allineati alla feature approvata.
+Documenti aggiornati con scope, rischi e fasi approvate.
 Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Il contenuto Stripe precedente era concluso e viene sostituito dal nuovo sviluppo.
+La migration telefono e assunta applicata solo in locale.
 
-## Fase 2 - Dati locali, EF Core e seed
+## Fase 2 - Hotfix DB e registrazione
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Creare lookup persistente dei prefissi telefonici con dataset e bandiere locali.
+Rendere sicura la migration telefono e sbloccare la registrazione anonima.
 Attivita:
-- [x] Generare `Data/Seed/phone-country-prefixes.json`.
-- [x] Salvare SVG bandiere in `wwwroot/img/flags/4x3`.
-- [x] Aggiungere entity, `DbSet` e configurazione EF.
-- [x] Aggiungere migrazione `PhoneCountryPrefixes`.
-- [x] Aggiungere seed ripetibile nel seeder esistente.
+- [x] Correggere `20260429185518_AddPhoneToApplicationUser` come migration incrementale.
+- [x] Configurare lunghezze EF per i campi telefono di `ApplicationUser`.
+- [x] Rendere accessibile l'endpoint prefissi alla registrazione anonima.
+- [x] Garantire submit registrazione utilizzabile.
+- [x] Aggiungere test mapping telefono registrazione.
 File o aree coinvolte:
-- `Data/`
 - `Migrations/`
-- `Services/DashboardOrdersDatabaseSeeder.cs`
-- `wwwroot/img/flags/4x3`
+- `Data/Configurations/ApplicationUserConfiguration.cs`
+- `Controllers/HomeController.cs`
+- `Views/Account/Register.cshtml`
+- `DashboardOrders.Tests/`
 Backend impact: si
 Frontend impact: si
 Dipendenze:
 Fase 1 completed
 Validazioni:
-Da completare in Fase 4 con test/build.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore --filter "FullyQualifiedName~Account"`: superato, 23 test passati.
+`dotnet ef migrations script 20260429000100_AddPhoneCountryPrefixes 20260429185518_AddPhoneToApplicationUser --project DashboardOrders.csproj --no-build`: superato, script con soli `ALTER TABLE` su `AspNetUsers`.
 Definition of done:
-Lookup prefissi disponibile localmente e configurato per persistenza.
+Migration incrementale, registrazione non bloccata e test mirati verdi.
 Tracer Bullet: obbligatoria
-Sub-agent: vietato
+Sub-agent: ammesso
 Sub-task delegabili:
-nessuno
+Backend migration/test; Razor registrazione.
 Note:
-Download dati e bandiere eseguito una tantum; runtime senza rete.
+Non introdurre operazioni distruttive.
 
-## Fase 3 - Service, endpoint e UI checkout
+## Fase 3 - Refactor combobox prefissi
 Stato: completed
 Scope finale: in
-Tipo fase: implementazione
+Tipo fase: refactoring
 Obiettivo:
-Collegare lookup prefissi al checkout e sostituire la select con combobox custom.
+Rimuovere duplicazione JavaScript prefissi tra registrazione e checkout.
 Attivita:
-- [x] Aggiungere view model prefisso.
-- [x] Aggiungere metodo servizio `GetPhoneCountryPrefixes`.
-- [x] Aggiungere endpoint MVC JSON.
-- [x] Aggiornare salvataggio `ShippingCountry` da paese selezionato.
-- [x] Aggiornare `CheckoutAddresses` con combobox custom e fallback `+39`.
+- [x] Creare script condiviso in `wwwroot/js`.
+- [x] Integrare script in registrazione.
+- [x] Integrare script in checkout indirizzi.
+- [x] Evitare `innerHTML` per dati prefissi dinamici.
 File o aree coinvolte:
-- `Models/`
-- `Services/`
-- `Controllers/HomeController.cs`
+- `wwwroot/js/phone-prefix-combobox.js`
+- `Views/Account/Register.cshtml`
 - `Views/Home/CheckoutAddresses.cshtml`
-Backend impact: si
+Backend impact: no
 Frontend impact: si
 Dipendenze:
 Fase 2 completed
 Validazioni:
-Da completare in Fase 4 con test/build.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore --filter "FullyQualifiedName~Account|FullyQualifiedName~HomeController"`: superato, 66 test passati.
+Verifica statica: la logica prefissi duplicata non resta nelle view; il rendering opzioni prefissi usa nodi DOM e `textContent` in `wwwroot/js/phone-prefix-combobox.js`.
 Definition of done:
-La pagina checkout usa prefissi internazionali locali e salva dati compatibili.
-Tracer Bullet: obbligatoria
-Sub-agent: vietato
+Un solo script gestisce il combobox prefissi su entrambe le pagine.
+Tracer Bullet: vietata
+Sub-agent: ammesso
 Sub-task delegabili:
-nessuno
+Script condiviso; integrazione Razor.
 Note:
-Province, citta e CAP restano italiani come da scope.
+Nessuna nuova dipendenza npm.
 
-## Fase 4 - Test e verifica finale
+## Fase 4 - Hardening Stripe
 Stato: completed
 Scope finale: in
-Tipo fase: verifica
+Tipo fase: hardening
 Obiettivo:
-Validare comportamento, mapping EF, endpoint e compilazione.
+Rendere recuperabile e piu sicuro il flusso Stripe test.
 Attivita:
-- [x] Aggiungere test service su prefissi e paese associato.
-- [x] Aggiungere test controller endpoint JSON.
-- [x] Aggiungere test mapping EF.
-- [x] Eseguire `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj`.
-- [x] Eseguire `dotnet build DashBoard01.sln`.
+- [x] Estrarre costanti condivise per metodi e stati pagamento.
+- [x] Aggiungere controllo ownership sul completamento Stripe da return utente.
+- [x] Aggiungere retry esplicito della sessione Stripe da pagina pagamento.
+- [x] Aggiungere test su ownership e retry.
 File o aree coinvolte:
+- `Services/`
+- `Controllers/HomeController.cs`
+- `Views/Home/CheckoutPayment.cshtml`
 - `DashboardOrders.Tests/`
-- `DashBoard01.sln`
 Backend impact: si
 Frontend impact: si
 Dipendenze:
 Fase 3 completed
 Validazioni:
-`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj`: superato, 183 test passati.
-`dotnet build DashBoard01.sln`: superato, 0 warning, 0 errori.
-`npm run build:css`: superato; segnalato solo database Browserslist obsoleto.
-`dotnet ef database update`: superato, applicata migrazione `20260429000100_AddPhoneCountryPrefixes` al database locale.
-`dotnet run --project DashboardOrders.csproj -- --seed-database`: superato, seed locale eseguito.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore --filter "FullyQualifiedName~CheckoutDataService|FullyQualifiedName~HomeController"`: superato, 61 test passati.
 Definition of done:
-Test e build passano oppure i rischi residui sono documentati.
-Tracer Bullet: vietata
+Stripe return non completa ordini di altri utenti e la sessione Stripe puo essere ritentata.
+Tracer Bullet: obbligatoria
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Archiviazione `docs/History` richiede nome chat esplicito a sviluppo concluso.
+Il flusso e unico e sensibile.
+
+## Fase 5 - Refactor strutturale leggero e verifica
+Stato: completed
+Scope finale: in
+Tipo fase: verifica
+Obiettivo:
+Ridurre debito tecnico locale senza riscritture estese e verificare tutto.
+Attivita:
+- [x] Iniettare `IDashboardAnalyticsService` in `HomeController`.
+- [x] Correggere whitespace segnalato da `git diff --check`.
+- [x] Eseguire `dotnet ef migrations script`.
+- [x] Eseguire test e build finali.
+File o aree coinvolte:
+- `Controllers/HomeController.cs`
+- `Program.cs`
+- `Domain/Entities/ApplicationUser.cs`
+- `Models/Dto/RegisterDto.cs`
+- `Views/Category/Create.cshtml`
+- `DashBoard01.sln`
+Backend impact: si
+Frontend impact: si
+Dipendenze:
+Fase 4 completed
+Validazioni:
+`dotnet ef migrations script 20260429000100_AddPhoneCountryPrefixes 20260429185518_AddPhoneToApplicationUser --project DashboardOrders.csproj --no-build`: superato, script con soli `ALTER TABLE` su `AspNetUsers`.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore`: superato, 187 test passati.
+`dotnet build DashBoard01.sln --no-restore /p:UseSharedCompilation=false`: superato, 0 warning, 0 errori.
+`git diff --check`: superato; presenti solo avvisi CRLF futuri, nessun errore whitespace.
+Definition of done:
+Verifiche finali eseguite e rischi residui documentati.
+Tracer Bullet: vietata
+Sub-agent: ammesso
+Sub-task delegabili:
+Refactor analytics; verifica finale.
+Note:
+La separazione completa di `DashboardOrdersDataService` resta fuori da questa passata per evitare refactor esteso non necessario al fix.

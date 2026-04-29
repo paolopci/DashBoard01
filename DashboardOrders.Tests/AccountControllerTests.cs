@@ -74,6 +74,25 @@ public class AccountControllerTests
     }
 
     [Fact]
+    public async Task Register_Post_QuandoModelValido_AlloraPassaTelefonoAlServizio()
+    {
+        // Arrange
+        var model = CreateRegisterModel();
+        accountService.RegisterAsync(Arg.Any<RegisterDto>())
+            .Returns(AccountOperationResult.Success("Registrazione completata."));
+
+        // Act
+        await sut.Register(model);
+
+        // Assert
+        await accountService.Received(1).RegisterAsync(
+            Arg.Is<RegisterDto>(dto =>
+                dto.PhonePrefix == "+39" &&
+                dto.PhoneCountryIso2 == "IT" &&
+                dto.PhoneNumber == "3331234567"));
+    }
+
+    [Fact]
     public async Task Register_Post_QuandoModelNull_AlloraRestituisceVistaConErrore()
     {
         // Arrange

@@ -91,7 +91,8 @@ namespace DashboardOrders.Migrations
 
                     b.Property<string>("PhoneCountryIso2")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
@@ -101,7 +102,8 @@ namespace DashboardOrders.Migrations
 
                     b.Property<string>("PhonePrefix")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");

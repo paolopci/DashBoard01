@@ -13,6 +13,8 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
         builder.Property(user => user.City).HasMaxLength(100).IsRequired();
         builder.Property(user => user.Country).HasMaxLength(100).IsRequired();
         builder.Property(user => user.FiscalCode).HasMaxLength(16).IsRequired();
+        builder.Property(user => user.PhonePrefix).HasMaxLength(8).IsRequired();
+        builder.Property(user => user.PhoneCountryIso2).HasMaxLength(2).IsRequired();
         builder.HasIndex(user => user.FiscalCode).IsUnique();
     }
 }

@@ -13,4 +13,3 @@ public sealed record RegisterDto(
     string PhoneNumber,
     string Password,
     string RepeatPassword);
-

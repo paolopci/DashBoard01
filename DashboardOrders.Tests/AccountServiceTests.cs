@@ -63,6 +63,28 @@ public class AccountServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_QuandoDtoValido_AlloraMappaTelefonoSuApplicationUser()
+    {
+        // Arrange
+        var dto = CreateRegisterDto();
+        userManager.FindByEmailAsync(dto.Email.ToLowerInvariant()).Returns((ApplicationUser?)null);
+        userManager.CreateAsync(Arg.Any<ApplicationUser>(), dto.Password).Returns(IdentityResult.Success);
+        roleManager.FindByNameAsync("User").Returns((IdentityRole?)new IdentityRole("User"));
+        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "User").Returns(IdentityResult.Success);
+
+        // Act
+        await sut.RegisterAsync(dto);
+
+        // Assert
+        await userManager.Received(1).CreateAsync(
+            Arg.Is<ApplicationUser>(user =>
+                user.PhonePrefix == "+39" &&
+                user.PhoneCountryIso2 == "IT" &&
+                user.PhoneNumber == "3331234567"),
+            dto.Password);
+    }
+
+    [Fact]
     public async Task RegisterAsync_QuandoDtoNull_AlloraRestituisceErrore()
     {
         // Arrange

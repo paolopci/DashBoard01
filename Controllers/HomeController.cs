@@ -20,15 +20,18 @@ public class HomeController : Controller
     private readonly IDashboardOrdersDataService dataService;
     private readonly DashboardOrdersDbContext dbContext;
     private readonly IStripeCheckoutService stripeCheckoutService;
+    private readonly IDashboardAnalyticsService dashboardAnalyticsService;
 
     public HomeController(
         IDashboardOrdersDataService dataService,
         DashboardOrdersDbContext dbContext,
-        IStripeCheckoutService stripeCheckoutService)
+        IStripeCheckoutService stripeCheckoutService,
+        IDashboardAnalyticsService dashboardAnalyticsService)
     {
         this.dataService = dataService;
         this.dbContext = dbContext;
         this.stripeCheckoutService = stripeCheckoutService;
+        this.dashboardAnalyticsService = dashboardAnalyticsService;
     }
 
     /// <summary>
@@ -46,12 +49,11 @@ public class HomeController : Controller
             return RedirectToAction("AccessDenied", "Account");
         }
 
-        var analyticsService = new DashboardAnalyticsService(dbContext);
-        var model = analyticsService.GetAnalytics(period);
+        var model = dashboardAnalyticsService.GetAnalytics(period);
         return View(model);
     }
 
-public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
+    public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "date", string sortDirection = "desc", string search = "")
     {
         if (!IsAdmin())
         {
@@ -431,6 +433,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public IActionResult PhoneCountryPrefixes()
     {
         return Json(dataService.GetPhoneCountryPrefixes());
@@ -531,27 +534,7 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
                 return RedirectToAction(nameof(CheckoutConfirm));
             }
 
-            var returnUrl = Url.Action(nameof(StripeCheckoutReturn), "Home", null, Request.Scheme)
-                + "?session_id={CHECKOUT_SESSION_ID}";
-            var cancelUrl = Url.Action(nameof(CheckoutPayment), "Home", new { orderId = result.OrderId.Value }, Request.Scheme)
-                ?? string.Empty;
-
-            try
-            {
-                var stripeSession = await stripeCheckoutService.CreateCheckoutSessionAsync(order, returnUrl, cancelUrl, cancellationToken);
-                if (!dataService.SaveStripeCheckoutSession(GetCurrentEmail(), result.OrderId.Value, stripeSession))
-                {
-                    TempData[ToastErrorKey] = "Sessione Stripe creata ma non salvata sull'ordine.";
-                    return RedirectToAction(nameof(CheckoutPayment), new { orderId = result.OrderId.Value });
-                }
-
-                return Redirect(stripeSession.Url);
-            }
-            catch (Exception)
-            {
-                TempData[ToastErrorKey] = "Stripe Checkout non disponibile. Verifica configurazione test.";
-                return RedirectToAction(nameof(CheckoutPayment), new { orderId = result.OrderId.Value });
-            }
+            return await CreateStripeCheckoutSessionRedirect(order, cancellationToken);
         }
 
         return result.RequiresPayment
@@ -583,9 +566,9 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
                 : RedirectToAction(nameof(Cart));
         }
 
-        if (string.Equals(stripeSession.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(stripeSession.PaymentStatus, PaymentConstants.StripeStatusPaid, StringComparison.OrdinalIgnoreCase))
         {
-            var result = dataService.CompleteStripePayment(stripeSession.SessionId, stripeSession.PaymentIntentId, stripeSession.PaymentStatus, GetCurrentEmail());
+            var result = dataService.CompleteStripePayment(stripeSession.SessionId, stripeSession.PaymentIntentId, stripeSession.PaymentStatus, GetCurrentEmail(), GetCurrentEmail());
             if (result.Success && result.OrderId.HasValue)
             {
                 return RedirectToAction(nameof(CheckoutResult), new { orderId = result.OrderId.Value });
@@ -665,6 +648,25 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
         }
 
         return RedirectToAction(nameof(CheckoutResult), new { orderId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RetryStripeCheckout(int orderId, CancellationToken cancellationToken)
+    {
+        if (IsAdmin())
+        {
+            return RedirectToAction(nameof(Orders));
+        }
+
+        var order = dataService.GetOrderDetails(orderId, GetCurrentEmail(), isAdmin: false);
+        if (order is null || order.CheckoutDetails?.PaymentMethod != PaymentConstants.MethodStripeTest)
+        {
+            TempData[ToastErrorKey] = "Pagamento Stripe non disponibile per questo ordine.";
+            return RedirectToAction(nameof(CheckoutPayment), new { orderId });
+        }
+
+        return await CreateStripeCheckoutSessionRedirect(order, cancellationToken);
     }
 
     [HttpGet]
@@ -901,6 +903,32 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
     private bool IsAjaxRequest()
     {
         return string.Equals(Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<IActionResult> CreateStripeCheckoutSessionRedirect(OrderDetailsViewModel order, CancellationToken cancellationToken)
+    {
+        var orderId = order.Order.Id;
+        var returnUrl = Url.Action(nameof(StripeCheckoutReturn), "Home", null, Request.Scheme)
+            + "?session_id={CHECKOUT_SESSION_ID}";
+        var cancelUrl = Url.Action(nameof(CheckoutPayment), "Home", new { orderId }, Request.Scheme)
+            ?? string.Empty;
+
+        try
+        {
+            var stripeSession = await stripeCheckoutService.CreateCheckoutSessionAsync(order, returnUrl, cancelUrl, cancellationToken);
+            if (!dataService.SaveStripeCheckoutSession(GetCurrentEmail(), orderId, stripeSession))
+            {
+                TempData[ToastErrorKey] = "Sessione Stripe creata ma non salvata sull'ordine.";
+                return RedirectToAction(nameof(CheckoutPayment), new { orderId });
+            }
+
+            return Redirect(stripeSession.Url);
+        }
+        catch (Exception)
+        {
+            TempData[ToastErrorKey] = "Stripe Checkout non disponibile. Verifica configurazione test.";
+            return RedirectToAction(nameof(CheckoutPayment), new { orderId });
+        }
     }
 
     private JsonResult CartJson(string productCode, string? removedProductCode = null)

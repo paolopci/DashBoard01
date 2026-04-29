@@ -39,7 +39,7 @@ public interface IDashboardOrdersDataService
     CheckoutPaymentResult ProcessTestPayment(string? customerEmail, int orderId, TestPaymentOutcome outcome);
     bool SaveStripeCheckoutSession(string? customerEmail, int orderId, StripeCheckoutSessionResult session);
     int? GetOrderIdByStripeCheckoutSession(string stripeCheckoutSessionId);
-    CheckoutPaymentResult CompleteStripePayment(string stripeCheckoutSessionId, string? paymentIntentId, string? stripePaymentStatus, string? changedBy = null);
+    CheckoutPaymentResult CompleteStripePayment(string stripeCheckoutSessionId, string? paymentIntentId, string? stripePaymentStatus, string? changedBy = null, string? requesterEmail = null);
     CheckoutPaymentResult FailStripePayment(string stripeCheckoutSessionId, string? paymentIntentId, string? stripePaymentStatus, string? changedBy = null);
     OrderDetailsViewModel? GetOrderDetails(int orderId, string? requesterEmail, bool isAdmin);
     bool CreateProduct(Product product);

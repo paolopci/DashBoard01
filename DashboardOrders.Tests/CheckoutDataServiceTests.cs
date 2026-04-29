@@ -395,6 +395,30 @@ public class CheckoutDataServiceTests
     }
 
     [Fact]
+    public void CompleteStripePayment_QuandoRequesterNonProprietario_AlloraNonCompletaPagamento()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var sut = CreateStripeCheckoutOrder(dbContext, out var orderId);
+        sut.SaveStripeCheckoutSession("cliente@test.it", orderId, new StripeCheckoutSessionResult
+        {
+            SessionId = "cs_test_other_user",
+            Url = "https://checkout.stripe.com/c/pay/cs_test_other_user",
+            PaymentIntentId = "pi_initial",
+            PaymentStatus = "unpaid"
+        }).Should().BeTrue();
+
+        // Act
+        var risultato = sut.CompleteStripePayment("cs_test_other_user", "pi_paid", "paid", "altro@test.it", "altro@test.it");
+
+        // Assert
+        risultato.Success.Should().BeFalse();
+        risultato.ErrorMessage.Should().Be("Ordine Stripe non trovato.");
+        dbContext.Orders.Single(order => order.Id == orderId).Status.Should().Be((int)OrderStatus.PaymentPending);
+        dbContext.OrderCheckoutDetails.Single(details => details.OrderId == orderId).PaymentStatus.Should().Be("pending");
+    }
+
+    [Fact]
     public void FailStripePayment_QuandoSessioneFallita_AlloraFallisceERipristinaStockUnaSolaVolta()
     {
         // Arrange

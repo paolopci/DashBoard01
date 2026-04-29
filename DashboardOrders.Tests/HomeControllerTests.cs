@@ -23,6 +23,7 @@ public class HomeControllerTests
 {
     private readonly IDashboardOrdersDataService dataService;
     private readonly IStripeCheckoutService stripeCheckoutService;
+    private readonly IDashboardAnalyticsService dashboardAnalyticsService;
     private readonly HomeController sut;
     private readonly DashboardOrdersDbContext dbContext;
 
@@ -30,10 +31,11 @@ public class HomeControllerTests
     {
         dataService = Substitute.For<IDashboardOrdersDataService>();
         stripeCheckoutService = Substitute.For<IStripeCheckoutService>();
+        dashboardAnalyticsService = Substitute.For<IDashboardAnalyticsService>();
         dbContext = new DashboardOrdersDbContext(new DbContextOptionsBuilder<DashboardOrdersDbContext>()
             .UseInMemoryDatabase($"HomeControllerTests-{Guid.NewGuid()}")
             .Options);
-        sut = new HomeController(dataService, dbContext, stripeCheckoutService)
+        sut = new HomeController(dataService, dbContext, stripeCheckoutService, dashboardAnalyticsService)
         {
             ControllerContext = new ControllerContext
             {
@@ -701,7 +703,7 @@ public class HomeControllerTests
                 PaymentIntentId = "pi_paid",
                 PaymentStatus = "paid"
             });
-        dataService.CompleteStripePayment("cs_test_paid", "pi_paid", "paid", "mario.rossi@example.com")
+        dataService.CompleteStripePayment("cs_test_paid", "pi_paid", "paid", "mario.rossi@example.com", "mario.rossi@example.com")
             .Returns(new CheckoutPaymentResult
             {
                 Success = true,
@@ -719,6 +721,50 @@ public class HomeControllerTests
     }
 
     [Fact]
+    public async Task RetryStripeCheckout_QuandoOrdineStripeValido_AlloraCreaNuovaSessioneERedirectAStripe()
+    {
+        // Arrange
+        sut.ControllerContext.HttpContext.User = CreateUser("mario.rossi@example.com");
+        sut.ControllerContext.HttpContext.Request.Scheme = "https";
+        var urlHelper = Substitute.For<IUrlHelper>();
+        urlHelper.Action(Arg.Any<UrlActionContext>()).Returns("https://localhost/stripe-return");
+        sut.Url = urlHelper;
+        var orderDetails = new OrderDetailsViewModel
+        {
+            Order = new Order
+            {
+                Id = 42,
+                OrderNumber = "ORD-00042",
+                Customer = new Customer { Email = "mario.rossi@example.com" },
+                Items = [new OrderItem { ProductName = "Laptop", Quantity = 1, UnitPrice = 25m }]
+            },
+            CheckoutDetails = new OrderCheckoutDetailsViewModel
+            {
+                PaymentMethod = PaymentConstants.MethodStripeTest,
+                PaymentStatus = PaymentConstants.StatusPending
+            }
+        };
+        var stripeSession = new StripeCheckoutSessionResult
+        {
+            SessionId = "cs_test_retry",
+            Url = "https://checkout.stripe.com/c/pay/cs_test_retry",
+            PaymentStatus = "unpaid"
+        };
+        dataService.GetOrderDetails(42, "mario.rossi@example.com", false).Returns(orderDetails);
+        stripeCheckoutService.CreateCheckoutSessionAsync(orderDetails, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(stripeSession);
+        dataService.SaveStripeCheckoutSession("mario.rossi@example.com", 42, stripeSession).Returns(true);
+
+        // Act
+        var risultato = await sut.RetryStripeCheckout(42, CancellationToken.None);
+
+        // Assert
+        risultato.Should().BeOfType<RedirectResult>().Which.Url.Should().Be(stripeSession.Url);
+        await stripeCheckoutService.Received(1).CreateCheckoutSessionAsync(orderDetails, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        dataService.Received(1).SaveStripeCheckoutSession("mario.rossi@example.com", 42, stripeSession);
+    }
+
+    [Fact]
     public async Task StripeWebhook_QuandoFirmaNonValida_AlloraBadRequestENonAggiornaPagamento()
     {
         // Arrange
@@ -731,7 +777,7 @@ public class HomeControllerTests
 
         // Assert
         risultato.Should().BeOfType<BadRequestResult>();
-        dataService.DidNotReceive().CompleteStripePayment(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+        dataService.DidNotReceive().CompleteStripePayment(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
         dataService.DidNotReceive().FailStripePayment(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
     }
 

@@ -3,8 +3,8 @@
     ViewData["Title"] = "Pagamento test";
     var checkoutDetails = Model.CheckoutDetails;
     var paymentMethod = checkoutDetails?.PaymentMethod ?? string.Empty;
-    var isStripeTest = string.Equals(paymentMethod, "stripe-test", StringComparison.OrdinalIgnoreCase);
-    var isInternalTestCard = string.Equals(paymentMethod, "test-card", StringComparison.OrdinalIgnoreCase);
+    var isStripeTest = string.Equals(paymentMethod, PaymentConstants.MethodStripeTest, StringComparison.OrdinalIgnoreCase);
+    var isInternalTestCard = string.Equals(paymentMethod, PaymentConstants.MethodTestCard, StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="mx-auto max-w-3xl rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -38,6 +38,11 @@
             <p class="mt-1">Se hai chiuso la pagina Stripe, torna al carrello e ripeti il checkout oppure attendi la riconciliazione del webhook.</p>
         </div>
         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+            <form method="post" asp-controller="Home" asp-action="RetryStripeCheckout" class="m-0">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="orderId" value="@Model.Order.Id" />
+                <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white">Riprova pagamento Stripe</button>
+            </form>
             <a asp-controller="Home" asp-action="CheckoutResult" asp-route-orderId="@Model.Order.Id" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white">Vedi esito ordine</a>
             <a asp-controller="Home" asp-action="Orders" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700">Elenco ordini</a>
         </div>

@@ -20,4 +20,3 @@ public class ApplicationUser : IdentityUser
 
     public string PhoneCountryIso2 { get; set; } = string.Empty;
 }
-
