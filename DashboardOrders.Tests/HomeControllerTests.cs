@@ -557,6 +557,42 @@ public class HomeControllerTests
     }
 
     [Fact]
+    public void PhoneCountryPrefixes_QuandoRichiesto_AlloraRestituiscePrefissiDalServizio()
+    {
+        // Arrange
+        var prefissi = new List<PhoneCountryPrefixViewModel>
+        {
+            new()
+            {
+                Iso2 = "IT",
+                Iso3 = "ITA",
+                CountryName = "Italy",
+                LocalizedCountryName = "Italia",
+                DialCode = "+39",
+                FlagPath = "/img/flags/4x3/it.svg"
+            },
+            new()
+            {
+                Iso2 = "GB",
+                Iso3 = "GBR",
+                CountryName = "United Kingdom",
+                LocalizedCountryName = "Regno Unito",
+                DialCode = "+44",
+                FlagPath = "/img/flags/4x3/gb.svg"
+            }
+        };
+        dataService.GetPhoneCountryPrefixes().Returns(prefissi);
+
+        // Act
+        var risultato = sut.PhoneCountryPrefixes();
+
+        // Assert
+        var json = risultato.Should().BeOfType<JsonResult>().Subject;
+        json.Value.Should().BeSameAs(prefissi);
+        dataService.Received(1).GetPhoneCountryPrefixes();
+    }
+
+    [Fact]
     public async Task CheckoutConfirm_Post_QuandoPagamentoRichiesto_AlloraReindirizzaAPayment()
     {
         // Arrange

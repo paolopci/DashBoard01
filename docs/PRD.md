@@ -2,72 +2,60 @@
 
 ## Obiettivo
 
-Integrare Stripe Checkout in modalita test nel flusso checkout esistente, senza carte reali e senza addebiti reali, mantenendo disponibile il simulatore interno gia presente.
+Sostituire il campo prefisso telefonico del checkout con un combobox custom con ricerca, paese, prefisso e bandiera locale, alimentato da una tabella EF Core seedata da dati versionati.
 
 ## Problema/Contesto
 
-Il checkout crea gia ordini da carrello e indirizzi, poi consente un pagamento test simulato con `test-card`. L'utente vuole sapere cosa succede dopo la pagina spedizione e vuole un pagamento realistico in ambiente Stripe test.
-
-Stripe deve essere usato solo in modalita test, con pagina hosted ufficiale e conferma tramite ritorno utente e webhook firmato.
+La pagina `CheckoutAddresses` espone oggi una `select` limitata al solo prefisso italiano `+39`. L'utente vuole un'esperienza simile ai selettori internazionali moderni, con tutti i paesi/territori supportati, bandierine locali e salvataggio coerente del paese associato al prefisso.
 
 ## Scope
 
-- Aggiungere opzione pagamento `stripe-test` nella conferma checkout.
-- Mantenere le opzioni esistenti `pending` e `test-card`.
-- Creare ordine `PaymentPending` prima del redirect a Stripe, come gia avviene per il pagamento test interno.
-- Creare una Stripe Checkout Session hosted per pagamenti one-time.
-- Salvare su `OrderCheckoutDetails` i riferimenti Stripe minimi utili alla riconciliazione.
-- Gestire ritorno da Stripe e webhook per confermare o fallire il pagamento.
-- Aggiornare UI checkout/pagamento per distinguere simulatore interno e Stripe test.
-- Aggiungere test automatici su service, controller e flusso stato ordine.
+- Aggiungere un dataset locale versionato dei prefissi telefonici internazionali.
+- Salvare le bandiere SVG in `wwwroot/img/flags/4x3`.
+- Aggiungere tabella EF Core `PhoneCountryPrefixes`.
+- Seedare la tabella da `Data/Seed/phone-country-prefixes.json`.
+- Esporre i prefissi attivi tramite servizio applicativo ed endpoint JSON MVC.
+- Sostituire la select nativa in `CheckoutAddresses` con un combobox custom accessibile.
+- Salvare `ShippingPhonePrefix`, `ShippingPhoneCountryIso2`, `ShippingPhone` e `ShippingCountry` in modo compatibile con il flusso checkout esistente.
+- Aggiornare test automatici per service, controller e mapping EF.
 
 ## Out of scope
 
-- Pagamenti reali in live mode.
-- Salvataggio carte o metodi di pagamento.
-- Abbonamenti, rimborsi, Connect o marketplace.
-- Payment Element o form carta custom.
-- Installare Stripe CLI o configurare webhook pubblici senza ulteriore permesso.
-- Inserire chiavi Stripe in `appsettings*.json`.
+- Validazione completa dei numeri telefonici internazionali.
+- Installazione di librerie NuGet, npm o widget UI esterni.
+- Modifica del flusso province/citta/CAP, che resta italiano.
+- Gestione di prefissi multipli per lo stesso ISO oltre al prefisso principale del dataset.
+- Modifiche ai dati storici gia salvati.
 
 ## Requisiti funzionali
 
-- Il cliente deve poter selezionare `Stripe test` nella pagina `CheckoutConfirm`.
-- Se il pagamento Stripe e selezionato, il sistema deve creare un ordine `PaymentPending`.
-- Il sistema deve creare una Stripe Checkout Session con importi in centesimi, valuta `eur` di default e metadata con ordine e cliente.
-- Il sistema deve reindirizzare il cliente alla URL hosted Stripe.
-- Al ritorno da Stripe, il sistema deve recuperare la sessione e aggiornare l'ordine se il pagamento risulta completato.
-- Il webhook deve verificare la firma `Stripe-Signature` prima di modificare dati.
-- Gli eventi Stripe di successo devono portare l'ordine a `PaymentAuthorized` e poi `Confirmed`.
-- Gli eventi Stripe di fallimento devono portare l'ordine a `PaymentFailed` e ripristinare lo stock in modo coerente con la logica esistente.
-- Gli aggiornamenti da return URL e webhook devono essere idempotenti.
-- Il simulatore interno `test-card` deve continuare a funzionare.
+- Il cliente deve poter cercare un paese per nome, codice ISO o prefisso.
+- Il controllo deve mostrare bandiera locale, nome paese e prefisso.
+- Il valore postato deve restare compatibile con `ShippingPhonePrefix`.
+- Il checkout deve comporre `ShippingPhone` come `<prefisso> <numero>`.
+- Se il paese selezionato e risolto, `ShippingCountry` deve usare il nome localizzato del paese.
+- Se i dati prefisso non sono disponibili, il checkout deve mantenere fallback compatibile su `Italia`.
+- L'elenco deve usare solo record attivi ordinati per `DisplayOrder` e nome paese.
 
 ## Vincoli tecnici
 
-- Usare ASP.NET Core MVC, EF Core e SQL Server gia presenti.
-- Usare `Stripe.net` come SDK ufficiale Stripe.
-- Configurare segreti solo tramite User Secrets, variabili d'ambiente o secret store:
-  - `Stripe:SecretKey`
-  - `Stripe:WebhookSecret`
-  - `Stripe:Currency` opzionale, default `eur`
-- Non committare chiavi reali o test.
-- Non rompere il flusso checkout esistente.
-- Non revertire modifiche non correlate gia presenti nel working tree.
+- Usare ASP.NET Core MVC .NET 9, Razor/Tailwind ed EF Core gia presenti.
+- Non introdurre nuove dipendenze.
+- Usare asset locali a runtime, senza chiamate esterne dal browser.
+- Mantenere controller sottili e logica dati nel servizio.
+- Non eliminare codice o file non correlati.
 
 ## Acceptance criteria
 
-- L'opzione `stripe-test` e visibile e selezionabile in checkout.
-- Un checkout Stripe crea ordine `PaymentPending` e una Checkout Session hosted.
-- Il sistema salva `StripeCheckoutSessionId`, `StripePaymentIntentId` e stato pagamento Stripe quando disponibili.
-- Return URL e webhook aggiornano correttamente lo stato ordine.
-- Il webhook rifiuta payload con firma non valida.
+- La pagina checkout mostra un combobox prefisso con bandiera e ricerca.
+- Il prefisso italiano `+39` resta il default.
+- Un prefisso estero salva telefono e paese associato.
+- La tabella `PhoneCountryPrefixes` e configurata in EF Core con indice univoco su `Iso2`.
+- Il seeder popola o aggiorna i prefissi da file locale.
 - I test pertinenti passano.
 - La solution compila.
 
 ## Definizione di completamento
 
-- `docs/PRD.md` e `docs/PLAN.md` sono aggiornati per l'integrazione Stripe test.
-- Backend, UI e persistenza minima Stripe sono implementati.
-- I test automatici coprono creazione sessione, return, webhook, successo, fallimento e idempotenza.
+- Documentazione, dati locali, asset SVG, entity, migrazione, seed, service, controller, view e test sono aggiornati.
 - `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj` e `dotnet build DashBoard01.sln` sono eseguiti con esito documentato.

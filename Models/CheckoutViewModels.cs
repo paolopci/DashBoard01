@@ -29,6 +29,9 @@ public class CheckoutAddressesViewModel
     [StringLength(8)]
     public string ShippingPhonePrefix { get; set; } = string.Empty;
 
+    [StringLength(2)]
+    public string ShippingPhoneCountryIso2 { get; set; } = string.Empty;
+
     [StringLength(30)]
     public string ShippingPhoneNumber { get; set; } = string.Empty;
 
@@ -102,6 +105,19 @@ public class CheckoutOptionsViewModel
 
     [Required]
     public string PaymentMethod { get; set; } = "pending";
+}
+
+public class PhoneCountryPrefixViewModel
+{
+    public string Iso2 { get; set; } = string.Empty;
+    public string Iso3 { get; set; } = string.Empty;
+    public string CountryName { get; set; } = string.Empty;
+    public string LocalizedCountryName { get; set; } = string.Empty;
+    public string DialCode { get; set; } = string.Empty;
+    public string FlagPath { get; set; } = string.Empty;
+    public string DisplayText => string.IsNullOrWhiteSpace(LocalizedCountryName)
+        ? $"{CountryName} {DialCode}"
+        : $"{LocalizedCountryName} {DialCode}";
 }
 
 public class CheckoutSessionViewModel : CheckoutAddressesViewModel

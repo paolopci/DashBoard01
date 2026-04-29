@@ -429,6 +429,12 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
             : Json(dataService.GetItalianPostalCodes(provinceName, cityName));
     }
 
+    [HttpGet]
+    public IActionResult PhoneCountryPrefixes()
+    {
+        return Json(dataService.GetPhoneCountryPrefixes());
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public IActionResult CheckoutAddresses(CheckoutAddressesViewModel model)
@@ -858,6 +864,14 @@ public IActionResult Index(int page = 1, int pageSize = 10, string sortBy = "dat
 
     private static void CopyAddresses(CheckoutAddressesViewModel source, CheckoutSessionViewModel target)
     {
+        target.ShippingLastName = source.ShippingLastName;
+        target.ShippingFirstName = source.ShippingFirstName;
+        target.ShippingPhonePrefix = source.ShippingPhonePrefix;
+        target.ShippingPhoneCountryIso2 = source.ShippingPhoneCountryIso2;
+        target.ShippingPhoneNumber = source.ShippingPhoneNumber;
+        target.ShippingStreet = source.ShippingStreet;
+        target.ShippingStreetNumber = source.ShippingStreetNumber;
+        target.ShippingProvince = source.ShippingProvince;
         target.ShippingFullName = source.ShippingFullName;
         target.ShippingAddressLine = source.ShippingAddressLine;
         target.ShippingCity = source.ShippingCity;

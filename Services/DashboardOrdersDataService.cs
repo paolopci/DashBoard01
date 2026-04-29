@@ -560,6 +560,18 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
             .ToList();
     }
 
+    public List<PhoneCountryPrefixViewModel> GetPhoneCountryPrefixes()
+    {
+        return dbContext.PhoneCountryPrefixes
+            .AsNoTracking()
+            .Where(prefix => prefix.IsActive)
+            .OrderBy(prefix => prefix.DisplayOrder)
+            .ThenBy(prefix => prefix.LocalizedCountryName)
+            .ThenBy(prefix => prefix.CountryName)
+            .Select(prefix => MapPhoneCountryPrefix(prefix))
+            .ToList();
+    }
+
     public bool SaveCheckoutAddresses(string? customerEmail, CheckoutAddressesViewModel model)
     {
         var session = GetActiveCheckoutSession(customerEmail, trackChanges: true);
@@ -1696,9 +1708,15 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         return string.IsNullOrWhiteSpace(structured) ? NormalizeText(model.ShippingPhone) : structured;
     }
 
-    private static string ResolveShippingCountry(CheckoutAddressesViewModel model)
+    private string ResolveShippingCountry(CheckoutAddressesViewModel model)
     {
-        return HasStructuredShippingFields(model) ? "Italia" : NormalizeText(model.ShippingCountry);
+        if (!HasStructuredShippingFields(model))
+        {
+            return NormalizeText(model.ShippingCountry);
+        }
+
+        var prefix = ResolvePhoneCountryPrefix(model.ShippingPhoneCountryIso2, model.ShippingPhonePrefix);
+        return prefix?.LocalizedCountryName ?? prefix?.CountryName ?? "Italia";
     }
 
     private static string ResolveBillingCountry(CheckoutAddressesViewModel model)
@@ -1763,6 +1781,47 @@ public class DashboardOrdersDataService(DashboardOrdersDbContext dbContext) : ID
         }
 
         return SplitFirstToken(normalized);
+    }
+
+    private PhoneCountryPrefixEntity? ResolvePhoneCountryPrefix(string? iso2, string? dialCode)
+    {
+        var normalizedIso2 = NormalizeText(iso2).ToUpperInvariant();
+        if (!string.IsNullOrWhiteSpace(normalizedIso2))
+        {
+            var byIso = dbContext.PhoneCountryPrefixes
+                .AsNoTracking()
+                .FirstOrDefault(prefix => prefix.IsActive && prefix.Iso2 == normalizedIso2);
+            if (byIso is not null)
+            {
+                return byIso;
+            }
+        }
+
+        var normalizedDialCode = NormalizeText(dialCode);
+        if (string.IsNullOrWhiteSpace(normalizedDialCode))
+        {
+            return null;
+        }
+
+        return dbContext.PhoneCountryPrefixes
+            .AsNoTracking()
+            .Where(prefix => prefix.IsActive && prefix.DialCode == normalizedDialCode)
+            .OrderBy(prefix => prefix.DisplayOrder)
+            .ThenBy(prefix => prefix.LocalizedCountryName)
+            .FirstOrDefault();
+    }
+
+    private static PhoneCountryPrefixViewModel MapPhoneCountryPrefix(PhoneCountryPrefixEntity prefix)
+    {
+        return new PhoneCountryPrefixViewModel
+        {
+            Iso2 = prefix.Iso2,
+            Iso3 = prefix.Iso3,
+            CountryName = prefix.CountryName,
+            LocalizedCountryName = prefix.LocalizedCountryName,
+            DialCode = prefix.DialCode,
+            FlagPath = prefix.FlagPath
+        };
     }
 
     private static bool AreShippingFieldsValid(CheckoutAddressesViewModel model)

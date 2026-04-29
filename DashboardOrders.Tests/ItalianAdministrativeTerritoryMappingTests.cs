@@ -40,6 +40,30 @@ public class ItalianAdministrativeTerritoryMappingTests
     }
 
     [Fact]
+    public void Model_QuandoConfigurato_AlloraUsaTabellaPrefissiTelefonici()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+
+        // Act
+        var prefix = dbContext.Model.FindEntityType(typeof(PhoneCountryPrefixEntity));
+
+        // Assert
+        Assert.NotNull(prefix);
+        prefix.GetTableName().Should().Be("PhoneCountryPrefixes");
+        prefix.FindPrimaryKey()!.Properties.Should().ContainSingle(property => property.Name == nameof(PhoneCountryPrefixEntity.Id));
+        prefix.GetIndexes()
+            .Single(index => index.Properties.Single().Name == nameof(PhoneCountryPrefixEntity.Iso2))
+            .IsUnique.Should().BeTrue();
+        prefix.FindProperty(nameof(PhoneCountryPrefixEntity.Iso2))!.GetMaxLength().Should().Be(2);
+        prefix.FindProperty(nameof(PhoneCountryPrefixEntity.Iso3))!.GetMaxLength().Should().Be(3);
+        prefix.FindProperty(nameof(PhoneCountryPrefixEntity.CountryName))!.GetMaxLength().Should().Be(120);
+        prefix.FindProperty(nameof(PhoneCountryPrefixEntity.LocalizedCountryName))!.GetMaxLength().Should().Be(120);
+        prefix.FindProperty(nameof(PhoneCountryPrefixEntity.DialCode))!.GetMaxLength().Should().Be(8);
+        prefix.FindProperty(nameof(PhoneCountryPrefixEntity.FlagPath))!.GetMaxLength().Should().Be(200);
+    }
+
+    [Fact]
     public async Task ItalianAdministrativeTerritories_QuandoPersistite_AlloraMantengonoRelazioni()
     {
         // Arrange

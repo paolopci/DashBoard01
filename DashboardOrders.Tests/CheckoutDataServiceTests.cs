@@ -72,6 +72,23 @@ public class CheckoutDataServiceTests
     }
 
     [Fact]
+    public void GetPhoneCountryPrefixes_QuandoLookupPresenti_AlloraRestituisceSoloAttiviOrdinati()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedPhoneCountryPrefixes(dbContext);
+        var sut = new DashboardOrdersDataService(dbContext);
+
+        // Act
+        var prefissi = sut.GetPhoneCountryPrefixes();
+
+        // Assert
+        prefissi.Select(prefix => prefix.Iso2).Should().Equal("IT", "GB", "US");
+        prefissi.Select(prefix => prefix.DialCode).Should().Equal("+39", "+44", "+1");
+        prefissi.Should().NotContain(prefix => prefix.Iso2 == "FR");
+    }
+
+    [Fact]
     public void SaveCheckoutAddresses_QuandoDatiValidi_AlloraAggiornaSessione()
     {
         // Arrange
@@ -133,6 +150,43 @@ public class CheckoutDataServiceTests
         checkout.BillingCity.Should().Be(checkout.ShippingCity);
         checkout.BillingPostalCode.Should().Be(checkout.ShippingPostalCode);
         checkout.BillingCountry.Should().Be("Italia");
+    }
+
+    [Fact]
+    public void SaveCheckoutAddresses_QuandoPrefissoEsteroSelezionato_AlloraSalvaPaeseAssociato()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        SeedPhoneCountryPrefixes(dbContext);
+        SeedProduct(dbContext, stockQuantity: 5, price: 25m);
+        var sut = new DashboardOrdersDataService(dbContext);
+        sut.AddOrUpdateCartItem("cliente@test.it", "PRD-001", 1).Should().BeTrue();
+        sut.StartCheckout("cliente@test.it").Should().BeTrue();
+        var model = new CheckoutAddressesViewModel
+        {
+            ShippingLastName = "Smith",
+            ShippingFirstName = "John",
+            ShippingPhonePrefix = "+44",
+            ShippingPhoneCountryIso2 = "GB",
+            ShippingPhoneNumber = "7123456789",
+            ShippingStreet = "Via Roma",
+            ShippingStreetNumber = "1",
+            ShippingProvince = "Pesaro e Urbino",
+            ShippingCity = "Pesaro",
+            ShippingPostalCode = "61121",
+            BillingSameAsShipping = true
+        };
+
+        // Act
+        var risultato = sut.SaveCheckoutAddresses("cliente@test.it", model);
+        var checkout = sut.GetCheckout("cliente@test.it");
+
+        // Assert
+        risultato.Should().BeTrue();
+        checkout.Should().NotBeNull();
+        checkout!.ShippingPhone.Should().Be("+44 7123456789");
+        checkout.ShippingCountry.Should().Be("Regno Unito");
+        checkout.BillingCountry.Should().Be("Regno Unito");
     }
 
     [Fact]
@@ -461,6 +515,56 @@ public class CheckoutDataServiceTests
                 ProvinceCode = "PU",
                 CityName = "Pesaro",
                 PostalCode = "61121"
+            });
+        dbContext.SaveChanges();
+    }
+
+    private static void SeedPhoneCountryPrefixes(DashboardOrdersDbContext dbContext)
+    {
+        dbContext.PhoneCountryPrefixes.AddRange(
+            new PhoneCountryPrefixEntity
+            {
+                Iso2 = "US",
+                Iso3 = "USA",
+                CountryName = "United States",
+                LocalizedCountryName = "Stati Uniti",
+                DialCode = "+1",
+                FlagPath = "/img/flags/4x3/us.svg",
+                DisplayOrder = 1000,
+                IsActive = true
+            },
+            new PhoneCountryPrefixEntity
+            {
+                Iso2 = "IT",
+                Iso3 = "ITA",
+                CountryName = "Italy",
+                LocalizedCountryName = "Italia",
+                DialCode = "+39",
+                FlagPath = "/img/flags/4x3/it.svg",
+                DisplayOrder = 0,
+                IsActive = true
+            },
+            new PhoneCountryPrefixEntity
+            {
+                Iso2 = "GB",
+                Iso3 = "GBR",
+                CountryName = "United Kingdom",
+                LocalizedCountryName = "Regno Unito",
+                DialCode = "+44",
+                FlagPath = "/img/flags/4x3/gb.svg",
+                DisplayOrder = 1000,
+                IsActive = true
+            },
+            new PhoneCountryPrefixEntity
+            {
+                Iso2 = "FR",
+                Iso3 = "FRA",
+                CountryName = "France",
+                LocalizedCountryName = "Francia",
+                DialCode = "+33",
+                FlagPath = "/img/flags/4x3/fr.svg",
+                DisplayOrder = 1000,
+                IsActive = false
             });
         dbContext.SaveChanges();
     }

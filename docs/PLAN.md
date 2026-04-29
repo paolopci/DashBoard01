@@ -9,20 +9,18 @@
 - [x] Completare Fase 2.
 - [x] Completare Fase 3.
 - [x] Completare Fase 4.
-- [x] Completare Fase 5.
 - [ ] Archiviare PRD/PLAN in `docs/History` a sviluppo complessivo concluso.
 
-## Fase 1 - Normalizzazione documentale Stripe
+## Fase 1 - Normalizzazione documentale
 Stato: completed
 Scope finale: in
 Tipo fase: analisi
 Obiettivo:
-Allineare `docs/PRD.md` e `docs/PLAN.md` al nuovo obiettivo: integrazione Stripe Checkout in modalita test, mantenendo il simulatore interno.
+Allineare PRD e PLAN alla feature prefissi telefonici internazionali.
 Attivita:
 - [x] Rileggere richiesta, repository e vincoli locali.
-- [x] Aggiornare `docs/PRD.md` con obiettivo, scope, vincoli e acceptance criteria Stripe.
-- [x] Aggiornare `docs/PLAN.md` con fasi operative Stripe conformi al workflow corrente.
-- [x] Validare staticamente coerenza PRD/PLAN e fase successiva.
+- [x] Aggiornare `docs/PRD.md`.
+- [x] Aggiornare `docs/PLAN.md`.
 File o aree coinvolte:
 - `docs/PRD.md`
 - `docs/PLAN.md`
@@ -31,141 +29,110 @@ Frontend impact: no
 Dipendenze:
 nessuna
 Validazioni:
-Ispezione statica documentale completata: `docs/PRD.md` descrive il perimetro Stripe test; `docs/PLAN.md` contiene checklist generale e fasi operative coerenti con il piano approvato.
+Ispezione statica documentale.
 Definition of done:
-Documenti aggiornati e coerenti con il piano approvato dall'utente.
+Documenti allineati alla feature approvata.
 Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Il lavoro ISTAT precedente resta nel working tree e non viene revertito. `Stripe.net` e gia stato aggiunto dopo autorizzazione esplicita.
+Il contenuto Stripe precedente era concluso e viene sostituito dal nuovo sviluppo.
 
-## Fase 2 - Backend Stripe Checkout e persistenza riconciliazione
+## Fase 2 - Dati locali, EF Core e seed
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Implementare la slice backend minima per creare Stripe Checkout Session hosted e salvare riferimenti Stripe sull'ordine.
+Creare lookup persistente dei prefissi telefonici con dataset e bandiere locali.
 Attivita:
-- [x] Aggiungere configurazione Stripe tipizzata senza segreti versionati.
-- [x] Introdurre servizio Stripe dedicato per creare e recuperare Checkout Session.
-- [x] Estendere `OrderCheckoutDetails` con riferimenti Stripe minimi.
-- [x] Aggiornare `ConfirmCheckout` per supportare `stripe-test`.
-- [x] Registrare servizi e mapping EF necessari.
+- [x] Generare `Data/Seed/phone-country-prefixes.json`.
+- [x] Salvare SVG bandiere in `wwwroot/img/flags/4x3`.
+- [x] Aggiungere entity, `DbSet` e configurazione EF.
+- [x] Aggiungere migrazione `PhoneCountryPrefixes`.
+- [x] Aggiungere seed ripetibile nel seeder esistente.
 File o aree coinvolte:
-- `Program.cs`
-- `DashboardOrders.csproj`
-- `Services/`
 - `Data/`
-- `Models/`
+- `Migrations/`
+- `Services/DashboardOrdersDatabaseSeeder.cs`
+- `wwwroot/img/flags/4x3`
 Backend impact: si
-Frontend impact: no
+Frontend impact: si
 Dipendenze:
 Fase 1 completed
 Validazioni:
-`dotnet build .\DashBoard01.sln`: superato, 0 warning, 0 errori.
-`dotnet test .\DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests"`: superato, 47 test passati.
+Da completare in Fase 4 con test/build.
 Definition of done:
-Un ordine Stripe test puo essere creato come `PaymentPending` e associato a una Checkout Session Stripe hosted.
+Lookup prefissi disponibile localmente e configurato per persistenza.
 Tracer Bullet: obbligatoria
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Non inserire chiavi Stripe in file versionati.
+Download dati e bandiere eseguito una tantum; runtime senza rete.
 
-## Fase 3 - Return URL, webhook e transizioni stato pagamento
+## Fase 3 - Service, endpoint e UI checkout
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Aggiornare lo stato ordine da return URL e webhook Stripe in modo verificato e idempotente.
+Collegare lookup prefissi al checkout e sostituire la select con combobox custom.
 Attivita:
-- [x] Aggiungere endpoint return per `session_id`.
-- [x] Aggiungere endpoint webhook con verifica firma `Stripe-Signature`.
-- [x] Gestire eventi di successo e fallimento richiesti.
-- [x] Rendere idempotenti aggiornamenti da return e webhook.
-- [x] Ripristinare stock su fallimento quando necessario.
+- [x] Aggiungere view model prefisso.
+- [x] Aggiungere metodo servizio `GetPhoneCountryPrefixes`.
+- [x] Aggiungere endpoint MVC JSON.
+- [x] Aggiornare salvataggio `ShippingCountry` da paese selezionato.
+- [x] Aggiornare `CheckoutAddresses` con combobox custom e fallback `+39`.
 File o aree coinvolte:
-- `Controllers/`
+- `Models/`
 - `Services/`
-- `Data/`
-- `DashboardOrders.Tests/`
+- `Controllers/HomeController.cs`
+- `Views/Home/CheckoutAddresses.cshtml`
 Backend impact: si
-Frontend impact: no
+Frontend impact: si
 Dipendenze:
 Fase 2 completed
 Validazioni:
-`dotnet build .\DashBoard01.sln`: superato, 0 warning, 0 errori.
-`dotnet test .\DashboardOrders.Tests\DashboardOrders.Tests.csproj --filter "FullyQualifiedName~CheckoutDataServiceTests|FullyQualifiedName~HomeControllerTests"`: superato, 47 test passati.
-Test specifici nuovi per return, webhook valido/non valido e idempotenza da aggiungere in Fase 5.
+Da completare in Fase 4 con test/build.
 Definition of done:
-Return URL e webhook riconciliano il pagamento Stripe senza modifiche duplicate o payload non verificati.
+La pagina checkout usa prefissi internazionali locali e salva dati compatibili.
 Tracer Bullet: obbligatoria
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Webhook locale manuale richiede Stripe CLI gia installata o permesso separato.
+Province, citta e CAP restano italiani come da scope.
 
-## Fase 4 - UI checkout e pagina pagamento
-Stato: completed
-Scope finale: in
-Tipo fase: implementazione
-Obiettivo:
-Aggiornare la UI per selezionare Stripe test e mostrare stati coerenti senza rimuovere il simulatore interno.
-Attivita:
-- [x] Aggiungere opzione `stripe-test` in `CheckoutConfirm`.
-- [x] Mostrare messaggio Stripe sulla pagina pagamento per ordini Stripe.
-- [x] Lasciare i pulsanti simulatore solo per `test-card`.
-- [x] Aggiornare testo risultato ordine per distinguere stato Stripe/test interno.
-File o aree coinvolte:
-- `Views/Home/CheckoutConfirm.cshtml`
-- `Views/Home/CheckoutPayment.cshtml`
-- `Views/Home/CheckoutResult.cshtml`
-Backend impact: no
-Frontend impact: si
-Dipendenze:
-Fase 3 completed
-Validazioni:
-`dotnet build .\DashBoard01.sln`: superato, 0 warning, 0 errori.
-Definition of done:
-La UI espone Stripe test e non confonde pagamento hosted Stripe con simulatore interno.
-Tracer Bullet: vietata
-Sub-agent: vietato
-Sub-task delegabili:
-nessuno
-Note:
-Nessuna riscrittura visuale estesa.
-
-## Fase 5 - Verifica finale
+## Fase 4 - Test e verifica finale
 Stato: completed
 Scope finale: in
 Tipo fase: verifica
 Obiettivo:
-Eseguire validazione finale completa dell'integrazione Stripe test.
+Validare comportamento, mapping EF, endpoint e compilazione.
 Attivita:
+- [x] Aggiungere test service su prefissi e paese associato.
+- [x] Aggiungere test controller endpoint JSON.
+- [x] Aggiungere test mapping EF.
 - [x] Eseguire `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj`.
 - [x] Eseguire `dotnet build DashBoard01.sln`.
-- [x] Documentare eventuali limiti del test manuale Stripe locale.
-- [x] Aggiornare `docs/PLAN.md` con esiti finali.
 File o aree coinvolte:
-- `DashBoard01.sln`
 - `DashboardOrders.Tests/`
-- `docs/PLAN.md`
+- `DashBoard01.sln`
 Backend impact: si
 Frontend impact: si
 Dipendenze:
-Fase 4 completed
+Fase 3 completed
 Validazioni:
-`dotnet test .\DashboardOrders.Tests\DashboardOrders.Tests.csproj`: superato, 178 test passati.
-`dotnet build .\DashBoard01.sln`: superato, 0 warning, 0 errori.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj`: superato, 183 test passati.
+`dotnet build DashBoard01.sln`: superato, 0 warning, 0 errori.
+`npm run build:css`: superato; segnalato solo database Browserslist obsoleto.
+`dotnet ef database update`: superato, applicata migrazione `20260429000100_AddPhoneCountryPrefixes` al database locale.
+`dotnet run --project DashboardOrders.csproj -- --seed-database`: superato, seed locale eseguito.
 Definition of done:
-Test/build completati e rischi residui documentati.
+Test e build passano oppure i rischi residui sono documentati.
 Tracer Bullet: vietata
 Sub-agent: vietato
 Sub-task delegabili:
 nessuno
 Note:
-Test manuale Stripe hosted non eseguito: richiede chiavi test Stripe configurate e, per webhook locale, Stripe CLI o endpoint pubblico. Archiviazione `docs/History` solo dopo nome chat esplicito.
+Archiviazione `docs/History` richiede nome chat esplicito a sviluppo concluso.

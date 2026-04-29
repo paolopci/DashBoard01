@@ -3,6 +3,7 @@ using DashboardOrders.Data.Entities;
 using DashboardOrders.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace DashboardOrders.Services;
 
@@ -28,6 +29,7 @@ public class DashboardOrdersDatabaseSeeder(
         await SeedCategoriesAsync(categories, cancellationToken);
         await SeedProductsAsync(products, cancellationToken);
         await SeedProductCarouselImagesAsync(cancellationToken);
+        await SeedPhoneCountryPrefixesAsync(cancellationToken);
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
         await SeedCustomerUsersAsync(cancellationToken);
         await SynchronizeUserRolesAsync(cancellationToken);
@@ -107,6 +109,75 @@ public class DashboardOrdersDatabaseSeeder(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task SeedPhoneCountryPrefixesAsync(CancellationToken cancellationToken)
+    {
+        var seedPath = ResolveSeedPath("phone-country-prefixes.json");
+        if (seedPath is null)
+        {
+            return;
+        }
+
+        var json = await File.ReadAllTextAsync(seedPath, cancellationToken);
+        var seeds = JsonSerializer.Deserialize<List<PhoneCountryPrefixSeed>>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? [];
+        var existingPrefixes = await dbContext.PhoneCountryPrefixes
+            .ToDictionaryAsync(prefix => prefix.Iso2, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+        foreach (var seed in seeds.Where(seed => !string.IsNullOrWhiteSpace(seed.Iso2)))
+        {
+            var iso2 = seed.Iso2.Trim().ToUpperInvariant();
+            if (existingPrefixes.TryGetValue(iso2, out var existingPrefix))
+            {
+                UpdatePhoneCountryPrefix(existingPrefix, seed);
+                continue;
+            }
+
+            var prefix = new PhoneCountryPrefixEntity { Iso2 = iso2 };
+            UpdatePhoneCountryPrefix(prefix, seed);
+            dbContext.PhoneCountryPrefixes.Add(prefix);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void UpdatePhoneCountryPrefix(PhoneCountryPrefixEntity entity, PhoneCountryPrefixSeed seed)
+    {
+        entity.Iso3 = NormalizeSeedValue(seed.Iso3).ToUpperInvariant();
+        entity.CountryName = NormalizeSeedValue(seed.CountryName);
+        entity.LocalizedCountryName = NormalizeSeedValue(seed.LocalizedCountryName);
+        entity.DialCode = NormalizeSeedValue(seed.DialCode);
+        entity.FlagPath = NormalizeSeedValue(seed.FlagPath);
+        entity.DisplayOrder = seed.DisplayOrder;
+        entity.IsActive = seed.IsActive;
+    }
+
+    private static string NormalizeSeedValue(string? value)
+    {
+        return value?.Trim() ?? string.Empty;
+    }
+
+    private static string? ResolveSeedPath(string fileName)
+    {
+        foreach (var root in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            var current = new DirectoryInfo(root);
+            while (current is not null)
+            {
+                var candidate = Path.Combine(current.FullName, "Data", "Seed", fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                current = current.Parent;
+            }
+        }
+
+        return null;
+    }
+
     private static string CreateUniqueCarouselImageUrl(
         ProductEntity product,
         int displayOrder,
@@ -123,6 +194,18 @@ public class DashboardOrdersDatabaseSeeder(
         }
 
         return imageUrl;
+    }
+
+    private sealed class PhoneCountryPrefixSeed
+    {
+        public string Iso2 { get; set; } = string.Empty;
+        public string Iso3 { get; set; } = string.Empty;
+        public string CountryName { get; set; } = string.Empty;
+        public string LocalizedCountryName { get; set; } = string.Empty;
+        public string DialCode { get; set; } = string.Empty;
+        public string FlagPath { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 
     private static string CreateCarouselImageUrl(string keywords, int lockNumber)

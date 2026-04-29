@@ -31,6 +31,7 @@ public interface IDashboardOrdersDataService
     List<string> GetItalianProvinces();
     List<string> GetItalianCities(string? provinceName);
     List<string> GetItalianPostalCodes(string? provinceName, string? cityName);
+    List<PhoneCountryPrefixViewModel> GetPhoneCountryPrefixes();
     bool SaveCheckoutAddresses(string? customerEmail, CheckoutAddressesViewModel model);
     bool SaveCheckoutOptions(string? customerEmail, CheckoutOptionsViewModel model);
     CheckoutConfirmResult ConfirmCheckout(string? customerEmail);

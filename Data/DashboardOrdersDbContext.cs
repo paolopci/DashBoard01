@@ -21,6 +21,7 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
     public DbSet<ItalianProvinceEntity> ItalianProvinces => Set<ItalianProvinceEntity>();
     public DbSet<ItalianMunicipalityEntity> ItalianMunicipalities => Set<ItalianMunicipalityEntity>();
     public DbSet<ProductCarouselImageEntity> ProductCarouselImages => Set<ProductCarouselImageEntity>();
+    public DbSet<PhoneCountryPrefixEntity> PhoneCountryPrefixes => Set<PhoneCountryPrefixEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -81,6 +82,22 @@ public class DashboardOrdersDbContext(DbContextOptions<DashboardOrdersDbContext>
                 .WithMany(product => product.CarouselImages)
                 .HasForeignKey(image => image.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PhoneCountryPrefixEntity>(entity =>
+        {
+            entity.ToTable("PhoneCountryPrefixes");
+            entity.HasKey(prefix => prefix.Id);
+            entity.HasIndex(prefix => prefix.Iso2).IsUnique();
+            entity.HasIndex(prefix => prefix.DialCode);
+            entity.Property(prefix => prefix.Iso2).HasMaxLength(2).IsRequired();
+            entity.Property(prefix => prefix.Iso3).HasMaxLength(3).IsRequired();
+            entity.Property(prefix => prefix.CountryName).HasMaxLength(120).IsRequired();
+            entity.Property(prefix => prefix.LocalizedCountryName).HasMaxLength(120).IsRequired();
+            entity.Property(prefix => prefix.DialCode).HasMaxLength(8).IsRequired();
+            entity.Property(prefix => prefix.FlagPath).HasMaxLength(200).IsRequired();
+            entity.Property(prefix => prefix.DisplayOrder).IsRequired();
+            entity.Property(prefix => prefix.IsActive).IsRequired();
         });
 
         modelBuilder.Entity<CustomerEntity>(entity =>
