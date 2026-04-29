@@ -8,5 +8,9 @@ public sealed record RegisterDto(
     string City,
     string Country,
     string FiscalCode,
+    string PhonePrefix,
+    string PhoneCountryIso2,
+    string PhoneNumber,
     string Password,
     string RepeatPassword);
+

@@ -279,6 +279,9 @@ public class AccountControllerTests
             City = "Milano",
             Country = "Italia",
             Cap = "RSSMRA90A01F205X",
+            PhonePrefix = "+39",
+            PhoneCountryIso2 = "IT",
+            PhoneNumber = "3331234567",
             Password = "Password1",
             RepeatPassword = "Password1"
         };

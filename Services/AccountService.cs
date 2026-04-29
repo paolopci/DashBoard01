@@ -71,6 +71,9 @@ public class AccountService : IAccountService
             City = registerDto.City.Trim(),
             Country = registerDto.Country.Trim(),
             FiscalCode = registerDto.FiscalCode.Trim().ToUpperInvariant(),
+            PhonePrefix = registerDto.PhonePrefix.Trim(),
+            PhoneCountryIso2 = registerDto.PhoneCountryIso2.Trim(),
+            PhoneNumber = registerDto.PhoneNumber.Trim(),
             EmailConfirmed = true
         };
 

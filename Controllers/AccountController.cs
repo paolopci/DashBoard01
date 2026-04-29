@@ -200,6 +200,16 @@ public class AccountController : Controller
         {
             ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.DateOfBirth), "La data di nascita non può essere nel futuro.");
         }
+
+        if (string.IsNullOrWhiteSpace(model.PhonePrefix))
+        {
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.PhonePrefix), "Il prefisso è obbligatorio.");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+        {
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.PhoneNumber), "Il numero di telefono è obbligatorio.");
+        }
     }
 
     private static Register CreateRegisterViewModel()
@@ -238,6 +248,9 @@ public class AccountController : Controller
             model.City,
             model.Country,
             model.Cap,
+            model.PhonePrefix,
+            model.PhoneCountryIso2,
+            model.PhoneNumber,
             model.Password,
             model.RepeatPassword);
     }

@@ -39,6 +39,29 @@ public class Register
     [Display(Name = "Codice fiscale")]
     public string Cap { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Il prefisso telefonico è obbligatorio.")]
+    [StringLength(8, ErrorMessage = "Il prefisso non può superare 8 caratteri.")]
+    [Display(Name = "Prefisso")]
+    public string PhonePrefix { get; set; } = string.Empty;
+
+
+
+
+
+
+    [StringLength(2, ErrorMessage = "Il codice paese non può superare 2 caratteri.")]
+    public string PhoneCountryIso2 { get; set; } = string.Empty;
+
+
+
+
+
+
+    [Required(ErrorMessage = "Il numero di telefono è obbligatorio.")]
+    [StringLength(30, ErrorMessage = "Il numero di telefono non può superare 30 caratteri.")]
+    [Display(Name = "Numero di telefono")]
+    public string PhoneNumber { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "La password è obbligatoria.")]
     [DataType(DataType.Password)]
     [StringLength(100, MinimumLength = 8, ErrorMessage = "La password deve contenere almeno 8 caratteri.")]

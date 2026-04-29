@@ -148,6 +148,9 @@ public class AccountServiceTests
             "Milano",
             "Italia",
             "RSSMRA90A01F205X",
+            "+39",
+            "IT",
+            "3331234567",
             "Password1",
             "Password1");
     }

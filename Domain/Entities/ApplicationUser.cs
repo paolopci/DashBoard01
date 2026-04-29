@@ -15,4 +15,9 @@ public class ApplicationUser : IdentityUser
     public string Country { get; set; } = string.Empty;
 
     public string FiscalCode { get; set; } = string.Empty;
+
+    public string PhonePrefix { get; set; } = string.Empty;
+
+    public string PhoneCountryIso2 { get; set; } = string.Empty;
 }
+
