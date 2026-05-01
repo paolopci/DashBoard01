@@ -697,31 +697,96 @@ public class HomeController : Controller
         }
 
         var customer = dataService.GetCustomer(id);
-        return customer is null ? NotFound() : View(customer);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        var (phonePrefix, phoneNumber) = SplitPhone(customer.Phone);
+        var phoneCountryPrefixes = dataService.GetPhoneCountryPrefixes();
+
+        var phoneCountryPrefix = phonePrefix != null
+            ? phoneCountryPrefixes.FirstOrDefault(p => p.DialCode == phonePrefix)
+            : null;
+        var phoneIso2 = phoneCountryPrefix?.Iso2;
+        var phoneFlagPath = phoneCountryPrefix?.FlagPath;
+
+        return View(new EditCustomerViewModel
+        {
+            Id = customer.Id,
+            Name = customer.Name,
+            Email = customer.Email,
+            AvatarInitials = customer.AvatarInitials,
+            PhonePrefix = phonePrefix ?? string.Empty,
+            PhoneCountryIso2 = phoneIso2 ?? string.Empty,
+            PhoneCountryFlagPath = phoneFlagPath ?? string.Empty,
+            PhoneNumber = phoneNumber ?? string.Empty,
+            PhoneCountryPrefixes = phoneCountryPrefixes
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult EditCustomer(Customer? model)
+    public IActionResult EditCustomer(EditCustomerViewModel? model)
     {
         if (!IsAdmin())
         {
             return RedirectToAction("AccessDenied", "Account");
         }
 
-        model ??= new Customer();
+        model ??= new EditCustomerViewModel();
         if (!ModelState.IsValid)
         {
+            model.PhoneCountryPrefixes = dataService.GetPhoneCountryPrefixes();
             return View(model);
         }
 
-        if (!dataService.UpdateCustomer(model))
+        var customer = dataService.GetCustomer(model.Id);
+        if (customer is null)
+        {
+            return NotFound();
+        }
+
+        customer.Name = model.Name.Trim();
+        customer.Email = model.Email.Trim().ToLowerInvariant();
+        customer.Phone = ComposePhone(model.PhonePrefix, model.PhoneNumber).Trim();
+        if (!dataService.UpdateCustomer(customer))
         {
             return NotFound();
         }
 
         TempData[ToastSuccessKey] = "Cliente aggiornato correttamente.";
         return RedirectToAction(nameof(Customers));
+    }
+
+    private static (string? Prefix, string? Number) SplitPhone(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return (null, null);
+        }
+
+        var trimmed = value.Trim();
+        if (!trimmed.StartsWith('+'))
+        {
+            return (null, trimmed);
+        }
+
+        var space = trimmed.IndexOf(' ');
+        if (space <= 0)
+        {
+            return (null, trimmed);
+        }
+
+        return (trimmed[..space], trimmed[(space + 1)..]);
+    }
+
+    private static string ComposePhone(string? phonePrefix, string? phoneNumber)
+    {
+        return string.Join(' ',
+            new[] { phonePrefix, phoneNumber }
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s!.Trim()));
     }
 
     [HttpGet]

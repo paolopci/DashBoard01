@@ -32,6 +32,7 @@ public class DashboardOrdersDatabaseSeeder(
         await SeedPhoneCountryPrefixesAsync(cancellationToken);
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
         await SeedCustomerUsersAsync(cancellationToken);
+        await SeedAdminUserAsync(cancellationToken);
         await SynchronizeUserRolesAsync(cancellationToken);
         var productIdsByName = await GetProductIdsByNameAsync(products, cancellationToken);
         await SeedOrdersAsync(orders, customerIdsByEmail, productIdsByName, cancellationToken);
@@ -311,6 +312,56 @@ public class DashboardOrdersDatabaseSeeder(
             var addPasswordResult = await userManager.AddPasswordAsync(user, DefaultCustomerPassword);
             EnsureIdentityResultSucceeded(addPasswordResult, $"Impostazione password cliente {normalizedEmail} non completata.");
         }
+    }
+
+    private async Task SeedAdminUserAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var adminUser = await userManager.FindByEmailAsync(AdminEmail);
+
+        if (adminUser is null)
+        {
+            adminUser = new ApplicationUser
+            {
+                UserName = AdminEmail,
+                Email = AdminEmail,
+                EmailConfirmed = true,
+                FirstName = "Admin",
+                LastName = "Micene",
+                DateOfBirth = new DateTime(1980, 1, 1),
+                City = "Milano",
+                Country = "Italia",
+                FiscalCode = "ADMINADMIN01"
+            };
+
+            var createResult = await userManager.CreateAsync(adminUser, DefaultCustomerPassword);
+            EnsureIdentityResultSucceeded(createResult, $"Creazione utente admin {AdminEmail} non completata.");
+        }
+        else
+        {
+            adminUser.UserName = AdminEmail;
+            adminUser.Email = AdminEmail;
+            adminUser.EmailConfirmed = true;
+            adminUser.FirstName = string.IsNullOrWhiteSpace(adminUser.FirstName) ? "Admin" : adminUser.FirstName;
+            adminUser.LastName = string.IsNullOrWhiteSpace(adminUser.LastName) ? "Micene" : adminUser.LastName;
+            adminUser.DateOfBirth = adminUser.DateOfBirth == default ? new DateTime(1980, 1, 1) : adminUser.DateOfBirth;
+            adminUser.City = string.IsNullOrWhiteSpace(adminUser.City) ? "Milano" : adminUser.City;
+            adminUser.Country = string.IsNullOrWhiteSpace(adminUser.Country) ? "Italia" : adminUser.Country;
+            adminUser.FiscalCode = string.IsNullOrWhiteSpace(adminUser.FiscalCode) ? "ADMINADMIN01" : adminUser.FiscalCode;
+
+            var updateResult = await userManager.UpdateAsync(adminUser);
+            EnsureIdentityResultSucceeded(updateResult, $"Aggiornamento utente admin {AdminEmail} non completato.");
+        }
+
+        var hasPassword = await userManager.HasPasswordAsync(adminUser);
+        if (hasPassword)
+        {
+            var removeResult = await userManager.RemovePasswordAsync(adminUser);
+            EnsureIdentityResultSucceeded(removeResult, $"Reset password admin {AdminEmail} non completato.");
+        }
+
+        var addPasswordResult = await userManager.AddPasswordAsync(adminUser, DefaultCustomerPassword);
+        EnsureIdentityResultSucceeded(addPasswordResult, $"Impostazione password admin {AdminEmail} non completata.");
     }
 
     private async Task SynchronizeUserRolesAsync(CancellationToken cancellationToken)

@@ -59,6 +59,32 @@ public class DashboardOrdersDatabaseSeederTests
         imageUrls.Should().OnlyHaveUniqueItems();
     }
 
+    [Fact]
+    public async Task SeedAsync_QuandoAdminEsiste_AlloraConfermaEmailERiallineaPasswordERuolo()
+    {
+        // Arrange
+        using var dbContext = CreateDbContext();
+        var admin = new ApplicationUser
+        {
+            Id = "admin-1",
+            UserName = "admin@micene.it",
+            Email = "admin@micene.it",
+            EmailConfirmed = false
+        };
+        var userManager = CreateUserManager(admin);
+        var sut = new DashboardOrdersDatabaseSeeder(dbContext, userManager, CreateRoleManager());
+
+        // Act
+        await sut.SeedAsync();
+
+        // Assert
+        admin.EmailConfirmed.Should().BeTrue();
+        await userManager.Received(1).UpdateAsync(admin);
+        await userManager.Received(1).RemovePasswordAsync(admin);
+        await userManager.Received(1).AddPasswordAsync(admin, "Micene@65");
+        await userManager.Received(1).AddToRoleAsync(admin, "Admin");
+    }
+
     private static DashboardOrdersDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<DashboardOrdersDbContext>()
@@ -68,7 +94,7 @@ public class DashboardOrdersDatabaseSeederTests
         return new DashboardOrdersDbContext(options);
     }
 
-    private static UserManager<ApplicationUser> CreateUserManager()
+    private static UserManager<ApplicationUser> CreateUserManager(ApplicationUser? existingAdmin = null)
     {
         var store = Substitute.For<IUserPasswordStore<ApplicationUser>>();
         var userManager = Substitute.For<UserManager<ApplicationUser>>(
@@ -82,9 +108,22 @@ public class DashboardOrdersDatabaseSeederTests
             Substitute.For<IServiceProvider>(),
             Substitute.For<ILogger<UserManager<ApplicationUser>>>());
 
-        userManager.FindByEmailAsync(Arg.Any<string>()).Returns((ApplicationUser?)null);
+        userManager.FindByEmailAsync(Arg.Any<string>()).Returns(call =>
+        {
+            var email = call.Arg<string>();
+            return string.Equals(email, "admin@micene.it", StringComparison.OrdinalIgnoreCase)
+                ? existingAdmin
+                : null;
+        });
         userManager.CreateAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
-        userManager.Users.Returns(Array.Empty<ApplicationUser>().AsQueryable());
+        userManager.UpdateAsync(Arg.Any<ApplicationUser>()).Returns(IdentityResult.Success);
+        userManager.HasPasswordAsync(Arg.Any<ApplicationUser>()).Returns(true);
+        userManager.RemovePasswordAsync(Arg.Any<ApplicationUser>()).Returns(IdentityResult.Success);
+        userManager.AddPasswordAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
+        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
+        userManager.RemoveFromRoleAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(IdentityResult.Success);
+        userManager.Users.Returns((existingAdmin is null ? [] : new[] { existingAdmin }).AsQueryable());
+        userManager.IsInRoleAsync(Arg.Any<ApplicationUser>(), Arg.Any<string>()).Returns(false);
 
         return userManager;
     }

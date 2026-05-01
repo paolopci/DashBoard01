@@ -1,6 +1,7 @@
 using DashboardOrders.Models.ViewModels;
 using DashboardOrders.Controllers;
 using DashboardOrders.Data;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using FluentAssertions;
@@ -835,6 +836,78 @@ public class HomeControllerTests
 
         // Assert
         risultato.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public void EditCustomer_QuandoModelloValido_AlloraAggiornaClienteTramiteServizio()
+    {
+        // Arrange
+        var customer = new Customer
+        {
+            Id = 7,
+            Name = "Mario Rossi",
+            Email = "mario.rossi@example.com",
+            Phone = "+39 3331234567",
+            AvatarInitials = "MR"
+        };
+        dataService.GetCustomer(7).Returns(customer);
+        dataService.UpdateCustomer(Arg.Any<Customer>()).Returns(true);
+
+        var model = new EditCustomerViewModel
+        {
+            Id = 7,
+            Name = "Luigi Verdi",
+            Email = "LUIGI.VERDI@EXAMPLE.COM",
+            PhonePrefix = "+39",
+            PhoneNumber = "3337654321"
+        };
+
+        // Act
+        var risultato = sut.EditCustomer(model);
+
+        // Assert
+        risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(HomeController.Customers));
+        dataService.Received(1).UpdateCustomer(Arg.Is<Customer>(updated =>
+            updated.Id == 7 &&
+            updated.Name == "Luigi Verdi" &&
+            updated.Email == "luigi.verdi@example.com" &&
+            updated.Phone == "+39 3337654321"));
+    }
+
+    [Fact]
+    public void EditCustomer_Get_QuandoClienteHaPrefisso_AlloraMostraViewModelConIsoEBandiera()
+    {
+        // Arrange
+        dataService.GetPhoneCountryPrefixes().Returns([
+            new PhoneCountryPrefixViewModel
+        {
+            Iso2 = "IT",
+            Iso3 = "ITA",
+            CountryName = "Italy",
+            LocalizedCountryName = "Italia",
+            DialCode = "+39",
+            FlagPath = "/img/flags/4x3/it.svg"
+        }
+        ]);
+        dataService.GetCustomer(68).Returns(new Customer
+        {
+            Id = 68,
+            Name = "Giulia Lombardi",
+            Email = "giulia.lombardi65@example.com",
+            Phone = "+39 088 3811624",
+            AvatarInitials = "GL"
+        });
+
+        // Act
+        var risultato = sut.EditCustomer(68);
+
+        // Assert
+        var model = risultato.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<EditCustomerViewModel>().Subject;
+        model.PhonePrefix.Should().Be("+39");
+        model.PhoneCountryIso2.Should().Be("IT");
+        model.PhoneCountryFlagPath.Should().Be("/img/flags/4x3/it.svg");
+        model.PhoneNumber.Should().Be("088 3811624");
+        model.PhoneCountryPrefixes.Should().ContainSingle(prefix => prefix.Iso2 == "IT" && prefix.DialCode == "+39");
     }
 
     private static ClaimsPrincipal CreateUser(string email, params string[] roles)
