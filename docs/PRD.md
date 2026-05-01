@@ -2,72 +2,62 @@
 
 ## Obiettivo
 
-Realizzare un carrello acquisti persistente per i clienti autenticati, separando la composizione del carrello dalla creazione effettiva dell'ordine.
+Mettere in sicurezza e rifattorizzare in modo incrementale il codice introdotto negli ultimi cinque commit su registrazione telefono, prefissi internazionali, checkout e Stripe.
 
 ## Problema/Contesto
 
-La pagina `Home/NewOrder` oggi costruisce un ordine temporaneo nella UI e lo salva direttamente come ordine. Il cliente invece deve poter aggiungere articoli a un carrello persistente, ritrovarli dopo una nuova login, gestire quantita e rimozione da una pagina `Cart`, poi confermare l'ordine solo dalla pagina carrello.
+Gli ultimi commit hanno aggiunto prefissi telefonici internazionali, campi telefono in registrazione, refactor namespace Domain/Models e integrazione Stripe. L'analisi ha evidenziato rischi su migration EF non incrementale, endpoint prefissi non accessibile da registrazione anonima, duplicazione JavaScript del combobox prefissi e punti deboli nel recupero del flusso Stripe.
 
 ## Scope
 
-- Aggiungere un link/icona carrello nell'header, a sinistra del menu utente autenticato, con badge numero articoli.
-- Rimuovere da `NewOrder` il blocco tabellare con righe ordine, totale e pulsanti finali visto in figura 2.
-- Trasformare `NewOrder` in pagina di selezione articolo/quantita con azione di aggiunta al carrello.
-- Creare la pagina `Home/Cart` ispirata ad Amazon: elenco articoli a sinistra, riepilogo ordine a destra, CTA `Procedi all'ordine`.
-- Rendere il carrello persistente lato database per cliente autenticato.
-- Consentire modifica quantita e cancellazione articolo con controllo stile figura 4: cestino, decremento, quantita, incremento.
-- Alla conferma carrello, creare l'ordine usando la logica esistente e svuotare il carrello solo se l'ordine viene creato correttamente.
-- Aggiungere test automatici backend/controller pertinenti ed eseguire build, test e build CSS.
+- Correggere la migration `AddPhoneToApplicationUser` rendendola incrementale e non distruttiva.
+- Allineare vincoli EF per `ApplicationUser.PhonePrefix` e `ApplicationUser.PhoneCountryIso2`.
+- Correggere registrazione anonima con prefisso telefonico e submit utilizzabile.
+- Estrarre il combobox prefissi in JavaScript condiviso senza rendering `innerHTML` di dati dinamici.
+- Usare lo script condiviso in registrazione e checkout indirizzi.
+- Rafforzare return/retry Stripe e controllo ownership dell'ordine.
+- Estrarre costanti condivise per metodi e stati pagamento.
+- Applicare un refactor strutturale leggero su analytics/controller e whitespace.
+- Aggiungere o aggiornare test automatici pertinenti.
 
 ## Out of scope
 
-- Selezione parziale degli articoli del carrello per checkout v1: tutti gli articoli validi del carrello vengono inclusi nell'ordine.
-- Wishlist, `salva per dopo`, codici sconto, Prime, regalo, spedizione reale o calcolo costi spedizione.
-- Pagamenti online o integrazioni esterne.
-- Persistenza per utenti anonimi.
-- Nuove librerie UI o framework frontend.
-- Riscrittura completa del layout esistente.
+- Eliminazione di file, dati o configurazioni.
+- Installazione di nuove dipendenze NuGet o npm.
+- Riscrittura completa di `DashboardOrdersDataService`.
+- Modifica del modello dati dei prefissi internazionali gia introdotto.
+- Validazione completa dei numeri telefonici internazionali.
+- Cambio del flusso province/citta/CAP, che resta italiano.
 
 ## Requisiti funzionali
 
-- Il carrello e associato all'email dell'utente autenticato non admin.
-- Il carrello persiste oltre la sessione browser e viene ricaricato al login successivo.
-- La durata proposta del carrello e 30 giorni dall'ultimo aggiornamento; ogni aggiunta/modifica rinnova la scadenza.
-- Un carrello scaduto viene ignorato e cancellato in modo lazy alla prima lettura o modifica.
-- L'icona carrello mostra il numero totale di pezzi presenti nel carrello del cliente.
-- Da `NewOrder`, il cliente puo scegliere categoria, prodotto e quantita e aggiungere l'articolo al carrello.
-- Se un prodotto e gia nel carrello, l'aggiunta aggiorna la quantita senza creare duplicati.
-- La quantita non puo essere minore di 1 o maggiore dello stock disponibile.
-- La pagina `Cart` mostra immagine, nome, descrizione, prezzo unitario, quantita, totale riga e totale provvisorio.
-- Il controllo quantita in `Cart` permette decremento, incremento e rimozione articolo.
-- Se lo stock diventa insufficiente prima del checkout, il checkout fallisce con messaggio utente e il carrello resta invariato.
-- Alla conferma valida, viene creato un ordine con gli articoli del carrello e il carrello viene svuotato.
-- Admin continua a essere escluso dal flusso cliente `NewOrder`/`Cart`.
+- La registrazione anonima deve poter caricare i prefissi telefonici e inviare il form.
+- Il prefisso italiano `+39` deve restare il fallback predefinito.
+- Registrazione e checkout devono usare lo stesso comportamento del combobox prefissi.
+- Il checkout Stripe deve permettere un retry recuperabile quando la sessione Stripe non viene creata o va ripresa.
+- Il return Stripe non deve completare un ordine non appartenente all'utente corrente.
 
 ## Vincoli tecnici
 
-- Mantenere lo stack esistente: ASP.NET Core MVC, Razor, EF Core, Identity, Tailwind, xUnit, FluentAssertions, NSubstitute.
-- Non introdurre nuove librerie.
-- Usare Tailwind gia presente e ricompilare `wwwroot/css/app.css` tramite `npm run build:css`.
-- Usare persistenza database, non `localStorage`, per garantire ritrovamento al login successivo.
-- Aggiungere entita EF coerenti con `Data/Entities` e mapping in `DashboardOrdersDbContext`.
-- Aggiungere uno script SQL idempotente in `scripts/` per creare le tabelle carrello nel database reale.
-- Riutilizzare `DashboardOrdersDataService.CreateOrder` per confermare l'ordine, cosi stock e storico ordine restano gestiti dalla logica esistente.
+- Usare ASP.NET Core MVC .NET 9, Razor/Tailwind ed EF Core gia presenti.
+- Non introdurre nuove tecnologie o librerie.
+- Mantenere controller sottili dove il cambiamento e locale e a basso rischio.
+- Non correggere la migration con operazioni distruttive.
+- Mantenere compatibilita con test xUnit esistenti.
 
 ## Acceptance criteria
 
-- In header, per cliente autenticato, compare il carrello a sinistra del menu utente con badge quantita.
-- `Home/NewOrder` non mostra piu la tabella ordine/totale/pulsanti finali di figura 2.
-- Aggiungendo un articolo da `NewOrder`, l'articolo viene salvato nel carrello persistente.
-- Chiudendo la sessione e rifacendo login entro 30 giorni, il carrello viene ritrovato.
-- `Home/Cart` mostra layout responsive ispirato ad Amazon con elenco articoli e riepilogo laterale.
-- Il controllo quantita stile figura 4 aggiorna o rimuove l'articolo.
-- `Procedi all'ordine` crea l'ordine e svuota il carrello solo in caso di successo.
-- Carrello vuoto e carrello scaduto mostrano stato vuoto comprensibile.
-- `dotnet test DashBoard01.sln` passa.
-- `dotnet build DashBoard01.sln` passa.
-- `npm run build:css` passa.
+- La migration telefono contiene solo operazioni incrementali su `AspNetUsers`.
+- `PhonePrefix` e `PhoneCountryIso2` hanno max length coerenti in EF.
+- La pagina registrazione anonima carica i prefissi e il submit non resta bloccato.
+- Il JavaScript del combobox prefissi e condiviso tra registrazione e checkout.
+- Il rendering opzioni prefissi usa nodi DOM e `textContent`.
+- Il flusso Stripe ha controllo ownership e retry esplicito.
+- I test mirati su telefono/registrazione/Stripe passano.
+- `dotnet test`, `dotnet build`, `dotnet ef migrations script` e `git diff --check` hanno esito documentato.
 
 ## Definizione di completamento
 
-Il lavoro e completato quando il flusso cliente `NewOrder -> Cart persistente -> Checkout -> Orders` e implementato, verificato con test automatici e build, con `docs/PRD.md` e `docs/PLAN.md` aggiornati e nessuna fase `Scope finale: in` rimasta pending o blocked.
+- PRD e PLAN sono aggiornati.
+- Codice, migration, view/script e test sono aggiornati.
+- Le verifiche previste dal piano sono eseguite con esito documentato oppure eventuali blocchi sono dichiarati.

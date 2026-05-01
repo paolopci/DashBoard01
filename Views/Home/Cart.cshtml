@@ -1,13 +1,18 @@
-@model DashboardOrders.Models.CartViewModel
+@model DashboardOrders.Models.ViewModels.CartViewModel
 @{
     ViewData["Title"] = "Carrello";
 }
 
 <div class="mb-6">
     <h2 class="text-3xl font-bold text-slate-900">Carrello</h2>
+    <a asp-controller="Home"
+       asp-action="NewOrder"
+       class="mt-1 inline-flex text-sm font-semibold text-indigo-700 transition-colors hover:text-indigo-900">
+        Continua gli acquisti
+    </a>
     @if (Model.Items.Count > 0)
     {
-        <p class="mt-1 text-sm text-indigo-700">Totale articoli nel carrello: @Model.TotalItems</p>
+        <p class="mt-1 text-sm text-indigo-700" data-cart-total-items>Totale articoli nel carrello: @Model.TotalItems</p>
     }
 </div>
 
@@ -25,7 +30,7 @@
 }
 else
 {
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]" data-cart-root>
         <section class="rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div class="border-b border-slate-100 px-5 py-4">
                 <div class="flex items-end justify-between gap-4">
@@ -40,7 +45,7 @@ else
             <div class="divide-y divide-slate-100">
                 @foreach (var item in Model.Items)
                 {
-                    <article class="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-[160px_minmax(0,1fr)_140px]">
+                    <article class="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-[160px_minmax(0,1fr)_140px]" data-cart-item="@item.ProductCode">
                         <div class="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
                             @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
                             {
@@ -65,20 +70,11 @@ else
                             }
 
                             <div class="mt-4 flex flex-wrap items-center gap-3">
-                                <div class="inline-flex h-9 items-center overflow-hidden rounded-full border-2 border-amber-400 bg-white">
-                                    <form method="post" asp-controller="Home" asp-action="RemoveCartItem" class="m-0">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="productCode" value="@item.ProductCode" />
-                                        <button type="submit" class="inline-flex h-9 w-10 items-center justify-center text-slate-800 transition-colors hover:bg-amber-50" aria-label="Rimuovi @item.ProductName">
-                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12m-9 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 4v6m4-6v6M8 7l1 13h6l1-13"></path>
-                                            </svg>
-                                        </button>
-                                    </form>
+                                <div class="inline-grid h-9 grid-cols-[44px_52px_44px] items-center overflow-hidden rounded-full border-2 border-amber-400 bg-white">
                                     <form method="post" asp-controller="Home" asp-action="DecrementCartItem" class="m-0">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="productCode" value="@item.ProductCode" />
-                                        <button type="submit" class="inline-flex h-9 w-8 items-center justify-center text-lg font-semibold text-slate-800 transition-colors hover:bg-amber-50" aria-label="Diminuisci quantita @item.ProductName">-</button>
+                                        <button type="submit" class="inline-flex h-9 w-11 items-center justify-center text-lg font-semibold text-slate-800 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-300" aria-label="Diminuisci quantita @item.ProductName" data-cart-action-button>-</button>
                                     </form>
                                     <form method="post" asp-controller="Home" asp-action="UpdateCartItemQuantity" class="m-0">
                                         @Html.AntiForgeryToken()
@@ -88,12 +84,13 @@ else
                                                min="1"
                                                max="@item.Stock"
                                                type="number"
-                                               class="h-9 w-12 border-x border-amber-200 text-center text-sm font-bold text-slate-900 focus:outline-none" />
+                                               class="h-9 w-[52px] border-x border-amber-200 text-center text-sm font-bold text-slate-900 focus:outline-none"
+                                               data-cart-quantity />
                                     </form>
                                     <form method="post" asp-controller="Home" asp-action="IncrementCartItem" class="m-0">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="productCode" value="@item.ProductCode" />
-                                        <button type="submit" class="inline-flex h-9 w-8 items-center justify-center text-lg font-semibold text-slate-800 transition-colors hover:bg-amber-50" aria-label="Aumenta quantita @item.ProductName">+</button>
+                                        <button type="submit" class="inline-flex h-9 w-11 items-center justify-center text-lg font-semibold text-slate-800 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-300" aria-label="Aumenta quantita @item.ProductName" data-cart-action-button>+</button>
                                     </form>
                                 </div>
                             </div>
@@ -102,7 +99,7 @@ else
                         <div class="text-left md:text-right">
                             <p class="text-sm text-slate-500">Prezzo</p>
                             <p class="mt-1 text-lg font-bold text-slate-900">@FormatEuro(item.UnitPrice)</p>
-                            <p class="mt-2 text-sm font-semibold text-slate-700">@FormatEuro(item.LineTotal)</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-700" data-cart-line-total>@FormatEuro(item.LineTotal)</p>
                         </div>
                     </article>
                 }
@@ -112,13 +109,13 @@ else
         <aside class="h-max rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div class="flex items-start gap-3 text-sm text-emerald-700">
                 <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">✓</span>
-                <p><span class="font-bold">Spedizione GRATUITA</span> disponibile per il tuo ordine. Le opzioni finali saranno confermate in fase di ordine.</p>
+                <p><span class="font-bold">Spedizione test</span> disponibile per il tuo ordine. Metodo consegna e fatturazione saranno confermati nel checkout.</p>
             </div>
 
             <div class="mt-6 border-t border-slate-100 pt-5">
                 <p class="text-xl text-slate-900">
-                    Totale provvisorio (@Model.TotalItems articoli):
-                    <span class="font-bold">@FormatEuro(Model.TotalAmount)</span>
+                    <span data-cart-summary-label>Totale provvisorio (@Model.TotalItems articoli):</span>
+                    <span class="font-bold" data-cart-total-amount>@FormatEuro(Model.TotalAmount)</span>
                 </p>
                 <label class="mt-4 flex items-center gap-2 text-sm text-slate-700">
                     <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
@@ -129,7 +126,7 @@ else
                     <button type="submit"
                             class="inline-flex w-full items-center justify-center rounded-full bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 shadow-sm transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-slate-300"
                             disabled="@Model.HasUnavailableItems">
-                        Procedi all'ordine
+                        Vai al riepilogo checkout
                     </button>
                 </form>
             </div>
@@ -140,4 +137,110 @@ else
             </div>
         </aside>
     </div>
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            const cartRoot = document.querySelector('[data-cart-root]');
+            if (!cartRoot) {
+                return;
+            }
+
+            const updateCartTotals = (cart) => {
+                const totalItems = document.querySelector('[data-cart-total-items]');
+                const summaryLabel = document.querySelector('[data-cart-summary-label]');
+                const totalAmount = document.querySelector('[data-cart-total-amount]');
+
+                if (totalItems) {
+                    totalItems.textContent = `Totale articoli nel carrello: ${cart.totalItems}`;
+                }
+
+                if (summaryLabel) {
+                    summaryLabel.textContent = `Totale provvisorio (${cart.totalItems} articoli):`;
+                }
+
+                if (totalAmount) {
+                    totalAmount.textContent = cart.totalAmount;
+                }
+            };
+
+            const updateCartItem = (item) => {
+                const row = cartRoot.querySelector(`[data-cart-item="${CSS.escape(item.productCode)}"]`);
+                if (!row) {
+                    return;
+                }
+
+                const quantity = row.querySelector('[data-cart-quantity]');
+                const lineTotal = row.querySelector('[data-cart-line-total]');
+
+                if (quantity) {
+                    quantity.value = item.quantity;
+                }
+
+                if (lineTotal) {
+                    lineTotal.textContent = item.lineTotal;
+                }
+            };
+
+            const removeCartItem = (productCode) => {
+                const row = cartRoot.querySelector(`[data-cart-item="${CSS.escape(productCode)}"]`);
+                row?.remove();
+            };
+
+            cartRoot.addEventListener('submit', async (event) => {
+                const form = event.target.closest('form');
+                if (!form || !form.matches('[action*="CartItem"]')) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const controls = form.closest('[data-cart-item]')?.querySelectorAll('[data-cart-action-button], [data-cart-quantity]') ?? [];
+                controls.forEach((control) => control.disabled = true);
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: form.method,
+                        body: new FormData(form),
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        form.submit();
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    if (!payload.success) {
+                        if (payload.message) {
+                            window.alert(payload.message);
+                        }
+
+                        return;
+                    }
+
+                    updateCartTotals(payload.cart);
+
+                    if (payload.removedProductCode) {
+                        removeCartItem(payload.removedProductCode);
+                    }
+
+                    if (payload.item) {
+                        updateCartItem(payload.item);
+                    }
+
+                    if (payload.cart.totalItems === 0) {
+                        window.location.reload();
+                    }
+                } catch {
+                    form.submit();
+                } finally {
+                    controls.forEach((control) => control.disabled = false);
+                }
+            });
+        })();
+    </script>
 }

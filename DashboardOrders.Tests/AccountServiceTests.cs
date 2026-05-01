@@ -1,4 +1,6 @@
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Models.Dto;
+using DashboardOrders.Models.ViewModels;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using FluentAssertions;
@@ -58,6 +60,28 @@ public class AccountServiceTests
         // Assert
         risultato.Succeeded.Should().BeTrue();
         await userManager.Received(1).AddToRoleAsync(Arg.Any<ApplicationUser>(), "User");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_QuandoDtoValido_AlloraMappaTelefonoSuApplicationUser()
+    {
+        // Arrange
+        var dto = CreateRegisterDto();
+        userManager.FindByEmailAsync(dto.Email.ToLowerInvariant()).Returns((ApplicationUser?)null);
+        userManager.CreateAsync(Arg.Any<ApplicationUser>(), dto.Password).Returns(IdentityResult.Success);
+        roleManager.FindByNameAsync("User").Returns((IdentityRole?)new IdentityRole("User"));
+        userManager.AddToRoleAsync(Arg.Any<ApplicationUser>(), "User").Returns(IdentityResult.Success);
+
+        // Act
+        await sut.RegisterAsync(dto);
+
+        // Assert
+        await userManager.Received(1).CreateAsync(
+            Arg.Is<ApplicationUser>(user =>
+                user.PhonePrefix == "+39" &&
+                user.PhoneCountryIso2 == "IT" &&
+                user.PhoneNumber == "3331234567"),
+            dto.Password);
     }
 
     [Fact]
@@ -146,6 +170,9 @@ public class AccountServiceTests
             "Milano",
             "Italia",
             "RSSMRA90A01F205X",
+            "+39",
+            "IT",
+            "3331234567",
             "Password1",
             "Password1");
     }

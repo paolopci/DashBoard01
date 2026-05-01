@@ -1,3 +1,4 @@
+using DashboardOrders.Models.ViewModels;
 using DashboardOrders.Models;
 
 namespace DashboardOrders.Services;
@@ -184,7 +185,7 @@ public static class MockDataService
         return $"https://loremflickr.com/320/240/{keywords}?lock={productNumber}";
     }
 
-    private static string GetProductImageKeywords(string productName, string categoryName)
+    public static string GetProductImageKeywords(string productName, string categoryName)
     {
         var name = productName.ToLowerInvariant();
 

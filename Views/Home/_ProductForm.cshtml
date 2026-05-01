@@ -1,4 +1,4 @@
-@model DashboardOrders.Models.ProductFormViewModel
+@model DashboardOrders.Models.ViewModels.ProductFormViewModel
 @{
     var isEdit = string.Equals(ViewContext.RouteData.Values["action"]?.ToString(), "EditProduct", StringComparison.OrdinalIgnoreCase);
     var actionName = isEdit ? "EditProduct" : "CreateProduct";

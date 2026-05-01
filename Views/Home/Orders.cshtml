@@ -1,4 +1,4 @@
-@model DashboardOrders.Models.OrdersPageViewModel
+@model DashboardOrders.Models.ViewModels.OrdersPageViewModel
 @using DashboardOrders.Services
 @{
     ViewData["Title"] = "Ordini";
@@ -360,6 +360,10 @@
                                         <p class="text-slate-500">Numero articoli: <span class="font-semibold text-slate-700">@order.ItemsCount</span></p>
                                         <p class="text-slate-500">Pezzi Totali: <span class="font-semibold text-slate-700">@order.Quantity</span></p>
                                         <p class="text-slate-500">Cliente: <span class="font-semibold text-slate-700">@order.Customer.Name</span></p>
+                                        <a asp-controller="Home"
+                                           asp-action="OrderDetails"
+                                           asp-route-id="@order.Id"
+                                           class="font-semibold text-indigo-700 hover:text-indigo-900">Apri pagina dettaglio</a>
                                     </div>
                                     @if (isAdmin)
                                     {

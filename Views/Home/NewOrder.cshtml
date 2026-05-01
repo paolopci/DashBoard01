@@ -1,5 +1,5 @@
 @using System.Text.Json
-@model DashboardOrders.Models.NewOrderViewModel
+@model DashboardOrders.Models.ViewModels.NewOrderViewModel
 @{
     ViewData["Title"] = "Nuovo ordine";
     var productCatalog = Model.Products.Select(product => new
@@ -8,6 +8,12 @@
         name = product.Name,
         description = product.Description,
         imageUrl = product.ImageUrl,
+        carouselImages = product.CarouselImages.Select(image => new
+        {
+            imageUrl = image.ImageUrl,
+            altText = image.AltText,
+            displayOrder = image.DisplayOrder
+        }),
         unitCost = product.UnitCost,
         stock = product.Stock,
         categoryCode = product.Category.Code,
@@ -28,29 +34,7 @@
 
     <div asp-validation-summary="ModelOnly" class="px-6 pt-5 text-sm font-semibold text-rose-600"></div>
 
-    <div class="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_220px]">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-                <label for="SelectedProductName" class="mb-2 block text-sm font-semibold text-slate-700">Articolo</label>
-                <input id="SelectedProductName" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
-            </div>
-            <div>
-                <label for="SelectedProductPrice" class="mb-2 block text-sm font-semibold text-slate-700">Prezzo</label>
-                <input id="SelectedProductPrice" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
-            </div>
-            <div class="md:col-span-2">
-                <label for="SelectedProductDescription" class="mb-2 block text-sm font-semibold text-slate-700">Descrizione</label>
-                <textarea id="SelectedProductDescription" rows="3" readonly class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"></textarea>
-            </div>
-        </div>
-
-        <div class="flex min-h-[180px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <img id="SelectedProductImage" alt="" class="hidden h-40 w-full rounded-lg object-cover" />
-            <span id="SelectedProductImageFallback" class="text-center text-sm font-semibold text-slate-400">Image Product</span>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 gap-5 px-6 pb-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] md:items-end">
+    <div class="grid grid-cols-1 gap-5 px-6 py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] md:items-end">
         <div>
             <label for="CategoryCode" class="mb-2 block text-sm font-semibold text-slate-700">Category</label>
             <select id="CategoryCode" data-category-select class="w-full rounded-lg border border-amber-500 bg-white px-3 py-2 text-sm text-slate-700 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-200">
@@ -80,6 +64,31 @@
             </button>
         </div>
     </div>
+
+    <div class="grid grid-cols-1 gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div>
+                <label for="SelectedProductName" class="mb-2 block text-sm font-semibold text-slate-700">Articolo</label>
+                <input id="SelectedProductName" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
+            </div>
+            <div>
+                <label for="SelectedProductPrice" class="mb-2 block text-sm font-semibold text-slate-700">Prezzo</label>
+                <input id="SelectedProductPrice" type="text" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700" />
+            </div>
+            <div class="md:col-span-2">
+                <label for="SelectedProductDescription" class="mb-2 block text-sm font-semibold text-slate-700">Descrizione</label>
+                <textarea id="SelectedProductDescription" rows="3" readonly class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"></textarea>
+            </div>
+        </div>
+
+        <div class="grid min-h-[260px] grid-cols-[64px_minmax(0,1fr)] gap-4">
+            <div id="SelectedProductCarousel" class="flex flex-col gap-2 overflow-y-auto" aria-label="Immagini prodotto"></div>
+            <div class="flex aspect-square min-h-[260px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <img id="SelectedProductImage" alt="" class="hidden max-h-full w-full rounded-lg object-contain" />
+                <span id="SelectedProductImageFallback" class="text-center text-sm font-semibold text-slate-400">Image Product</span>
+            </div>
+        </div>
+    </div>
 </form>
 
 @section Scripts {
@@ -97,7 +106,9 @@
             const priceBox = document.getElementById("SelectedProductPrice");
             const productImage = document.getElementById("SelectedProductImage");
             const imageFallback = document.getElementById("SelectedProductImageFallback");
+            const imageCarousel = document.getElementById("SelectedProductCarousel");
             const formatter = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+            let selectedImageIndex = 0;
 
             function findProduct(code) {
                 return products.find(product => product.code === code);
@@ -143,18 +154,8 @@
                 descriptionBox.value = product.description || "";
                 priceBox.value = formatEuro(product.unitCost);
                 quantityInput.max = product.stock.toString();
-
-                if (product.imageUrl) {
-                    productImage.src = product.imageUrl;
-                    productImage.alt = product.name;
-                    productImage.classList.remove("hidden");
-                    imageFallback.classList.add("hidden");
-                } else {
-                    productImage.removeAttribute("src");
-                    productImage.alt = "";
-                    productImage.classList.add("hidden");
-                    imageFallback.classList.remove("hidden");
-                }
+                selectedImageIndex = 0;
+                renderProductImages(product);
 
                 updateAddButton();
             }
@@ -164,10 +165,84 @@
                 descriptionBox.value = "";
                 priceBox.value = "";
                 quantityInput.removeAttribute("max");
+                selectedImageIndex = 0;
+                imageCarousel.innerHTML = "";
                 productImage.removeAttribute("src");
                 productImage.alt = "";
                 productImage.classList.add("hidden");
                 imageFallback.classList.remove("hidden");
+            }
+
+            function getProductImages(product) {
+                if (Array.isArray(product.carouselImages) && product.carouselImages.length > 0) {
+                    return product.carouselImages
+                        .slice()
+                        .sort((left, right) => left.displayOrder - right.displayOrder)
+                        .map(image => ({
+                            imageUrl: image.imageUrl,
+                            altText: image.altText || product.name
+                        }));
+                }
+
+                if (product.imageUrl) {
+                    return [{ imageUrl: product.imageUrl, altText: product.name }];
+                }
+
+                return [];
+            }
+
+            function renderProductImages(product) {
+                const images = getProductImages(product);
+                imageCarousel.innerHTML = "";
+
+                if (images.length === 0) {
+                    productImage.removeAttribute("src");
+                    productImage.alt = "";
+                    productImage.classList.add("hidden");
+                    imageFallback.classList.remove("hidden");
+                    return;
+                }
+
+                selectedImageIndex = Math.min(selectedImageIndex, images.length - 1);
+                renderSelectedProductImage(images);
+
+                images.forEach((image, index) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "aspect-square w-16 rounded-lg border bg-white p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-200";
+                    button.setAttribute("aria-label", `Visualizza immagine ${index + 1} di ${product.name}`);
+
+                    const thumbnail = document.createElement("img");
+                    thumbnail.src = image.imageUrl;
+                    thumbnail.alt = image.altText;
+                    thumbnail.className = "h-full w-full rounded-md object-cover";
+                    button.appendChild(thumbnail);
+
+                    button.addEventListener("click", () => {
+                        selectedImageIndex = index;
+                        renderSelectedProductImage(images);
+                    });
+
+                    imageCarousel.appendChild(button);
+                });
+
+                refreshThumbnailSelection();
+            }
+
+            function renderSelectedProductImage(images) {
+                const selectedImage = images[selectedImageIndex];
+                productImage.src = selectedImage.imageUrl;
+                productImage.alt = selectedImage.altText;
+                productImage.classList.remove("hidden");
+                imageFallback.classList.add("hidden");
+                refreshThumbnailSelection();
+            }
+
+            function refreshThumbnailSelection() {
+                imageCarousel.querySelectorAll("button").forEach((button, index) => {
+                    button.classList.toggle("border-indigo-600", index === selectedImageIndex);
+                    button.classList.toggle("border-slate-200", index !== selectedImageIndex);
+                });
             }
 
             function clearSelection() {

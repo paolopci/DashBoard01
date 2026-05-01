@@ -1,6 +1,9 @@
-@model DashboardOrders.Models.Customer
+@model DashboardOrders.Models.ViewModels.EditCustomerViewModel
+@using DashboardOrders.Models.ViewModels
 @{
     ViewData["Title"] = "Modifica cliente";
+    var selectedPrefix = Model.PhoneCountryPrefixes.FirstOrDefault(prefix =>
+        prefix.Iso2 == Model.PhoneCountryIso2 || prefix.DialCode == Model.PhonePrefix);
 }
 
 <div class="mb-8">
@@ -8,7 +11,7 @@
     <p class="mt-1 text-slate-500">Aggiorna i dati anagrafici del cliente.</p>
 </div>
 
-<form method="post" asp-controller="Home" asp-action="EditCustomer" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+<form method="post" asp-controller="Home" asp-action="EditCustomer" class="overflow-visible rounded-2xl border border-slate-100 bg-white shadow-sm">
     @Html.AntiForgeryToken()
     <input asp-for="Id" type="hidden" />
     <input asp-for="AvatarInitials" type="hidden" />
@@ -22,9 +25,39 @@
             <label asp-for="Email" class="mb-2 block text-sm font-semibold text-slate-700">Email</label>
             <input asp-for="Email" type="email" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
         </div>
-        <div>
-            <label asp-for="Phone" class="mb-2 block text-sm font-semibold text-slate-700">Telefono</label>
-            <input asp-for="Phone" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+        <div class="md:col-span-2">
+            <label class="mb-2 block text-sm font-semibold text-slate-700">Telefono</label>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-[12rem_1fr]">
+                <div class="relative" data-edit-phone-prefix>
+                    <input asp-for="PhonePrefix" type="hidden" data-phone-prefix-value />
+                    <input asp-for="PhoneCountryIso2" type="hidden" data-phone-country-iso2 />
+                    <button type="button" class="flex min-h-[2.625rem] w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-phone-prefix-toggle>
+                        <span class="flex min-w-0 items-center gap-2">
+                            <img src="@(selectedPrefix?.FlagPath ?? Model.PhoneCountryFlagPath)" alt="" class="h-4 w-6 shrink-0 rounded-sm object-cover ring-1 ring-slate-200" data-phone-prefix-flag @(string.IsNullOrWhiteSpace(selectedPrefix?.FlagPath ?? Model.PhoneCountryFlagPath) ? "hidden" : "") />
+                            <span class="truncate" data-phone-prefix-label>@((selectedPrefix?.Iso2 ?? Model.PhoneCountryIso2) + " " + (selectedPrefix?.DialCode ?? Model.PhonePrefix))</span>
+                        </span>
+                        <span class="shrink-0 text-slate-400" aria-hidden="true">&#9662;</span>
+                    </button>
+                    <div class="absolute z-50 mt-1 hidden max-h-72 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" data-phone-prefix-panel>
+                        <div class="border-b border-slate-100 p-2">
+                            <input type="search" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Cerca paese o prefisso" autocomplete="off" data-phone-prefix-search />
+                        </div>
+                        <div class="max-h-56 overflow-y-auto py-1" role="listbox" data-phone-prefix-options>
+                        @foreach (var prefix in Model.PhoneCountryPrefixes)
+                        {
+                            <button type="button" class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none" role="option" data-phone-prefix-option data-iso2="@prefix.Iso2" data-dial-code="@prefix.DialCode" data-flag-path="@prefix.FlagPath" data-country-name="@prefix.DisplayText">
+                                <img src="@prefix.FlagPath" alt="" class="h-4 w-6 shrink-0 rounded-sm object-cover ring-1 ring-slate-200" />
+                                <span class="min-w-0 flex-1 truncate">@prefix.LocalizedCountryName</span>
+                                <span class="shrink-0 font-semibold text-slate-500">@prefix.DialCode</span>
+                            </button>
+                        }
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <input asp-for="PhoneNumber" type="text" autocomplete="tel-national" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Numero di telefono" />
+                </div>
+            </div>
         </div>
     </div>
 
@@ -37,3 +70,86 @@
         </button>
     </div>
 </form>
+
+@section Scripts {
+    <script>
+        (function () {
+            var root = document.querySelector('[data-edit-phone-prefix]');
+            if (!root) return;
+
+            var prefixValue = root.querySelector('[data-phone-prefix-value]');
+            var iso2 = document.querySelector('[data-phone-country-iso2]');
+            var toggle = root.querySelector('[data-phone-prefix-toggle]');
+            var panel = root.querySelector('[data-phone-prefix-panel]');
+            var search = root.querySelector('[data-phone-prefix-search]');
+            var flag = root.querySelector('[data-phone-prefix-flag]');
+            var label = root.querySelector('[data-phone-prefix-label]');
+            var options = Array.prototype.slice.call(root.querySelectorAll('[data-phone-prefix-option]'));
+            if (!prefixValue || !iso2 || !toggle || !panel || !flag || !label) return;
+
+            var setOpen = function (isOpen) {
+                panel.classList.toggle('hidden', !isOpen);
+                toggle.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) {
+                    search.focus();
+                    search.select();
+                }
+            };
+
+            var selectOption = function (option) {
+                prefixValue.value = option.dataset.dialCode || '';
+                iso2.value = option.dataset.iso2 || '';
+                flag.src = option.dataset.flagPath || '';
+                flag.hidden = !option.dataset.flagPath;
+                label.textContent = (option.dataset.iso2 || '') + ' ' + (option.dataset.dialCode || '');
+                setOpen(false);
+                toggle.focus();
+            };
+
+            var filterOptions = function () {
+                var term = (search.value || '').trim().toLowerCase();
+                options.forEach(function (option) {
+                    var haystack = [
+                        option.dataset.iso2,
+                        option.dataset.dialCode,
+                        option.dataset.countryName
+                    ].join(' ').toLowerCase();
+                    option.hidden = term.length > 0 && !haystack.includes(term);
+                });
+            };
+
+            toggle.addEventListener('click', function () {
+                setOpen(toggle.getAttribute('aria-expanded') !== 'true');
+            });
+
+            search.addEventListener('input', filterOptions);
+            search.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    setOpen(false);
+                    toggle.focus();
+                    return;
+                }
+
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    var firstVisible = options.find(function (option) { return !option.hidden; });
+                    if (firstVisible) {
+                        selectOption(firstVisible);
+                    }
+                }
+            });
+
+            options.forEach(function (option) {
+                option.addEventListener('click', function () {
+                    selectOption(option);
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!root.contains(event.target)) {
+                    setOpen(false);
+                }
+            });
+        })();
+    </script>
+}
