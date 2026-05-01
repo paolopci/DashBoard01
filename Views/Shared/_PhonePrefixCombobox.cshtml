@@ -1,0 +1,24 @@
+@model DashboardOrders.Models.ViewModels.PhonePrefixComboboxModel
+
+<div class="grid grid-cols-1 gap-3 @(Model.TwoColumns ? "sm:grid-cols-[12rem_1fr]" : "")">
+    <div class="relative" data-phone-prefix-combobox>
+        <input type="hidden" name="@Model.PrefixFieldName" value="@Model.PhonePrefix" data-phone-prefix-value @(Model.Required ? "data-register-required" : "") />
+        <input type="hidden" name="@Model.Iso2FieldName" value="@Model.CountryIso2" data-phone-country-iso2 />
+        <button type="button" class="flex min-h-[2.625rem] w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-left focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-phone-prefix-toggle>
+            <span class="flex min-w-0 items-center gap-2">
+                <img alt="" class="h-4 w-6 shrink-0 rounded-sm object-cover ring-1 ring-slate-200" data-phone-prefix-flag @(string.IsNullOrEmpty(Model.FlagPath) ? "hidden" : "") src="@Model.FlagPath" />
+                <span class="truncate" data-phone-prefix-label>@Model.Label</span>
+            </span>
+            <span class="shrink-0 text-slate-400" aria-hidden="true">&#9662;</span>
+        </button>
+        <div class="absolute z-30 mt-1 hidden max-h-72 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" data-phone-prefix-panel>
+            <div class="border-b border-slate-100 p-2">
+                <input type="search" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Cerca paese o prefisso" autocomplete="off" data-phone-prefix-search />
+            </div>
+            <div class="max-h-56 overflow-y-auto py-1" role="listbox" data-phone-prefix-options></div>
+        </div>
+    </div>
+    <div>
+        <input type="text" name="@Model.PhoneNumberFieldName" value="@Model.PhoneNumber" autocomplete="tel-national" @(Model.Required ? "data-register-required" : "") class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Numero di telefono" />
+    </div>
+</div>

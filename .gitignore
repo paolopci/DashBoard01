@@ -485,3 +485,8 @@ $RECYCLE.BIN/
 # Repository-local agent instructions
 AGENTS.md
 shared/*.md
+
+# Local tool output
+.dotnet-home/
+graphify-out/
+

@@ -1,146 +1,173 @@
 # PLAN
 
-## Fase 1 - Vertical slice avanzamento stato ordine Admin
+## Checklist Generale
+
+- [x] Analizzare richiesta, repository e vincoli locali.
+- [x] Aggiornare `docs/PRD.md`.
+- [x] Aggiornare `docs/PLAN.md`.
+- [ ] Completare Fase 1.
+- [x] Completare Fase 2.
+- [x] Completare Fase 3.
+- [x] Completare Fase 4.
+- [x] Completare Fase 5.
+- [ ] Archiviare PRD/PLAN in `docs/History` a sviluppo complessivo concluso.
+
+## Fase 1 - Documentazione operativa
 Stato: completed
 Scope finale: in
-Tipo fase: implementazione
+Tipo fase: analisi
 Obiettivo:
-Permettere agli utenti `Admin` di avanzare lo stato di un ordine dalla pagina `Orders`, riusando la policy di transizione e lo storico stati gia presenti.
+Allineare PRD e PLAN al refactoring post ultimi cinque commit.
 Attivita:
-- aggiornare `docs/PRD.md` al ciclo di vita ordine;
-- sostituire il piano precedente con fasi conformi al template della skill;
-- aggiungere un endpoint MVC `POST` riservato agli `Admin` per cambio stato;
-- rendere disponibili alla UI le transizioni consentite per ogni ordine;
-- aggiornare `Views/Home/Orders.cshtml` con azioni stato solo per `Admin`;
-- aggiungere o aggiornare test automatici pertinenti;
-- eseguire `dotnet test DashBoard01.sln` e `dotnet build DashBoard01.sln`.
+- [x] Rileggere richiesta, repository e vincoli locali.
+- [x] Aggiornare `docs/PRD.md`.
+- [x] Aggiornare `docs/PLAN.md`.
 File o aree coinvolte:
 - `docs/PRD.md`
 - `docs/PLAN.md`
-- `Controllers/HomeController.cs`
-- `Models/`
-- `Services/`
-- `Views/Home/Orders.cshtml`
-- `DashboardOrders.Tests/`
-Backend impact: si
-Frontend impact: si
+Backend impact: no
+Frontend impact: no
 Dipendenze:
 nessuna
 Validazioni:
-- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~HomeControllerTests|FullyQualifiedName~DashboardOrdersDataServiceTests|FullyQualifiedName~OrderStatusTransitionPolicyTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\step4-test\`: superato, 66 test passati.
-- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\final-test\`: superato, 123 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\final-build\`: superato, 0 warning, 0 errori.
+Ispezione statica documentale.
 Definition of done:
-Un utente `Admin` puo cambiare lo stato di un ordine usando solo transizioni consentite, il cambio viene persistito con storico, utenti non admin non vedono ne possono inviare azioni stato, test e build passano.
-Tracer Bullet: obbligatoria
+Documenti aggiornati con scope, rischi e fasi approvate.
+Tracer Bullet: vietata
+Sub-agent: vietato
+Sub-task delegabili:
+nessuno
 Note:
-Trigger:
-Admin autenticato apre `Orders` e invia il cambio stato per un ordine.
-Input minimo:
-`orderId`, `newStatus` e, solo quando richiesto dalla policy, `reason`.
-Percorso:
-Razor `Orders` -> `HomeController` POST -> `IDashboardOrdersDataService.ChangeOrderStatus` -> `Orders` e `OrderStatusHistory`.
-Output:
-Redirect a `Orders` con messaggio `TempData` e ordine aggiornato.
-Evidenza verificabile:
-Test controller/service e verifica build solution.
-Rischio tecnico abbattuto:
-Wiring reale UI-controller-servizio-persistenza dello stato ordine.
-Out of scope dichiarato:
-Storico visibile in UI, azioni cliente, pagina dettaglio ordine dedicata, notifiche e nuove tecnologie.
-Esito fase:
-- aggiunto `HomeController.ChangeOrderStatus` con autorizzazione `Admin`, validazione input, chiamata a `IDashboardOrdersDataService.ChangeOrderStatus`, toast di successo/errore e redirect a `Orders`;
-- aggiornata `Views/Home/Orders.cshtml` per mostrare solo agli `Admin` le transizioni consentite da `OrderStatusTransitionPolicy`, con form POST anti-forgery e motivazione obbligatoria quando richiesta;
-- aggiunti test controller per successo Admin, blocco non Admin, input non valido e fallimento servizio;
-- confermata copertura service esistente per storico, transizioni, motivo obbligatorio e ripristino stock.
-Prossimo passo:
-Fase 2 - Visualizzazione storico stati ordine.
+La migration telefono e assunta applicata solo in locale.
 
-## Fase 2 - Visualizzazione storico stati ordine
+## Fase 2 - Hotfix DB e registrazione
 Stato: completed
 Scope finale: in
 Tipo fase: implementazione
 Obiettivo:
-Mostrare lo storico degli stati ordine nella UI dopo che il cambio stato Admin e operativo.
+Rendere sicura la migration telefono e sbloccare la registrazione anonima.
 Attivita:
-- estendere il modello letto dalla pagina ordini o introdurre un dettaglio ordine coerente con la struttura MVC esistente;
-- mostrare timeline o elenco storico con stato precedente, stato nuovo, data, utente e motivazione;
-- aggiornare test e validazioni UI pertinenti.
+- [x] Correggere `20260429185518_AddPhoneToApplicationUser` come migration incrementale.
+- [x] Configurare lunghezze EF per i campi telefono di `ApplicationUser`.
+- [x] Rendere accessibile l'endpoint prefissi alla registrazione anonima.
+- [x] Garantire submit registrazione utilizzabile.
+- [x] Aggiungere test mapping telefono registrazione.
 File o aree coinvolte:
-- `Models/`
-- `Services/`
-- `Views/Home/Orders.cshtml`
+- `Migrations/`
+- `Data/Configurations/ApplicationUserConfiguration.cs`
+- `Controllers/HomeController.cs`
+- `Views/Account/Register.cshtml`
 - `DashboardOrders.Tests/`
 Backend impact: si
 Frontend impact: si
 Dipendenze:
 Fase 1 completed
 Validazioni:
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step2-build\`: superato, 0 warning, 0 errori.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step3-build\`: superato, 0 warning, 0 errori.
-- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~DashboardOrdersDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-step4-test\`: superato, 23 test passati.
-- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-final-test\`: superato, 124 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase2-final-build\`: superato, 0 warning, 0 errori.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore --filter "FullyQualifiedName~Account"`: superato, 23 test passati.
+`dotnet ef migrations script 20260429000100_AddPhoneCountryPrefixes 20260429185518_AddPhoneToApplicationUser --project DashboardOrders.csproj --no-build`: superato, script con soli `ALTER TABLE` su `AspNetUsers`.
 Definition of done:
-Lo storico stati registrato e visibile per ogni ordine senza permettere modifiche fuori policy.
+Migration incrementale, registrazione non bloccata e test mirati verdi.
 Tracer Bullet: obbligatoria
+Sub-agent: ammesso
+Sub-task delegabili:
+Backend migration/test; Razor registrazione.
 Note:
-Trigger:
-Utente apre `Orders` ed espande il dettaglio di un ordine.
-Input minimo:
-Ordine con o senza righe in `OrderStatusHistory`.
-Percorso:
-`DashboardOrdersDataService.LoadOrders` -> mapping `Order.StatusHistory` -> Razor `Orders` mobile/desktop.
-Output:
-Timeline dello storico stati visibile nel dettaglio ordine oppure messaggio neutro se lo storico e vuoto.
-Evidenza verificabile:
-Test data service sul mapping dello storico, test completi e build solution.
-Rischio tecnico abbattuto:
-Lo storico persistito viene letto, ordinato e reso disponibile alla UI senza nuovo endpoint o nuova pagina.
-Out of scope dichiarato:
-Modifica dello storico dalla UI, pagina dettaglio dedicata e nuove azioni cliente.
-Esito fase:
-- aggiunto modello UI `OrderStatusHistory` e proprieta `Order.StatusHistory`;
-- esteso `DashboardOrdersDataService.LoadOrders` per includere e mappare `OrderStatusHistory`;
-- aggiornata `Views/Home/Orders.cshtml` con timeline storico in mobile e desktop;
-- aggiunto test data service per mapping e ordinamento dello storico;
-- test e build della solution superati.
-Prossimo passo:
-Fase 3 - Hardening ciclo vita ordine.
+Non introdurre operazioni distruttive.
 
-## Fase 3 - Hardening ciclo vita ordine
+## Fase 3 - Refactor combobox prefissi
+Stato: completed
+Scope finale: in
+Tipo fase: refactoring
+Obiettivo:
+Rimuovere duplicazione JavaScript prefissi tra registrazione e checkout.
+Attivita:
+- [x] Creare script condiviso in `wwwroot/js`.
+- [x] Integrare script in registrazione.
+- [x] Integrare script in checkout indirizzi.
+- [x] Evitare `innerHTML` per dati prefissi dinamici.
+File o aree coinvolte:
+- `wwwroot/js/phone-prefix-combobox.js`
+- `Views/Account/Register.cshtml`
+- `Views/Home/CheckoutAddresses.cshtml`
+Backend impact: no
+Frontend impact: si
+Dipendenze:
+Fase 2 completed
+Validazioni:
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore --filter "FullyQualifiedName~Account|FullyQualifiedName~HomeController"`: superato, 66 test passati.
+Verifica statica: la logica prefissi duplicata non resta nelle view; il rendering opzioni prefissi usa nodi DOM e `textContent` in `wwwroot/js/phone-prefix-combobox.js`.
+Definition of done:
+Un solo script gestisce il combobox prefissi su entrambe le pagine.
+Tracer Bullet: vietata
+Sub-agent: ammesso
+Sub-task delegabili:
+Script condiviso; integrazione Razor.
+Note:
+Nessuna nuova dipendenza npm.
+
+## Fase 4 - Hardening Stripe
 Stato: completed
 Scope finale: in
 Tipo fase: hardening
 Obiettivo:
-Rafforzare messaggi, casi limite e copertura test del ciclo vita ordine dopo le prime due fasi.
+Rendere recuperabile e piu sicuro il flusso Stripe test.
 Attivita:
-- verificare messaggi utente per errori di transizione, ordini inesistenti e motivazione mancante;
-- completare test su stati terminali e ripristino stock;
-- rifinire eventuali duplicazioni emerse nella UI o nei test.
+- [x] Estrarre costanti condivise per metodi e stati pagamento.
+- [x] Aggiungere controllo ownership sul completamento Stripe da return utente.
+- [x] Aggiungere retry esplicito della sessione Stripe da pagina pagamento.
+- [x] Aggiungere test su ownership e retry.
 File o aree coinvolte:
-- `Controllers/HomeController.cs`
 - `Services/`
-- `Views/Home/Orders.cshtml`
+- `Controllers/HomeController.cs`
+- `Views/Home/CheckoutPayment.cshtml`
 - `DashboardOrders.Tests/`
 Backend impact: si
 Frontend impact: si
 Dipendenze:
-Fase 1 completed, Fase 2 completed
+Fase 3 completed
 Validazioni:
-- `dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --filter "FullyQualifiedName~DashboardOrdersDataServiceTests" -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-step3-test\`: superato, 25 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-step3-build\`: superato, 0 warning, 0 errori.
-- `dotnet test DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-final-test\`: superato, 126 test passati.
-- `dotnet build DashBoard01.sln -p:UseSharedCompilation=false -p:UseAppHost=false -p:OutDir=D:\temp\DashBoard01-out\phase3-final-build\`: superato, 0 warning, 0 errori.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore --filter "FullyQualifiedName~CheckoutDataService|FullyQualifiedName~HomeController"`: superato, 61 test passati.
 Definition of done:
-Il ciclo vita ordine ha copertura sui principali casi di errore e non presenta regressioni su ordini, stock, storico e UI.
-Tracer Bullet: vietata
+Stripe return non completa ordini di altri utenti e la sessione Stripe puo essere ritentata.
+Tracer Bullet: obbligatoria
+Sub-agent: vietato
+Sub-task delegabili:
+nessuno
 Note:
-Nessuna nuova tecnologia introdotta.
-Esito fase:
-- resa esplicita la precedenza logica nella condizione di ripristino stock;
-- aggiunto test per impedire doppio ripristino stock quando `PaymentFailed` era gia stato registrato;
-- aggiunto test per bloccare avanzamenti da stato terminale;
-- confermata assenza di regressioni con test e build completi.
-Prossimo passo:
-Archiviazione `docs/PRD.md` e `docs/PLAN.md` in `docs/History`.
+Il flusso e unico e sensibile.
+
+## Fase 5 - Refactor strutturale leggero e verifica
+Stato: completed
+Scope finale: in
+Tipo fase: verifica
+Obiettivo:
+Ridurre debito tecnico locale senza riscritture estese e verificare tutto.
+Attivita:
+- [x] Iniettare `IDashboardAnalyticsService` in `HomeController`.
+- [x] Correggere whitespace segnalato da `git diff --check`.
+- [x] Eseguire `dotnet ef migrations script`.
+- [x] Eseguire test e build finali.
+File o aree coinvolte:
+- `Controllers/HomeController.cs`
+- `Program.cs`
+- `Domain/Entities/ApplicationUser.cs`
+- `Models/Dto/RegisterDto.cs`
+- `Views/Category/Create.cshtml`
+- `DashBoard01.sln`
+Backend impact: si
+Frontend impact: si
+Dipendenze:
+Fase 4 completed
+Validazioni:
+`dotnet ef migrations script 20260429000100_AddPhoneCountryPrefixes 20260429185518_AddPhoneToApplicationUser --project DashboardOrders.csproj --no-build`: superato, script con soli `ALTER TABLE` su `AspNetUsers`.
+`dotnet test DashboardOrders.Tests/DashboardOrders.Tests.csproj --no-restore`: superato, 187 test passati.
+`dotnet build DashBoard01.sln --no-restore /p:UseSharedCompilation=false`: superato, 0 warning, 0 errori.
+`git diff --check`: superato; presenti solo avvisi CRLF futuri, nessun errore whitespace.
+Definition of done:
+Verifiche finali eseguite e rischi residui documentati.
+Tracer Bullet: vietata
+Sub-agent: ammesso
+Sub-task delegabili:
+Refactor analytics; verifica finale.
+Note:
+La separazione completa di `DashboardOrdersDataService` resta fuori da questa passata per evitare refactor esteso non necessario al fix.

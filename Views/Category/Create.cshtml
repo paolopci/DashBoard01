@@ -16,8 +16,15 @@
         </div>
         <div class="p-6">
             <form method="post" asp-action="Create">
-                <input type="hidden" name="Code" value="@Guid.NewGuid().ToString("N")[..10].ToUpper()" />
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="Code" class="block text-sm font-medium text-slate-700 mb-2">
+                            Codice <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" name="Code" id="Code" required maxlength="50"
+                               class="rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 w-full"
+                               placeholder="Es: ELETTRONICA" />
+                    </div>
                     <div class="md:col-span-2">
                         <label for="Name" class="block text-sm font-medium text-slate-700 mb-2">
                             Nome Categoria <span class="text-rose-500">*</span>

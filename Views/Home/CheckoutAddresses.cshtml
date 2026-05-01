@@ -1,0 +1,424 @@
+@model DashboardOrders.Models.ViewModels.CheckoutSessionViewModel
+@{
+    ViewData["Title"] = "Spedizione e fatturazione";
+    var fieldClass = "rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-500";
+    var labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600";
+    var requiredMark = Html.Raw("<span class=\"text-red-600\" aria-hidden=\"true\"> *</span><span class=\"sr-only\"> obbligatorio</span>");
+}
+
+<div class="mb-6">
+    <h2 class="text-3xl font-bold text-slate-900">Spedizione e fatturazione</h2>
+    <p class="mt-1 text-sm text-slate-500">Dati usati solo per simulare il checkout. Non viene generata fattura reale.</p>
+    <p class="mt-3 text-xs font-medium text-slate-500"><span class="text-red-600" aria-hidden="true">*</span> Campi obbligatori</p>
+</div>
+
+<form method="post" asp-controller="Home" asp-action="CheckoutAddresses" class="space-y-6" data-checkout-address-form>
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"></div>
+
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm" data-address-section="shipping">
+        <h3 class="text-lg font-semibold text-slate-900">Spedizione</h3>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+                <label asp-for="ShippingLastName" class="@labelClass">Cognome @(requiredMark)</label>
+                <input asp-for="ShippingLastName" class="@fieldClass w-full" autocomplete="family-name" data-required-field />
+            </div>
+            <div>
+                <label asp-for="ShippingFirstName" class="@labelClass">Nome @(requiredMark)</label>
+                <input asp-for="ShippingFirstName" class="@fieldClass w-full" autocomplete="given-name" data-required-field />
+            </div>
+            <div class="md:col-span-2">
+                <label class="@labelClass">Telefono @(requiredMark)</label>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-[12rem_1fr]">
+                    <div class="relative" data-phone-prefix-combobox>
+                        <input asp-for="ShippingPhonePrefix" type="hidden" data-phone-prefix-value data-required-field />
+                        <input asp-for="ShippingPhoneCountryIso2" type="hidden" data-phone-country-iso2 />
+                        <button type="button" class="@fieldClass flex min-h-[2.625rem] w-full items-center justify-between gap-2 bg-white text-left" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-phone-prefix-toggle>
+                            <span class="flex min-w-0 items-center gap-2">
+                                <img alt="" class="h-4 w-6 shrink-0 rounded-sm object-cover ring-1 ring-slate-200" data-phone-prefix-flag hidden />
+                                <span class="truncate" data-phone-prefix-label>Prefisso</span>
+                            </span>
+                            <span class="shrink-0 text-slate-400" aria-hidden="true">▾</span>
+                        </button>
+                        <div class="absolute z-30 mt-1 hidden max-h-72 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" data-phone-prefix-panel>
+                            <div class="border-b border-slate-100 p-2">
+                                <input type="search" class="@fieldClass w-full" placeholder="Cerca paese o prefisso" autocomplete="off" data-phone-prefix-search />
+                            </div>
+                            <div class="max-h-56 overflow-y-auto py-1" role="listbox" data-phone-prefix-options></div>
+                        </div>
+                    </div>
+                    <input asp-for="ShippingPhoneNumber" class="@fieldClass w-full" inputmode="tel" autocomplete="tel-national" placeholder="Numero fisso o cellulare" data-required-field />
+                </div>
+            </div>
+            <div>
+                <label asp-for="ShippingStreet" class="@labelClass">Via, viale, piazza @(requiredMark)</label>
+                <input asp-for="ShippingStreet" class="@fieldClass w-full" autocomplete="address-line1" data-required-field />
+            </div>
+            <div>
+                <label asp-for="ShippingStreetNumber" class="@labelClass">Numero civico @(requiredMark)</label>
+                <input asp-for="ShippingStreetNumber" class="@fieldClass w-full" autocomplete="address-line2" data-required-field />
+            </div>
+            <div>
+                <label asp-for="ShippingProvince" class="@labelClass">Provincia @(requiredMark)</label>
+                <select asp-for="ShippingProvince" class="@fieldClass w-full" data-province-select data-required-field>
+                    <option value="">Seleziona provincia</option>
+                    @if (!string.IsNullOrWhiteSpace(Model.ShippingProvince))
+                    {
+                        <option value="@Model.ShippingProvince" selected>@Model.ShippingProvince</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label asp-for="ShippingCity" class="@labelClass">Città @(requiredMark)</label>
+                <select asp-for="ShippingCity" class="@fieldClass w-full" data-city-select data-required-field disabled>
+                    <option value="">Seleziona città</option>
+                    @if (!string.IsNullOrWhiteSpace(Model.ShippingCity))
+                    {
+                        <option value="@Model.ShippingCity" selected>@Model.ShippingCity</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label asp-for="ShippingPostalCode" class="@labelClass">CAP @(requiredMark)</label>
+                <select asp-for="ShippingPostalCode" class="@fieldClass w-full" data-postal-code-select data-required-field disabled>
+                    <option value="">Seleziona CAP</option>
+                    @if (!string.IsNullOrWhiteSpace(Model.ShippingPostalCode))
+                    {
+                        <option value="@Model.ShippingPostalCode" selected>@Model.ShippingPostalCode</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <input asp-for="ShippingFullName" type="hidden" data-full-name-hidden />
+        <input asp-for="ShippingPhone" type="hidden" data-phone-hidden />
+        <input asp-for="ShippingAddressLine" type="hidden" data-address-line-hidden />
+        <input asp-for="ShippingCountry" type="hidden" value="Italia" data-country-hidden />
+    </section>
+
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm" data-address-section="billing">
+        <label class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <input asp-for="BillingSameAsShipping" class="h-4 w-4 rounded border-slate-300 text-indigo-600" data-billing-same />
+            Fatturazione uguale alla spedizione
+        </label>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2" data-billing-fields>
+            <div>
+                <label asp-for="BillingLastName" class="@labelClass">Cognome fatturazione @(requiredMark)</label>
+                <input asp-for="BillingLastName" class="@fieldClass w-full" data-billing-required-field />
+            </div>
+            <div>
+                <label asp-for="BillingFirstName" class="@labelClass">Nome fatturazione @(requiredMark)</label>
+                <input asp-for="BillingFirstName" class="@fieldClass w-full" data-billing-required-field />
+            </div>
+            <div class="md:col-span-2">
+                <label asp-for="BillingVatNumber" class="@labelClass">P.IVA/Codice test</label>
+                <input asp-for="BillingVatNumber" class="@fieldClass w-full" />
+            </div>
+            <div>
+                <label asp-for="BillingStreet" class="@labelClass">Via, viale, piazza fatturazione @(requiredMark)</label>
+                <input asp-for="BillingStreet" class="@fieldClass w-full" data-billing-required-field />
+            </div>
+            <div>
+                <label asp-for="BillingStreetNumber" class="@labelClass">Numero civico @(requiredMark)</label>
+                <input asp-for="BillingStreetNumber" class="@fieldClass w-full" data-billing-required-field />
+            </div>
+            <div>
+                <label asp-for="BillingProvince" class="@labelClass">Provincia @(requiredMark)</label>
+                <select asp-for="BillingProvince" class="@fieldClass w-full" data-province-select data-billing-required-field>
+                    <option value="">Seleziona provincia</option>
+                    @if (!string.IsNullOrWhiteSpace(Model.BillingProvince))
+                    {
+                        <option value="@Model.BillingProvince" selected>@Model.BillingProvince</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label asp-for="BillingCity" class="@labelClass">Città @(requiredMark)</label>
+                <select asp-for="BillingCity" class="@fieldClass w-full" data-city-select data-billing-required-field disabled>
+                    <option value="">Seleziona città</option>
+                    @if (!string.IsNullOrWhiteSpace(Model.BillingCity))
+                    {
+                        <option value="@Model.BillingCity" selected>@Model.BillingCity</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label asp-for="BillingPostalCode" class="@labelClass">CAP @(requiredMark)</label>
+                <select asp-for="BillingPostalCode" class="@fieldClass w-full" data-postal-code-select data-billing-required-field disabled>
+                    <option value="">Seleziona CAP</option>
+                    @if (!string.IsNullOrWhiteSpace(Model.BillingPostalCode))
+                    {
+                        <option value="@Model.BillingPostalCode" selected>@Model.BillingPostalCode</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <input asp-for="BillingFullName" type="hidden" data-full-name-hidden />
+        <input asp-for="BillingAddressLine" type="hidden" data-address-line-hidden />
+        <input asp-for="BillingCountry" type="hidden" value="Italia" data-country-hidden />
+    </section>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:justify-between">
+        <a asp-controller="Home" asp-action="CheckoutSummary" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Indietro</a>
+        <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500" data-submit-button disabled>Salva e continua</button>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/phone-prefix-combobox.js" asp-append-version="true"></script>
+    <script>
+        (() => {
+            const form = document.querySelector('[data-checkout-address-form]');
+            if (!form) {
+                return;
+            }
+
+            const endpoints = {
+                provinces: '@Url.Action("ItalianProvinces", "Home")',
+                cities: '@Url.Action("ItalianCities", "Home")',
+                postalCodes: '@Url.Action("ItalianPostalCodes", "Home")',
+                phonePrefixes: '@Url.Action("PhoneCountryPrefixes", "Home")'
+            };
+
+            const submitButton = form.querySelector('[data-submit-button]');
+            const billingSame = form.querySelector('[data-billing-same]');
+            const billingFields = form.querySelector('[data-billing-fields]');
+            const sections = [...form.querySelectorAll('[data-address-section]')];
+            const phonePrefixCombobox = window.DashboardPhonePrefixCombobox?.init({
+                root: form,
+                endpoint: endpoints.phonePrefixes,
+                onChange: () => updateState()
+            });
+
+            const fetchJson = async (url) => {
+                const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                return response.ok ? await response.json() : [];
+            };
+
+            const setOptions = (select, values, placeholder, selectedValue = '') => {
+                const currentValue = selectedValue || select.value;
+                select.innerHTML = '';
+                select.append(new Option(placeholder, ''));
+                values.forEach((value) => select.append(new Option(value, value)));
+                select.value = values.includes(currentValue) ? currentValue : '';
+            };
+
+            const fillProvinces = async () => {
+                const provinces = await fetchJson(endpoints.provinces);
+                sections.forEach((section) => {
+                    const provinceSelect = section.querySelector('[data-province-select]');
+                    setOptions(provinceSelect, provinces, 'Seleziona provincia', provinceSelect.value);
+                });
+            };
+
+            const loadCities = async (section) => {
+                const provinceSelect = section.querySelector('[data-province-select]');
+                const citySelect = section.querySelector('[data-city-select]');
+                const postalCodeSelect = section.querySelector('[data-postal-code-select]');
+                const provinceName = provinceSelect.value;
+
+                setOptions(citySelect, [], 'Seleziona città');
+                setOptions(postalCodeSelect, [], 'Seleziona CAP');
+                citySelect.disabled = !provinceName;
+                postalCodeSelect.disabled = true;
+
+                if (!provinceName) {
+                    updateState();
+                    return;
+                }
+
+                const url = `${endpoints.cities}?provinceName=${encodeURIComponent(provinceName)}`;
+                const cities = await fetchJson(url);
+                setOptions(citySelect, cities, 'Seleziona città', citySelect.dataset.selectedValue || citySelect.value);
+                citySelect.disabled = cities.length === 0;
+                delete citySelect.dataset.selectedValue;
+                updateState();
+            };
+
+            const loadPostalCodes = async (section) => {
+                const provinceSelect = section.querySelector('[data-province-select]');
+                const citySelect = section.querySelector('[data-city-select]');
+                const postalCodeSelect = section.querySelector('[data-postal-code-select]');
+                const provinceName = provinceSelect.value;
+                const cityName = citySelect.value;
+
+                setOptions(postalCodeSelect, [], 'Seleziona CAP');
+                postalCodeSelect.disabled = !provinceName || !cityName;
+
+                if (!provinceName || !cityName) {
+                    updateState();
+                    return;
+                }
+
+                const url = `${endpoints.postalCodes}?provinceName=${encodeURIComponent(provinceName)}&cityName=${encodeURIComponent(cityName)}`;
+                const postalCodes = await fetchJson(url);
+                setOptions(postalCodeSelect, postalCodes, 'Seleziona CAP', postalCodeSelect.dataset.selectedValue || postalCodeSelect.value);
+                postalCodeSelect.disabled = postalCodes.length === 0;
+                if (postalCodes.length === 1) {
+                    postalCodeSelect.value = postalCodes[0];
+                }
+                delete postalCodeSelect.dataset.selectedValue;
+                updateState();
+            };
+
+            const composeHiddenFields = (section) => {
+                const isShipping = section.dataset.addressSection === 'shipping';
+                const prefix = isShipping ? 'Shipping' : 'Billing';
+                const get = (name) => section.querySelector(`[name="${prefix}${name}"]`)?.value.trim() || '';
+
+                const fullName = section.querySelector('[data-full-name-hidden]');
+                const addressLine = section.querySelector('[data-address-line-hidden]');
+                const country = section.querySelector('[data-country-hidden]');
+                if (fullName) {
+                    fullName.value = [get('LastName'), get('FirstName')].filter(Boolean).join(' ');
+                }
+                if (addressLine) {
+                    addressLine.value = [get('Street'), get('StreetNumber')].filter(Boolean).join(' ');
+                }
+                if (country) {
+                    const selectedPrefix = phonePrefixCombobox?.getSelectedPrefix();
+                    country.value = isShipping && selectedPrefix
+                        ? (selectedPrefix.localizedCountryName || selectedPrefix.countryName)
+                        : 'Italia';
+                }
+                if (isShipping) {
+                    const phone = section.querySelector('[data-phone-hidden]');
+                    if (phone) {
+                        phone.value = [get('PhonePrefix'), get('PhoneNumber')].filter(Boolean).join(' ');
+                    }
+                }
+            };
+
+            const copyShippingToBilling = () => {
+                const shipping = form.querySelector('[data-address-section="shipping"]');
+                const billing = form.querySelector('[data-address-section="billing"]');
+                const pairs = [
+                    ['ShippingLastName', 'BillingLastName'],
+                    ['ShippingFirstName', 'BillingFirstName'],
+                    ['ShippingStreet', 'BillingStreet'],
+                    ['ShippingStreetNumber', 'BillingStreetNumber'],
+                    ['ShippingProvince', 'BillingProvince'],
+                    ['ShippingCity', 'BillingCity'],
+                    ['ShippingPostalCode', 'BillingPostalCode']
+                ];
+
+                pairs.forEach(([sourceName, targetName]) => {
+                    const source = shipping.querySelector(`[name="${sourceName}"]`);
+                    const target = billing.querySelector(`[name="${targetName}"]`);
+                    if (!source || !target) {
+                        return;
+                    }
+                    target.value = source.value;
+                    if (target.matches('select')) {
+                        target.dataset.selectedValue = source.value;
+                    }
+                });
+                composeHiddenFields(billing);
+            };
+
+            const syncBillingLocationFromShipping = async () => {
+                if (!billingSame.checked) {
+                    return;
+                }
+
+                const billing = form.querySelector('[data-address-section="billing"]');
+                copyShippingToBilling();
+                await loadCities(billing);
+                await loadPostalCodes(billing);
+                copyShippingToBilling();
+                composeHiddenFields(billing);
+            };
+
+            const setBillingState = () => {
+                const sameAsShipping = billingSame.checked;
+                billingFields.querySelectorAll('input, select').forEach((field) => {
+                    if (field.name === 'BillingVatNumber') {
+                        return;
+                    }
+                    field.disabled = sameAsShipping;
+                });
+                if (sameAsShipping) {
+                    copyShippingToBilling();
+                }
+            };
+
+            const requiredFields = () => {
+                const fields = [...form.querySelectorAll('[data-required-field]')];
+                if (!billingSame.checked) {
+                    fields.push(...form.querySelectorAll('[data-billing-required-field]'));
+                }
+                return fields;
+            };
+
+            const updateState = () => {
+                sections.forEach(composeHiddenFields);
+                setBillingState();
+                const isValid = requiredFields().every((field) => field.value.trim().length > 0);
+                submitButton.disabled = !isValid;
+            };
+
+            sections.forEach((section) => {
+                const isShipping = section.dataset.addressSection === 'shipping';
+                const citySelect = section.querySelector('[data-city-select]');
+                const postalCodeSelect = section.querySelector('[data-postal-code-select]');
+                citySelect.dataset.selectedValue = citySelect.value;
+                postalCodeSelect.dataset.selectedValue = postalCodeSelect.value;
+
+                section.querySelector('[data-province-select]').addEventListener('change', async () => {
+                    await loadCities(section);
+                    await loadPostalCodes(section);
+                    if (isShipping) {
+                        await syncBillingLocationFromShipping();
+                    }
+                });
+                citySelect.addEventListener('change', async () => {
+                    await loadPostalCodes(section);
+                    if (isShipping) {
+                        await syncBillingLocationFromShipping();
+                    }
+                });
+                section.addEventListener('input', () => {
+                    updateState();
+                    if (isShipping && billingSame.checked) {
+                        copyShippingToBilling();
+                        updateState();
+                    }
+                });
+                section.addEventListener('change', () => {
+                    updateState();
+                    if (isShipping && billingSame.checked) {
+                        copyShippingToBilling();
+                        updateState();
+                    }
+                });
+            });
+
+            billingSame.addEventListener('change', async () => {
+                updateState();
+                await syncBillingLocationFromShipping();
+                updateState();
+            });
+            form.addEventListener('submit', () => {
+                sections.forEach(composeHiddenFields);
+                if (billingSame.checked) {
+                    copyShippingToBilling();
+                    billingFields.querySelectorAll('input, select').forEach((field) => {
+                        field.disabled = false;
+                    });
+                }
+            });
+
+            Promise.all([fillProvinces(), phonePrefixCombobox?.load()]).then(async () => {
+                for (const section of sections) {
+                    await loadCities(section);
+                    await loadPostalCodes(section);
+                }
+                await syncBillingLocationFromShipping();
+                updateState();
+            });
+        })();
+    </script>
+}

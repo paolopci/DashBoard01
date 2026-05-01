@@ -1,3 +1,5 @@
+using DashboardOrders.Models.Dto;
+using DashboardOrders.Models.ViewModels;
 using DashboardOrders.Controllers;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
@@ -69,6 +71,25 @@ public class AccountControllerTests
 
         // Assert
         risultato.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(AccountController.Login));
+    }
+
+    [Fact]
+    public async Task Register_Post_QuandoModelValido_AlloraPassaTelefonoAlServizio()
+    {
+        // Arrange
+        var model = CreateRegisterModel();
+        accountService.RegisterAsync(Arg.Any<RegisterDto>())
+            .Returns(AccountOperationResult.Success("Registrazione completata."));
+
+        // Act
+        await sut.Register(model);
+
+        // Assert
+        await accountService.Received(1).RegisterAsync(
+            Arg.Is<RegisterDto>(dto =>
+                dto.PhonePrefix == "+39" &&
+                dto.PhoneCountryIso2 == "IT" &&
+                dto.PhoneNumber == "3331234567"));
     }
 
     [Fact]
@@ -277,6 +298,9 @@ public class AccountControllerTests
             City = "Milano",
             Country = "Italia",
             Cap = "RSSMRA90A01F205X",
+            PhonePrefix = "+39",
+            PhoneCountryIso2 = "IT",
+            PhoneNumber = "3331234567",
             Password = "Password1",
             RepeatPassword = "Password1"
         };

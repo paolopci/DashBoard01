@@ -1,0 +1,70 @@
+@model DashboardOrders.Models.ViewModels.OrderDetailsViewModel
+@{
+    ViewData["Title"] = "Dettaglio ordine";
+    var status = OrderStatusPresentation.FromStatus(Model.Order.Status);
+}
+
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+        <h2 class="text-3xl font-bold text-slate-900">Ordine @Model.Order.OrderNumber</h2>
+        <p class="mt-1 text-sm text-slate-500">@Model.Order.OrderDate.ToString("dd/MM/yyyy") - @Model.Order.Customer.Email</p>
+    </div>
+    <span class="inline-flex w-max rounded-full px-4 py-2 text-sm font-semibold" style="background-color: @status.BackgroundColor; color: @status.ForegroundColor;">@status.Label</span>
+</div>
+
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <section class="space-y-5">
+        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-semibold text-slate-900">Articoli</h3>
+            <div class="mt-3 divide-y divide-slate-100">
+                @foreach (var item in Model.Order.Items)
+                {
+                    <div class="flex justify-between gap-3 py-3 text-sm">
+                        <span class="text-slate-700">@item.ProductName x @item.Quantity</span>
+                        <span class="font-semibold text-slate-900">@FormatEuro(item.TotalPrice)</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-semibold text-slate-900">Storico stato</h3>
+            <div class="mt-3 space-y-3">
+                @foreach (var history in Model.Order.StatusHistory)
+                {
+                    <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                        <p class="font-semibold text-slate-800">@OrderStatusPresentation.FromStatus(history.ToStatus).Label</p>
+                        <p class="text-slate-500">@history.ChangedAt.ToString("dd/MM/yyyy HH:mm") - @history.ChangedBy</p>
+                        @if (!string.IsNullOrWhiteSpace(history.Reason))
+                        {
+                            <p class="text-slate-500">@history.Reason</p>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <aside class="h-max space-y-5">
+        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <p class="text-sm text-slate-500">Totale</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">@FormatEuro(Model.Order.TotalAmount)</p>
+        </div>
+
+        @if (Model.CheckoutDetails is not null)
+        {
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <h3 class="text-lg font-semibold text-slate-900">Checkout</h3>
+                <p class="mt-3 text-sm font-semibold text-slate-700">Spedizione</p>
+                <p class="text-sm text-slate-500">@Model.CheckoutDetails.ShippingFullName</p>
+                <p class="text-sm text-slate-500">@Model.CheckoutDetails.ShippingAddressLine, @Model.CheckoutDetails.ShippingPostalCode @Model.CheckoutDetails.ShippingCity</p>
+                <p class="mt-3 text-sm font-semibold text-slate-700">Pagamento test</p>
+                <p class="text-sm text-slate-500">@Model.CheckoutDetails.PaymentMethod - @Model.CheckoutDetails.PaymentStatus</p>
+                @if (!string.IsNullOrWhiteSpace(Model.CheckoutDetails.TestTransactionReference))
+                {
+                    <p class="text-sm text-slate-500">@Model.CheckoutDetails.TestTransactionReference</p>
+                }
+            </div>
+        }
+    </aside>
+</div>

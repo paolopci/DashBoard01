@@ -2,62 +2,62 @@
 
 ## Obiettivo
 
-Implementare la prima fase del ciclo di vita dell'ordine permettendo agli utenti `Admin` di avanzare lo stato di un ordine dalla pagina `Orders`, usando la policy di transizione e lo storico stati gia presenti nel progetto.
+Mettere in sicurezza e rifattorizzare in modo incrementale il codice introdotto negli ultimi cinque commit su registrazione telefono, prefissi internazionali, checkout e Stripe.
 
 ## Problema/Contesto
 
-Il dominio ordine contiene gia `OrderStatus`, `OrderStatusTransitionPolicy`, `OrderStatusHistoryEntity` e il metodo `DashboardOrdersDataService.ChangeOrderStatus`, ma il flusso non e ancora esposto dalla UI MVC. La pagina `Views/Home/Orders.cshtml` mostra gli ordini e il dettaglio righe, senza azioni per avanzare lo stato. Serve una vertical slice minima e verificabile per rendere operativo il ciclo di vita senza introdurre nuove tecnologie.
+Gli ultimi commit hanno aggiunto prefissi telefonici internazionali, campi telefono in registrazione, refactor namespace Domain/Models e integrazione Stripe. L'analisi ha evidenziato rischi su migration EF non incrementale, endpoint prefissi non accessibile da registrazione anonima, duplicazione JavaScript del combobox prefissi e punti deboli nel recupero del flusso Stripe.
 
 ## Scope
 
-- Aggiungere un'azione MVC `POST` riservata agli `Admin` per cambiare lo stato ordine.
-- Esporre nella pagina `Orders` le sole transizioni consentite dalla policy corrente.
-- Riutilizzare `IDashboardOrdersDataService.ChangeOrderStatus` per validare transizioni, aggiornare `Orders.Status`, aggiornare `UpdatedAt` e registrare `OrderStatusHistory`.
-- Mostrare feedback utente tramite `TempData` dopo successo o fallimento.
-- Aggiornare test automatici per controller, servizio e policy coinvolti.
-- Procedere per fasi documentate in `docs/PLAN.md`.
+- Correggere la migration `AddPhoneToApplicationUser` rendendola incrementale e non distruttiva.
+- Allineare vincoli EF per `ApplicationUser.PhonePrefix` e `ApplicationUser.PhoneCountryIso2`.
+- Correggere registrazione anonima con prefisso telefonico e submit utilizzabile.
+- Estrarre il combobox prefissi in JavaScript condiviso senza rendering `innerHTML` di dati dinamici.
+- Usare lo script condiviso in registrazione e checkout indirizzi.
+- Rafforzare return/retry Stripe e controllo ownership dell'ordine.
+- Estrarre costanti condivise per metodi e stati pagamento.
+- Applicare un refactor strutturale leggero su analytics/controller e whitespace.
+- Aggiungere o aggiornare test automatici pertinenti.
 
 ## Out of scope
 
-- Rendere visibile lo storico stati nella prima fase.
-- Creare una pagina dettaglio ordine dedicata.
-- Permettere ai clienti di cambiare stato, annullare ordini o richiedere resi self-service.
-- Introdurre API REST, code di messaggistica, job background, notifiche email o nuove librerie.
-- Ridisegnare l'intera pagina `Orders`.
-- Modificare il modello dati oltre quanto gia presente per stato e storico.
+- Eliminazione di file, dati o configurazioni.
+- Installazione di nuove dipendenze NuGet o npm.
+- Riscrittura completa di `DashboardOrdersDataService`.
+- Modifica del modello dati dei prefissi internazionali gia introdotto.
+- Validazione completa dei numeri telefonici internazionali.
+- Cambio del flusso province/citta/CAP, che resta italiano.
 
 ## Requisiti funzionali
 
-- Solo utenti con ruolo `Admin` possono inviare un cambio stato ordine.
-- Gli utenti non admin non devono vedere azioni di avanzamento stato nella pagina `Orders`.
-- Un cambio stato deve essere accettato solo se consentito da `OrderStatusTransitionPolicy`.
-- Gli stati che richiedono motivazione devono essere rifiutati se la motivazione manca.
-- Ogni cambio stato riuscito deve registrare una riga in `OrderStatusHistory`.
-- Le transizioni verso `Cancelled` o `PaymentFailed` da stati pre-fulfillment devono ripristinare lo stock secondo la logica esistente.
-- Dopo un cambio stato riuscito l'utente deve tornare alla lista ordini con messaggio di successo.
-- Dopo un cambio stato fallito l'utente deve tornare alla lista ordini con messaggio di errore.
+- La registrazione anonima deve poter caricare i prefissi telefonici e inviare il form.
+- Il prefisso italiano `+39` deve restare il fallback predefinito.
+- Registrazione e checkout devono usare lo stesso comportamento del combobox prefissi.
+- Il checkout Stripe deve permettere un retry recuperabile quando la sessione Stripe non viene creata o va ripresa.
+- Il return Stripe non deve completare un ordine non appartenente all'utente corrente.
 
 ## Vincoli tecnici
 
-- Mantenere stack esistente: ASP.NET Core MVC, Razor, EF Core, Identity e xUnit.
-- Non introdurre nuove librerie, framework frontend o pattern architetturali.
-- Usare il ruolo Identity `Admin` come unico attore autorizzato nella prima fase.
-- Riutilizzare `OrderStatusTransitionPolicy` come fonte unica delle transizioni consentite.
-- Riutilizzare `DashboardOrdersDataService.ChangeOrderStatus` per persistenza e storico.
-- Validare input mancanti, non validi o fuori formato nel boundary MVC.
-- Limitare ogni fase a un solo obiettivo verificabile.
+- Usare ASP.NET Core MVC .NET 9, Razor/Tailwind ed EF Core gia presenti.
+- Non introdurre nuove tecnologie o librerie.
+- Mantenere controller sottili dove il cambiamento e locale e a basso rischio.
+- Non correggere la migration con operazioni distruttive.
+- Mantenere compatibilita con test xUnit esistenti.
 
 ## Acceptance criteria
 
-- La pagina `Orders` mostra azioni di cambio stato solo agli utenti `Admin`.
-- Le azioni mostrate corrispondono alle transizioni consentite dallo stato corrente.
-- Il `POST` di cambio stato rifiuta utenti non admin.
-- Il `POST` di cambio stato rifiuta transizioni non valide o ordini inesistenti.
-- Un cambio stato valido aggiorna lo stato ordine, registra storico e mantiene la navigazione sulla lista ordini.
-- La prima fase non mostra ancora lo storico stati nella UI.
-- `dotnet test DashBoard01.sln` passa.
-- `dotnet build DashBoard01.sln` passa.
+- La migration telefono contiene solo operazioni incrementali su `AspNetUsers`.
+- `PhonePrefix` e `PhoneCountryIso2` hanno max length coerenti in EF.
+- La pagina registrazione anonima carica i prefissi e il submit non resta bloccato.
+- Il JavaScript del combobox prefissi e condiviso tra registrazione e checkout.
+- Il rendering opzioni prefissi usa nodi DOM e `textContent`.
+- Il flusso Stripe ha controllo ownership e retry esplicito.
+- I test mirati su telefono/registrazione/Stripe passano.
+- `dotnet test`, `dotnet build`, `dotnet ef migrations script` e `git diff --check` hanno esito documentato.
 
 ## Definizione di completamento
 
-La prima fase e completata quando la vertical slice Admin per avanzare lo stato ordine e implementata in controller, servizio/view model se necessario, UI Razor e test; la documentazione `PRD`/`PLAN` e aggiornata; test e build della solution passano.
+- PRD e PLAN sono aggiornati.
+- Codice, migration, view/script e test sono aggiornati.
+- Le verifiche previste dal piano sono eseguite con esito documentato oppure eventuali blocchi sono dichiarati.

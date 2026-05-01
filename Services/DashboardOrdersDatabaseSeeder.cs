@@ -1,8 +1,9 @@
 using DashboardOrders.Data;
-using DashboardOrders.Data.Entities;
+using DashboardOrders.Domain.Entities;
 using DashboardOrders.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace DashboardOrders.Services;
 
@@ -27,8 +28,11 @@ public class DashboardOrdersDatabaseSeeder(
         await EnsureRolesAsync();
         await SeedCategoriesAsync(categories, cancellationToken);
         await SeedProductsAsync(products, cancellationToken);
+        await SeedProductCarouselImagesAsync(cancellationToken);
+        await SeedPhoneCountryPrefixesAsync(cancellationToken);
         var customerIdsByEmail = await SeedCustomersAsync(customers, cancellationToken);
         await SeedCustomerUsersAsync(cancellationToken);
+        await SeedAdminUserAsync(cancellationToken);
         await SynchronizeUserRolesAsync(cancellationToken);
         var productIdsByName = await GetProductIdsByNameAsync(products, cancellationToken);
         await SeedOrdersAsync(orders, customerIdsByEmail, productIdsByName, cancellationToken);
@@ -63,6 +67,151 @@ public class DashboardOrdersDatabaseSeeder(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedProductCarouselImagesAsync(CancellationToken cancellationToken)
+    {
+        const int carouselImagesPerProduct = 5;
+        var existingImageUrls = await dbContext.ProductCarouselImages
+            .Select(image => image.ImageUrl)
+            .ToHashSetAsync(StringComparer.OrdinalIgnoreCase, cancellationToken);
+        var products = await dbContext.Products
+            .Include(product => product.Category)
+            .Include(product => product.CarouselImages)
+            .OrderBy(product => product.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var product in products)
+        {
+            var usedDisplayOrders = product.CarouselImages
+                .Select(image => image.DisplayOrder)
+                .ToHashSet();
+
+            for (var displayOrder = 1; displayOrder <= carouselImagesPerProduct; displayOrder++)
+            {
+                if (usedDisplayOrders.Contains(displayOrder))
+                {
+                    continue;
+                }
+
+                var imageUrl = CreateUniqueCarouselImageUrl(product, displayOrder, existingImageUrls);
+                dbContext.ProductCarouselImages.Add(new ProductCarouselImageEntity
+                {
+                    ProductId = product.Id,
+                    ImageUrl = imageUrl,
+                    AltText = $"{product.Name} immagine {displayOrder}",
+                    DisplayOrder = displayOrder,
+                    CreatedAt = SeedCreatedAt
+                });
+                existingImageUrls.Add(imageUrl);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedPhoneCountryPrefixesAsync(CancellationToken cancellationToken)
+    {
+        var seedPath = ResolveSeedPath("phone-country-prefixes.json");
+        if (seedPath is null)
+        {
+            return;
+        }
+
+        var json = await File.ReadAllTextAsync(seedPath, cancellationToken);
+        var seeds = JsonSerializer.Deserialize<List<PhoneCountryPrefixSeed>>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? [];
+        var existingPrefixes = await dbContext.PhoneCountryPrefixes
+            .ToDictionaryAsync(prefix => prefix.Iso2, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+        foreach (var seed in seeds.Where(seed => !string.IsNullOrWhiteSpace(seed.Iso2)))
+        {
+            var iso2 = seed.Iso2.Trim().ToUpperInvariant();
+            if (existingPrefixes.TryGetValue(iso2, out var existingPrefix))
+            {
+                UpdatePhoneCountryPrefix(existingPrefix, seed);
+                continue;
+            }
+
+            var prefix = new PhoneCountryPrefixEntity { Iso2 = iso2 };
+            UpdatePhoneCountryPrefix(prefix, seed);
+            dbContext.PhoneCountryPrefixes.Add(prefix);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void UpdatePhoneCountryPrefix(PhoneCountryPrefixEntity entity, PhoneCountryPrefixSeed seed)
+    {
+        entity.Iso3 = NormalizeSeedValue(seed.Iso3).ToUpperInvariant();
+        entity.CountryName = NormalizeSeedValue(seed.CountryName);
+        entity.LocalizedCountryName = NormalizeSeedValue(seed.LocalizedCountryName);
+        entity.DialCode = NormalizeSeedValue(seed.DialCode);
+        entity.FlagPath = NormalizeSeedValue(seed.FlagPath);
+        entity.DisplayOrder = seed.DisplayOrder;
+        entity.IsActive = seed.IsActive;
+    }
+
+    private static string NormalizeSeedValue(string? value)
+    {
+        return value?.Trim() ?? string.Empty;
+    }
+
+    private static string? ResolveSeedPath(string fileName)
+    {
+        foreach (var root in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            var current = new DirectoryInfo(root);
+            while (current is not null)
+            {
+                var candidate = Path.Combine(current.FullName, "Data", "Seed", fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                current = current.Parent;
+            }
+        }
+
+        return null;
+    }
+
+    private static string CreateUniqueCarouselImageUrl(
+        ProductEntity product,
+        int displayOrder,
+        ISet<string> existingImageUrls)
+    {
+        var lockNumber = product.Id * 100 + displayOrder;
+        var keywords = MockDataService.GetProductImageKeywords(product.Name, product.Category.Name);
+        var imageUrl = CreateCarouselImageUrl(keywords, lockNumber);
+
+        while (existingImageUrls.Contains(imageUrl))
+        {
+            lockNumber++;
+            imageUrl = CreateCarouselImageUrl(keywords, lockNumber);
+        }
+
+        return imageUrl;
+    }
+
+    private sealed class PhoneCountryPrefixSeed
+    {
+        public string Iso2 { get; set; } = string.Empty;
+        public string Iso3 { get; set; } = string.Empty;
+        public string CountryName { get; set; } = string.Empty;
+        public string LocalizedCountryName { get; set; } = string.Empty;
+        public string DialCode { get; set; } = string.Empty;
+        public string FlagPath { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    private static string CreateCarouselImageUrl(string keywords, int lockNumber)
+    {
+        return $"https://loremflickr.com/800/800/{keywords}?lock={lockNumber}";
     }
 
     private async Task SeedProductsAsync(IEnumerable<Models.Product> products, CancellationToken cancellationToken)
@@ -165,9 +314,60 @@ public class DashboardOrdersDatabaseSeeder(
         }
     }
 
+    private async Task SeedAdminUserAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var adminUser = await userManager.FindByEmailAsync(AdminEmail);
+
+        if (adminUser is null)
+        {
+            adminUser = new ApplicationUser
+            {
+                UserName = AdminEmail,
+                Email = AdminEmail,
+                EmailConfirmed = true,
+                FirstName = "Admin",
+                LastName = "Micene",
+                DateOfBirth = new DateTime(1980, 1, 1),
+                City = "Milano",
+                Country = "Italia",
+                FiscalCode = "ADMINADMIN01"
+            };
+
+            var createResult = await userManager.CreateAsync(adminUser, DefaultCustomerPassword);
+            EnsureIdentityResultSucceeded(createResult, $"Creazione utente admin {AdminEmail} non completata.");
+        }
+        else
+        {
+            adminUser.UserName = AdminEmail;
+            adminUser.Email = AdminEmail;
+            adminUser.EmailConfirmed = true;
+            adminUser.FirstName = string.IsNullOrWhiteSpace(adminUser.FirstName) ? "Admin" : adminUser.FirstName;
+            adminUser.LastName = string.IsNullOrWhiteSpace(adminUser.LastName) ? "Micene" : adminUser.LastName;
+            adminUser.DateOfBirth = adminUser.DateOfBirth == default ? new DateTime(1980, 1, 1) : adminUser.DateOfBirth;
+            adminUser.City = string.IsNullOrWhiteSpace(adminUser.City) ? "Milano" : adminUser.City;
+            adminUser.Country = string.IsNullOrWhiteSpace(adminUser.Country) ? "Italia" : adminUser.Country;
+            adminUser.FiscalCode = string.IsNullOrWhiteSpace(adminUser.FiscalCode) ? "ADMINADMIN01" : adminUser.FiscalCode;
+
+            var updateResult = await userManager.UpdateAsync(adminUser);
+            EnsureIdentityResultSucceeded(updateResult, $"Aggiornamento utente admin {AdminEmail} non completato.");
+        }
+
+        var hasPassword = await userManager.HasPasswordAsync(adminUser);
+        if (hasPassword)
+        {
+            var removeResult = await userManager.RemovePasswordAsync(adminUser);
+            EnsureIdentityResultSucceeded(removeResult, $"Reset password admin {AdminEmail} non completato.");
+        }
+
+        var addPasswordResult = await userManager.AddPasswordAsync(adminUser, DefaultCustomerPassword);
+        EnsureIdentityResultSucceeded(addPasswordResult, $"Impostazione password admin {AdminEmail} non completata.");
+    }
+
     private async Task SynchronizeUserRolesAsync(CancellationToken cancellationToken)
     {
-        var users = await userManager.Users.ToListAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var users = userManager.Users.ToList();
 
         foreach (var user in users)
         {

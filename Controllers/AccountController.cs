@@ -1,3 +1,5 @@
+using DashboardOrders.Models.Dto;
+using DashboardOrders.Models.ViewModels;
 using DashboardOrders.Models;
 using DashboardOrders.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -192,11 +194,21 @@ public class AccountController : Controller
     {
         if (model.DateOfBirth == default)
         {
-            ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita è obbligatoria.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.DateOfBirth), "La data di nascita è obbligatoria.");
         }
         else if (model.DateOfBirth.Date > DateTime.Today)
         {
-            ModelState.AddModelError(nameof(Models.Register.DateOfBirth), "La data di nascita non può essere nel futuro.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.DateOfBirth), "La data di nascita non può essere nel futuro.");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.PhonePrefix))
+        {
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.PhonePrefix), "Il prefisso è obbligatorio.");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+        {
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Register.PhoneNumber), "Il numero di telefono è obbligatorio.");
         }
     }
 
@@ -209,12 +221,12 @@ public class AccountController : Controller
     {
         if (string.IsNullOrWhiteSpace(model.UserLogin))
         {
-            ModelState.AddModelError(nameof(Models.Login.UserLogin), "Il login è obbligatorio.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Login.UserLogin), "Il login è obbligatorio.");
         }
 
         if (string.IsNullOrWhiteSpace(model.Password))
         {
-            ModelState.AddModelError(nameof(Models.Login.Password), "La password è obbligatoria.");
+            ModelState.AddModelError(nameof(DashboardOrders.Models.ViewModels.Login.Password), "La password è obbligatoria.");
         }
     }
 
@@ -222,8 +234,8 @@ public class AccountController : Controller
     {
         model.UserLogin = string.Empty;
         model.Password = string.Empty;
-        ModelState.Remove(nameof(Models.Login.UserLogin));
-        ModelState.Remove(nameof(Models.Login.Password));
+        ModelState.Remove(nameof(DashboardOrders.Models.ViewModels.Login.UserLogin));
+        ModelState.Remove(nameof(DashboardOrders.Models.ViewModels.Login.Password));
     }
 
     private static RegisterDto ToRegisterDto(Register model)
@@ -236,6 +248,9 @@ public class AccountController : Controller
             model.City,
             model.Country,
             model.Cap,
+            model.PhonePrefix,
+            model.PhoneCountryIso2,
+            model.PhoneNumber,
             model.Password,
             model.RepeatPassword);
     }
