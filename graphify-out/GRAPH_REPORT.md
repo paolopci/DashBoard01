@@ -1,11 +1,11 @@
 # Graph Report - DashBoard01  (2026-05-01)
 
 ## Corpus Check
-- 154 files · ~653,590 words
+- 140 files · ~309,531 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 924 nodes · 1435 edges · 93 communities detected
+- 911 nodes · 1435 edges · 93 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 

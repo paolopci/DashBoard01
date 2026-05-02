@@ -2866,96 +2866,6 @@
       "norm_label": ".seedcategory()"
     },
     {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\artifacts\\build-obj\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_artifacts_build_obj_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 100,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\artifacts\\test-obj\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_artifacts_test_obj_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 101,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\artifacts\\verify\\obj\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_artifacts_verify_obj_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 102,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\artifacts\\verify-build\\obj\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_artifacts_verify_build_obj_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 103,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.AssemblyInfo.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\obj\\Debug\\net9.0\\DashboardOrders.Tests.AssemblyInfo.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_obj_debug_net9_0_dashboardorders_tests_assemblyinfo_cs",
-      "community": 104,
-      "norm_label": "dashboardorders.tests.assemblyinfo.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\obj\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_obj_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 105,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.AssemblyInfo.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\obj\\Release\\net9.0\\DashboardOrders.Tests.AssemblyInfo.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_obj_release_net9_0_dashboardorders_tests_assemblyinfo_cs",
-      "community": 106,
-      "norm_label": "dashboardorders.tests.assemblyinfo.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\obj\\Release\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_obj_release_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 107,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\obj\\verify-obj\\$(MSBuildProjectName)\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_obj_verify_obj_msbuildprojectname_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 108,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.Tests.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "DashboardOrders.Tests\\obj\\verify-obj\\Debug\\net9.0\\DashboardOrders.Tests.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "dashboardorders_tests_obj_verify_obj_debug_net9_0_dashboardorders_tests_globalusings_g_cs",
-      "community": 109,
-      "norm_label": "dashboardorders.tests.globalusings.g.cs"
-    },
-    {
       "label": "DashboardOrdersDbContext.cs",
       "file_type": "code",
       "source_file": "Data\\DashboardOrdersDbContext.cs",
@@ -4383,7 +4293,7 @@
       "source_file": "Models\\Metric.cs",
       "source_location": "L1",
       "id": "models_metric_cs",
-      "community": 110,
+      "community": 100,
       "norm_label": "metric.cs"
     },
     {
@@ -4437,7 +4347,7 @@
       "source_file": "Models\\OrderStatus.cs",
       "source_location": "L1",
       "id": "models_orderstatus_cs",
-      "community": 111,
+      "community": 101,
       "norm_label": "orderstatus.cs"
     },
     {
@@ -4500,7 +4410,7 @@
       "source_file": "Models\\TrendData.cs",
       "source_location": "L1",
       "id": "models_trenddata_cs",
-      "community": 112,
+      "community": 102,
       "norm_label": "trenddata.cs"
     },
     {
@@ -4536,7 +4446,7 @@
       "source_file": "Models\\Dto\\LoginDto.cs",
       "source_location": "L1",
       "id": "models_dto_logindto_cs",
-      "community": 113,
+      "community": 103,
       "norm_label": "logindto.cs"
     },
     {
@@ -4545,7 +4455,7 @@
       "source_file": "Models\\Dto\\LogoutDto.cs",
       "source_location": "L1",
       "id": "models_dto_logoutdto_cs",
-      "community": 114,
+      "community": 104,
       "norm_label": "logoutdto.cs"
     },
     {
@@ -4554,7 +4464,7 @@
       "source_file": "Models\\Dto\\RegisterDto.cs",
       "source_location": "L1",
       "id": "models_dto_registerdto_cs",
-      "community": 115,
+      "community": 105,
       "norm_label": "registerdto.cs"
     },
     {
@@ -4959,7 +4869,7 @@
       "source_file": "Models\\ViewModels\\PaginationResult.cs",
       "source_location": "L1",
       "id": "models_viewmodels_paginationresult_cs",
-      "community": 116,
+      "community": 106,
       "norm_label": "paginationresult.cs"
     },
     {
@@ -5224,24 +5134,6 @@
       "norm_label": "userprofileviewmodel"
     },
     {
-      "label": "DashboardOrders.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "obj\\Debug\\net9.0\\DashboardOrders.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "obj_debug_net9_0_dashboardorders_globalusings_g_cs",
-      "community": 117,
-      "norm_label": "dashboardorders.globalusings.g.cs"
-    },
-    {
-      "label": "DashboardOrders.RazorAssemblyInfo.cs",
-      "file_type": "code",
-      "source_file": "obj\\Debug\\net9.0\\DashboardOrders.RazorAssemblyInfo.cs",
-      "source_location": "L1",
-      "id": "obj_debug_net9_0_dashboardorders_razorassemblyinfo_cs",
-      "community": 118,
-      "norm_label": "dashboardorders.razorassemblyinfo.cs"
-    },
-    {
       "label": "FillNullAddresses.cs",
       "file_type": "code",
       "source_file": "scripts\\FillNullAddresses.cs",
@@ -5267,15 +5159,6 @@
       "id": "scripts_fillnulladdresses_fillnulladdressesprogram_main",
       "community": 55,
       "norm_label": ".main()"
-    },
-    {
-      "label": "FillNullAddresses.GlobalUsings.g.cs",
-      "file_type": "code",
-      "source_file": "scripts\\obj\\Debug\\net9.0\\FillNullAddresses.GlobalUsings.g.cs",
-      "source_location": "L1",
-      "id": "scripts_obj_debug_net9_0_fillnulladdresses_globalusings_g_cs",
-      "community": 119,
-      "norm_label": "fillnulladdresses.globalusings.g.cs"
     },
     {
       "label": "AccountService.cs",
@@ -7695,7 +7578,7 @@
       "source_file": "Services\\ItalianTerritoryImportResult.cs",
       "source_location": "L1",
       "id": "services_italianterritoryimportresult_cs",
-      "community": 120,
+      "community": 107,
       "norm_label": "italianterritoryimportresult.cs"
     },
     {
